@@ -107,62 +107,83 @@ impl MockFlightReplay {
         let frames = vec![
             build_frame(
                 &config,
-                MockFlightScenarioKind::Nominal,
-                "Nominal glide",
-                format!(
-                    "Altitude {} m, climb {}.2 m/s, speed {} km/h",
-                    altitude, lift, speed
-                ),
-                "Offline tiles cached locally; map interaction enabled".to_string(),
-                "Telemetry stream healthy; all dashboard cards updated".to_string(),
-                "No alerts; flight state steady".to_string(),
-                "Upload queue idle; local export ready".to_string(),
-                "IGC preview available with simulated-session marker".to_string(),
-                false,
-                false,
-                0,
+                FrameSpec {
+                    kind: MockFlightScenarioKind::Nominal,
+                    title: "Nominal glide",
+                    telemetry_summary: format!(
+                        "Altitude {} m, climb {}.2 m/s, speed {} km/h",
+                        altitude, lift, speed
+                    ),
+                    map_summary: "Offline tiles cached locally; map interaction enabled"
+                        .to_string(),
+                    log_summary: "Telemetry stream healthy; all dashboard cards updated"
+                        .to_string(),
+                    alert_summary: "No alerts; flight state steady".to_string(),
+                    upload_summary: "Upload queue idle; local export ready".to_string(),
+                    export_summary: "IGC preview available with simulated-session marker"
+                        .to_string(),
+                    stale: false,
+                    degraded: false,
+                    step: 0,
+                },
             ),
             build_frame(
                 &config,
-                MockFlightScenarioKind::Offline,
-                "Offline validation",
-                "Synthetic telemetry continues without any network input".to_string(),
-                "Network disabled; cached map tiles and UI snapshots remain available".to_string(),
-                "Remote feeds unavailable by design; local flow continues".to_string(),
-                "Offline mode acknowledged and handled explicitly".to_string(),
-                "Remote upload unavailable; local export preserved".to_string(),
-                "Export stays available with offline label".to_string(),
-                false,
-                false,
-                1,
+                FrameSpec {
+                    kind: MockFlightScenarioKind::Offline,
+                    title: "Offline validation",
+                    telemetry_summary: "Synthetic telemetry continues without any network input"
+                        .to_string(),
+                    map_summary:
+                        "Network disabled; cached map tiles and UI snapshots remain available"
+                            .to_string(),
+                    log_summary: "Remote feeds unavailable by design; local flow continues"
+                        .to_string(),
+                    alert_summary: "Offline mode acknowledged and handled explicitly".to_string(),
+                    upload_summary: "Remote upload unavailable; local export preserved".to_string(),
+                    export_summary: "Export stays available with offline label".to_string(),
+                    stale: false,
+                    degraded: false,
+                    step: 1,
+                },
             ),
             build_frame(
                 &config,
-                MockFlightScenarioKind::Stale,
-                "Stale telemetry",
-                "Telemetry aged beyond the stale threshold until fresh data resumes".to_string(),
-                "Track marker remains visible but marked stale".to_string(),
-                "Stale event counted and reported to the operator".to_string(),
-                "Degraded state shown until fresh telemetry arrives".to_string(),
-                "Replay stays deterministic while stale data is surfaced".to_string(),
-                "Export contains stale-state provenance".to_string(),
-                true,
-                true,
-                2,
+                FrameSpec {
+                    kind: MockFlightScenarioKind::Stale,
+                    title: "Stale telemetry",
+                    telemetry_summary:
+                        "Telemetry aged beyond the stale threshold until fresh data resumes"
+                            .to_string(),
+                    map_summary: "Track marker remains visible but marked stale".to_string(),
+                    log_summary: "Stale event counted and reported to the operator".to_string(),
+                    alert_summary: "Degraded state shown until fresh telemetry arrives".to_string(),
+                    upload_summary: "Replay stays deterministic while stale data is surfaced"
+                        .to_string(),
+                    export_summary: "Export contains stale-state provenance".to_string(),
+                    stale: true,
+                    degraded: true,
+                    step: 2,
+                },
             ),
             build_frame(
                 &config,
-                MockFlightScenarioKind::Failure,
-                "Injected failure",
-                "One upstream dependency times out while unrelated features continue".to_string(),
-                "Map remains visible; failed dependency is isolated".to_string(),
-                "Structured error recorded for the failed integration point".to_string(),
-                "Graceful degradation visible to the operator".to_string(),
-                "Failed upstream action leaves local state intact".to_string(),
-                "Export includes failure marker and replay hash".to_string(),
-                false,
-                true,
-                3,
+                FrameSpec {
+                    kind: MockFlightScenarioKind::Failure,
+                    title: "Injected failure",
+                    telemetry_summary:
+                        "One upstream dependency times out while unrelated features continue"
+                            .to_string(),
+                    map_summary: "Map remains visible; failed dependency is isolated".to_string(),
+                    log_summary: "Structured error recorded for the failed integration point"
+                        .to_string(),
+                    alert_summary: "Graceful degradation visible to the operator".to_string(),
+                    upload_summary: "Failed upstream action leaves local state intact".to_string(),
+                    export_summary: "Export includes failure marker and replay hash".to_string(),
+                    stale: false,
+                    degraded: true,
+                    step: 3,
+                },
             ),
         ];
 
@@ -200,8 +221,7 @@ impl MockFlightReplay {
     }
 }
 
-fn build_frame(
-    config: &LocalMockFlightModeConfig,
+struct FrameSpec {
     kind: MockFlightScenarioKind,
     title: &'static str,
     telemetry_summary: String,
@@ -213,39 +233,41 @@ fn build_frame(
     stale: bool,
     degraded: bool,
     step: u64,
-) -> MockFlightFrame {
-    let occurred_at_ms = config.start_time_ms + config.logical_clock_step_ms * step;
+}
+
+fn build_frame(config: &LocalMockFlightModeConfig, spec: FrameSpec) -> MockFlightFrame {
+    let occurred_at_ms = config.start_time_ms + config.logical_clock_step_ms * spec.step;
     let canonical_event_hash = stable_hash(&[
         config.fixture_version.to_string(),
         config.seed.to_string(),
         config.logical_clock_step_ms.to_string(),
         config.provenance.to_string(),
-        kind_name(kind).to_string(),
-        title.to_string(),
-        telemetry_summary.clone(),
-        map_summary.clone(),
-        log_summary.clone(),
-        alert_summary.clone(),
-        upload_summary.clone(),
-        export_summary.clone(),
-        stale.to_string(),
-        degraded.to_string(),
+        kind_name(spec.kind).to_string(),
+        spec.title.to_string(),
+        spec.telemetry_summary.clone(),
+        spec.map_summary.clone(),
+        spec.log_summary.clone(),
+        spec.alert_summary.clone(),
+        spec.upload_summary.clone(),
+        spec.export_summary.clone(),
+        spec.stale.to_string(),
+        spec.degraded.to_string(),
         occurred_at_ms.to_string(),
     ]);
 
     MockFlightFrame {
-        kind,
-        title: title.to_string(),
-        telemetry_summary,
-        map_summary,
-        log_summary,
-        alert_summary,
-        upload_summary,
-        export_summary,
+        kind: spec.kind,
+        title: spec.title.to_string(),
+        telemetry_summary: spec.telemetry_summary,
+        map_summary: spec.map_summary,
+        log_summary: spec.log_summary,
+        alert_summary: spec.alert_summary,
+        upload_summary: spec.upload_summary,
+        export_summary: spec.export_summary,
         canonical_event_hash,
         occurred_at_ms,
-        stale,
-        degraded,
+        stale: spec.stale,
+        degraded: spec.degraded,
     }
 }
 

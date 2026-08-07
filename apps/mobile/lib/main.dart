@@ -57,14 +57,13 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
       }
     } on PlatformException catch (error) {
       _startupError = error.message ?? error.code;
-    } finally {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _loading = false;
-      });
     }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _loading = false;
+    });
   }
 
   @override
