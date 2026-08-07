@@ -84,6 +84,20 @@ pub struct ProviderDatasetRecord {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProviderDatasetRecordInput {
+    pub provider_id: String,
+    pub dataset_id: String,
+    pub dataset_name: String,
+    pub category: DataSourceCategory,
+    pub evidence: EvidenceRecord,
+    pub decision: GovernanceDecision,
+    pub review: ReviewRecord,
+    pub licence: LicenceConstraints,
+    pub privacy: PrivacyConstraints,
+    pub operational: OperationalConstraints,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ProviderDatasetRecordValidationError {
     UnsupportedSchemaVersion { expected: u16, found: u16 },
     MissingField { field: &'static str },
@@ -93,35 +107,22 @@ pub enum ProviderDatasetRecordValidationError {
 impl ProviderDatasetRecord {
     pub const SCHEMA_VERSION: u16 = 1;
 
-    #[must_use]
-    pub fn new(
-        provider_id: impl Into<String>,
-        dataset_id: impl Into<String>,
-        dataset_name: impl Into<String>,
-        category: DataSourceCategory,
-        evidence: EvidenceRecord,
-        decision: GovernanceDecision,
-        review: ReviewRecord,
-        licence: LicenceConstraints,
-        privacy: PrivacyConstraints,
-        operational: OperationalConstraints,
-    ) -> Self {
+    pub fn new(input: ProviderDatasetRecordInput) -> Self {
         Self {
             schema_version: Self::SCHEMA_VERSION,
-            provider_id: provider_id.into(),
-            dataset_id: dataset_id.into(),
-            dataset_name: dataset_name.into(),
-            category,
-            evidence,
-            decision,
-            review,
-            licence,
-            privacy,
-            operational,
+            provider_id: input.provider_id,
+            dataset_id: input.dataset_id,
+            dataset_name: input.dataset_name,
+            category: input.category,
+            evidence: input.evidence,
+            decision: input.decision,
+            review: input.review,
+            licence: input.licence,
+            privacy: input.privacy,
+            operational: input.operational,
         }
     }
 
-    #[must_use]
     pub fn validate(&self) -> Result<(), ProviderDatasetRecordValidationError> {
         if self.schema_version != Self::SCHEMA_VERSION {
             return Err(
@@ -205,31 +206,31 @@ mod tests {
     use super::*;
 
     fn approved_record() -> ProviderDatasetRecord {
-        ProviderDatasetRecord::new(
-            "osm-base-map",
-            "osm-country-extract",
-            "OSM Country Extract",
-            DataSourceCategory::BaseMap,
-            EvidenceRecord {
+        ProviderDatasetRecord::new(ProviderDatasetRecordInput {
+            provider_id: "osm-base-map".to_string(),
+            dataset_id: "osm-country-extract".to_string(),
+            dataset_name: "OSM Country Extract".to_string(),
+            category: DataSourceCategory::BaseMap,
+            evidence: EvidenceRecord {
                 terms_url: Some("https://www.openstreetmap.org/copyright".to_string()),
                 written_permission_reference: None,
                 evidence_date: "2026-08-07".to_string(),
                 reviewer: "engineering-audit".to_string(),
                 evidence_notes: vec!["Public attribution and sharing reviewed".to_string()],
             },
-            GovernanceDecision {
+            decision: GovernanceDecision {
                 state: GovernanceDecisionState::Approved,
                 rationale:
                     "Offline redistribution is explicitly permitted under the reviewed terms."
                         .to_string(),
             },
-            ReviewRecord {
+            review: ReviewRecord {
                 reviewed_at: "2026-08-07".to_string(),
                 revalidation_at: "2026-11-07".to_string(),
                 reviewer: "engineering-audit".to_string(),
                 notes: vec!["Approval is tied to the published license text".to_string()],
             },
-            LicenceConstraints {
+            licence: LicenceConstraints {
                 license_identifier_or_terms_url: "https://www.openstreetmap.org/copyright"
                     .to_string(),
                 attribution_text: "© OpenStreetMap contributors".to_string(),
@@ -239,7 +240,7 @@ mod tests {
                 derivation: "Derived tiles require attribution".to_string(),
                 review_expiry: "2026-11-07".to_string(),
             },
-            PrivacyConstraints {
+            privacy: PrivacyConstraints {
                 contains_personal_data: false,
                 legal_basis: None,
                 consent_expectations: None,
@@ -247,7 +248,7 @@ mod tests {
                 deletion: "Not applicable".to_string(),
                 onward_sharing_limits: "None beyond source attribution".to_string(),
             },
-            OperationalConstraints {
+            operational: OperationalConstraints {
                 update_cadence: "Monthly".to_string(),
                 caching_policy: "Allowed for offline package generation".to_string(),
                 rate_limit: None,
@@ -255,7 +256,7 @@ mod tests {
                 incident_response: "Suspend new publication if attribution terms change"
                     .to_string(),
             },
-        )
+        })
     }
 
     #[test]
