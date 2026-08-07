@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pub
+    directory: /apps/mobile
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pub
+    directory: /plugins/brandyfly_native
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: gomod
+    directory: /services/backend
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /services/backend
+    schedule:
+      interval: weekly

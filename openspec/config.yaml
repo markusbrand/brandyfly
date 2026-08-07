@@ -1,0 +1,33 @@
+schema: spec-driven
+githubCopilot:
+  cloudAgent: true
+
+context: |
+  BrandyFly is an MIT-licensed, local-first paragliding vario app.
+  Stack: Flutter/Dart UI, Rust flight core, Kotlin/Swift native adapters,
+  MapLibre/PMTiles, and a lightweight Go backend for Raspberry Pi ARM64.
+  Targets: Android 10+, iOS 16+, phones and tablets, portrait and landscape.
+  Safety-critical flight functions must remain available offline.
+  Use conventional commits. Never commit secrets or private flight data.
+  Keep hot sensor and audio paths independent from the Flutter UI thread.
+
+rules:
+  proposal:
+    - Include explicit non-goals for every product-facing change.
+    - Identify privacy, safety, offline, and licensing impact where applicable.
+  specs:
+    - Use measurable SHALL requirements and observable scenarios.
+    - Cover offline, stale-data, interruption, and failure behavior where applicable.
+  design:
+    - Record alternatives and explain latency, battery, and platform trade-offs.
+  tasks:
+    - Include targeted validation for every implementation section.
+
+operations:
+  apply:
+    guidance:
+      - Preserve deterministic replay support for changes to the flight pipeline.
+      - Do not advertise hardware support without a real-device release gate.
+  archive:
+    guidance:
+      - Record verification evidence and unresolved hardware or API limitations.

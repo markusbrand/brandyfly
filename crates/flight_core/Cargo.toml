@@ -1,0 +1,10 @@
+[package]
+name = "flight_core"
+version = "0.1.0"
+edition = "2024"
+description = "Deterministic flight processing core for BrandyFly"
+license = "MIT"
+repository = "https://github.com/markusbrand/brandyfly"
+publish = false
+
+[dependencies]
