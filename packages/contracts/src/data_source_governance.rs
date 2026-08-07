@@ -124,10 +124,12 @@ impl ProviderDatasetRecord {
     #[must_use]
     pub fn validate(&self) -> Result<(), ProviderDatasetRecordValidationError> {
         if self.schema_version != Self::SCHEMA_VERSION {
-            return Err(ProviderDatasetRecordValidationError::UnsupportedSchemaVersion {
-                expected: Self::SCHEMA_VERSION,
-                found: self.schema_version,
-            });
+            return Err(
+                ProviderDatasetRecordValidationError::UnsupportedSchemaVersion {
+                    expected: Self::SCHEMA_VERSION,
+                    found: self.schema_version,
+                },
+            );
         }
 
         self.ensure_non_empty("provider_id", &self.provider_id)?;
@@ -154,8 +156,14 @@ impl ProviderDatasetRecord {
             "privacy.onward_sharing_limits",
             &self.privacy.onward_sharing_limits,
         )?;
-        self.ensure_non_empty("operational.update_cadence", &self.operational.update_cadence)?;
-        self.ensure_non_empty("operational.caching_policy", &self.operational.caching_policy)?;
+        self.ensure_non_empty(
+            "operational.update_cadence",
+            &self.operational.update_cadence,
+        )?;
+        self.ensure_non_empty(
+            "operational.caching_policy",
+            &self.operational.caching_policy,
+        )?;
         self.ensure_non_empty(
             "operational.availability_notes",
             &self.operational.availability_notes,
@@ -169,9 +177,11 @@ impl ProviderDatasetRecord {
             && self.evidence.terms_url.is_none()
             && self.evidence.written_permission_reference.is_none()
         {
-            return Err(ProviderDatasetRecordValidationError::MissingAuthoritativeEvidence {
-                field: "evidence.terms_url or evidence.written_permission_reference",
-            });
+            return Err(
+                ProviderDatasetRecordValidationError::MissingAuthoritativeEvidence {
+                    field: "evidence.terms_url or evidence.written_permission_reference",
+                },
+            );
         }
 
         Ok(())
@@ -209,8 +219,9 @@ mod tests {
             },
             GovernanceDecision {
                 state: GovernanceDecisionState::Approved,
-                rationale: "Offline redistribution is explicitly permitted under the reviewed terms."
-                    .to_string(),
+                rationale:
+                    "Offline redistribution is explicitly permitted under the reviewed terms."
+                        .to_string(),
             },
             ReviewRecord {
                 reviewed_at: "2026-08-07".to_string(),
@@ -241,7 +252,8 @@ mod tests {
                 caching_policy: "Allowed for offline package generation".to_string(),
                 rate_limit: None,
                 availability_notes: "Static extract".to_string(),
-                incident_response: "Suspend new publication if attribution terms change".to_string(),
+                incident_response: "Suspend new publication if attribution terms change"
+                    .to_string(),
             },
         )
     }
@@ -280,9 +292,11 @@ mod tests {
 
         assert_eq!(
             record.validate(),
-            Err(ProviderDatasetRecordValidationError::MissingAuthoritativeEvidence {
-                field: "evidence.terms_url or evidence.written_permission_reference",
-            })
+            Err(
+                ProviderDatasetRecordValidationError::MissingAuthoritativeEvidence {
+                    field: "evidence.terms_url or evidence.written_permission_reference",
+                }
+            )
         );
     }
 }
