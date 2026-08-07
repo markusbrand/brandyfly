@@ -42,3 +42,23 @@ docker stop brandyfly-backend-dev
 
 Do not run formatting commands with unrelated uncommitted changes unless their
 scope is constrained to the module being changed.
+
+## Local mock flight mode
+
+Run the mobile app with deterministic synthetic flight data and mocked
+interfaces on a development laptop:
+
+```sh
+cd apps/mobile
+flutter run --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true
+```
+
+Optional defines:
+
+- `BRANDYFLY_LOCAL_MOCK_FIXTURE_VERSION`
+- `BRANDYFLY_LOCAL_MOCK_SEED`
+- `BRANDYFLY_LOCAL_MOCK_CLOCK_STEP_MS`
+- `BRANDYFLY_LOCAL_MOCK_START_ISO8601`
+- `BRANDYFLY_LOCAL_MOCK_PROVENANCE`
+
+Mock mode is rejected in release builds.
