@@ -5,10 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'demo/vario_screen.dart';
+
 void main() {
   final config = MockFlightModeConfig.fromEnvironment();
-  config.validateBuildMode(isReleaseBuild: kReleaseMode);
-  runApp(BrandyFlyApp(config: config));
+  final effectiveConfig = config.copyWith(enabled: kDebugMode || config.enabled);
+  effectiveConfig.validateBuildMode(isReleaseBuild: kReleaseMode);
+  runApp(BrandyFlyApp(config: effectiveConfig));
 }
 
 class BrandyFlyApp extends StatefulWidget {
@@ -76,6 +79,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'BrandyFly',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
@@ -85,6 +89,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
           brightness: Brightness.dark,
         ),
       ),
+      themeMode: ThemeMode.dark,
       home: _startupError != null
           ? _StartupErrorView(message: _startupError!)
           : _loading
@@ -240,6 +245,11 @@ class _MockFlightView extends StatelessWidget {
                   value: frame.degraded
                       ? (frame.stale ? 'Stale and degraded' : 'Degraded')
                       : 'Healthy',
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 420,
+                  child: VarioDemoCard(),
                 ),
               ],
             ),

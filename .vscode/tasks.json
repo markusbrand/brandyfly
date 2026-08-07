@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flutter pub get",
+      "type": "shell",
+      "command": "${userHome}/.local/flutter/bin/flutter pub get",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/mobile"
+      },
+      "inAgents": true,
+      "runOptions": {
+        "runOn": "worktreeCreated"
+      }
+    },
+    {
+      "label": "Run on Linux",
+      "type": "shell",
+      "command": "${userHome}/.local/flutter/bin/flutter run -d linux",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/mobile"
+      },
+      "inAgents": true
+    }
+  ]
+}
