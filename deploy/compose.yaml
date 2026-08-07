@@ -1,14 +1,16 @@
 services:
   backend:
-    build:
-      context: ../services/backend
-    image: brandyfly-backend:local
+    image: ghcr.io/markusbrand/brandyfly-backend:latest
     restart: unless-stopped
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=16m
     volumes:
       - backend-data:/var/lib/brandyfly
+    ports:
+      - "${BRANDYFLY_HOST_PORT:-8090}:8080"
+    environment:
+      - BRANDYFLY_LISTEN_ADDRESS=${BRANDYFLY_LISTEN_ADDRESS:-:8080}
     security_opt:
       - no-new-privileges:true
     cap_drop:
