@@ -1,6 +1,6 @@
 ## 1. Governance Schemas
 
-- [ ] 1.1 Define the versioned provider-dataset record with evidence, decision, review, licence, privacy, and operational fields
+- [x] 1.1 Define the versioned provider-dataset record with evidence, decision, review, licence, privacy, and operational fields
 - [ ] 1.2 Define package-manifest provenance and attribution fields required by the specification
 - [ ] 1.3 Add schema fixtures for approved, rejected, blocked, expired, revoked, and personal-data candidates
 - [ ] 1.4 Add validation tests that reject incomplete approval records and package manifests
