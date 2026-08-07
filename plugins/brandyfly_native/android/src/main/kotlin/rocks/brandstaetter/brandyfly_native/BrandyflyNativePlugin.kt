@@ -25,10 +25,10 @@ class BrandyflyNativePlugin :
         call: MethodCall,
         result: Result
     ) {
-        if (call.method == "getPlatformVersion") {
-            result.success("Android ${android.os.Build.VERSION.RELEASE}")
-        } else {
-            result.notImplemented()
+        when (call.method) {
+            "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
+            "configureLocalMockFlightMode" -> result.success(null)
+            else -> result.notImplemented()
         }
     }
 
