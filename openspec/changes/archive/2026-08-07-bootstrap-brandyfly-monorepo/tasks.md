@@ -26,8 +26,8 @@
 
 ## 5. Publication
 
-- [ ] 5.1 Create the public `markusbrand/brandyfly` GitHub repository and push the validated bootstrap
-- [ ] 5.2 Confirm repository visibility, MIT license detection, and initial GitHub Actions status
+- [x] 5.1 Create the public `markusbrand/brandyfly` GitHub repository and push the validated bootstrap
+- [x] 5.2 Confirm repository visibility, MIT license detection, and initial GitHub Actions status
 
 ## Verification evidence
 
@@ -42,3 +42,5 @@
   256 MB memory and 0.5 CPU limits, and reached healthy status.
 - The Linux host cannot execute the iOS build, and its Docker installation lacks
   Buildx for a local ARM64 image; dedicated GitHub Actions jobs cover both gates.
+- GitHub Actions passed OpenSpec, Rust, Flutter/Android, iOS, Go, and multi-
+  architecture backend-container jobs on the initial public `main` commit.
