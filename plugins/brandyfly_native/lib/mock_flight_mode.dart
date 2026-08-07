@@ -278,7 +278,7 @@ class MockFlightReplay {
       frame(
         kind: MockFlightScenarioKind.nominal,
         title: 'Nominal glide',
-        telemetrySummary: 'Altitude ${altitude} m, climb ${lift}.2 m/s, speed ${speed} km/h',
+        telemetrySummary: 'Altitude $altitude m, climb $lift.2 m/s, speed $speed km/h',
         mapSummary: 'Offline tiles cached locally; map interaction enabled',
         logSummary: 'Telemetry stream healthy; all dashboard cards updated',
         alertSummary: 'No alerts; flight state steady',
