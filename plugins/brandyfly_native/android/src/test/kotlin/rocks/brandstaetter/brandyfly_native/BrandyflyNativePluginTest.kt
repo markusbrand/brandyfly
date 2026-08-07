@@ -24,4 +24,21 @@ internal class BrandyflyNativePluginTest {
 
         Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
     }
+
+    @Test
+    fun onMethodCall_configureLocalMockFlightMode_returnsSuccess() {
+        val plugin = BrandyflyNativePlugin()
+
+        val call = MethodCall(
+            "configureLocalMockFlightMode",
+            mapOf(
+                "enabled" to true,
+                "fixtureVersion" to "mock-flight-v1",
+            )
+        )
+        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        plugin.onMethodCall(call, mockResult)
+
+        Mockito.verify(mockResult).success(null)
+    }
 }

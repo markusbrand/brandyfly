@@ -1,10 +1,90 @@
 import 'package:brandyfly/main.dart';
+import 'package:brandyfly_native/brandyfly_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class FakeBrandyflyNative extends BrandyflyNative {
+  @override
+  Future<String?> getPlatformVersion() async => 'TestOS 1.0';
+
+  @override
+  Future<void> configureLocalMockFlightMode(
+    MockFlightModeConfig config,
+  ) async {}
+}
+
 void main() {
-  testWidgets('renders the application name', (tester) async {
-    await tester.pumpWidget(const BrandyFlyApp());
+  testWidgets('renders the live application shell', (tester) async {
+    await tester.pumpWidget(
+      BrandyFlyApp(
+        config: MockFlightModeConfig(
+          enabled: false,
+          fixtureVersion: 'mock-flight-v1',
+          seed: 7,
+          logicalClockStep: const Duration(seconds: 1),
+          startTime: DateTime.parse('2026-08-07T00:00:00Z'),
+          provenance: 'synthetic-anonymized',
+        ),
+        native: FakeBrandyflyNative(),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
 
     expect(find.text('BrandyFly'), findsOneWidget);
+    expect(find.textContaining('Running on:'), findsOneWidget);
+    expect(find.text('LIVE'), findsOneWidget);
+  });
+
+  testWidgets('renders the simulated flight dashboard', (tester) async {
+    await tester.pumpWidget(
+      BrandyFlyApp(
+        config: MockFlightModeConfig(
+          enabled: true,
+          fixtureVersion: 'mock-flight-v1',
+          seed: 7,
+          logicalClockStep: const Duration(seconds: 1),
+          startTime: DateTime.parse('2026-08-07T00:00:00Z'),
+          provenance: 'synthetic-anonymized',
+        ),
+        native: FakeBrandyflyNative(),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('SIMULATED'), findsOneWidget);
+    expect(find.textContaining('Mock flight session'), findsOneWidget);
+    expect(find.textContaining('Nominal glide'), findsOneWidget);
+    expect(find.textContaining('Replay hash:'), findsOneWidget);
+  });
+
+  test('rejects mock mode in release builds', () {
+    expect(
+      () => MockFlightModeConfig(
+        enabled: true,
+        fixtureVersion: 'mock-flight-v1',
+        seed: 7,
+        logicalClockStep: const Duration(seconds: 1),
+        startTime: DateTime.parse('2026-08-07T00:00:00Z'),
+        provenance: 'synthetic-anonymized',
+      ).validateBuildMode(isReleaseBuild: true),
+      throwsStateError,
+    );
+  });
+
+  test('rejects mock mode without provenance metadata', () {
+    expect(
+      () => MockFlightModeConfig(
+        enabled: true,
+        fixtureVersion: 'mock-flight-v1',
+        seed: 7,
+        logicalClockStep: const Duration(seconds: 1),
+        startTime: DateTime.parse('2026-08-07T00:00:00Z'),
+        provenance: '',
+      ).validateBuildMode(isReleaseBuild: false),
+      throwsStateError,
+    );
   });
 }

@@ -12,6 +12,8 @@ public class BrandyflyNativePlugin: NSObject, FlutterPlugin {
     switch call.method {
     case "getPlatformVersion":
       result("iOS " + UIDevice.current.systemVersion)
+    case "configureLocalMockFlightMode":
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }
