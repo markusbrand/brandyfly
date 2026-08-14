@@ -2,160 +2,87 @@
 description: "Verify implementation matches change artifacts before archiving"
 ---
 
-Verify that an implementation matches the change artifacts (specs, tasks, design).
+> **Authoritative store: GitHub issues.** OpenSpec change state for this repository lives in GitHub issues — one issue per change, discovered by the `openspec` label — and no longer in per-change Markdown under `openspec/changes/`. Read and write change state through the repository adapter `tools/openspec-issue/openspec-issue.sh` (contract: `tools/openspec-issue/CONTRACT.md`). The adapter uses `gh` and fails explicitly when GitHub is unavailable, unauthenticated, or lacks permission; there is no local Markdown fallback. Never create per-change directories or Markdown artifacts for change state. Durable capability specs remain source-controlled under `openspec/specs/`.
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
+Verify that an implementation matches the GitHub issue-backed change sections (requirements, tasks, design) before completing it.
 
 **Input**: Optionally specify a change name after `/opsx-verify` (e.g., `/opsx-verify add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+
+**Adapter contract**
+- Use `tools/openspec-issue/openspec-issue.sh` for all change-state reads and writes.
+- Run `preflight` before listing/finding/reading. Run `preflight --write` before writing the verification section.
+- If GitHub connectivity, auth, or permission fails, stop with the adapter error. Do not create local fallback artifacts.
 
 **Steps**
 
 1. **Select the change**
 
-   If a name is provided, use it. Otherwise:
-   - Infer from conversation context if the user mentioned a change
-   - Auto-select if only one active change exists
-   - If ambiguous, run `openspec list --json` to get available changes and ask the user to select one
-
-   When prompting, show changes that have implementation tasks (tasks artifact exists).
-   Include the schema used for each change if available.
-   Mark changes with incomplete tasks as "(In Progress)".
-
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx-verify <other>`).
-
-2. **Check status to understand the schema**
+   If a name is provided, use `find <name>`. Otherwise infer from context, auto-select if only one open change exists, or run:
    ```bash
-   openspec status --change "<name>" --json
+   tools/openspec-issue/openspec-issue.sh preflight
+   tools/openspec-issue/openspec-issue.sh list --state open
    ```
-   Parse the JSON to understand:
-   - `schemaName`: The workflow being used (e.g., "spec-driven")
-   - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context
-   - Which artifacts exist for this change
+   When prompting, prefer changes that have implementation tasks. Include lifecycle and task progress if available.
 
-3. **Get planning context and load artifacts**
+2. **Load planning sections**
 
    ```bash
-   openspec instructions apply --change "<name>" --json
+   tools/openspec-issue/openspec-issue.sh get-section <issue> proposal
+   tools/openspec-issue/openspec-issue.sh get-section <issue> requirements
+   tools/openspec-issue/openspec-issue.sh get-section <issue> design
+   tools/openspec-issue/openspec-issue.sh get-section <issue> tasks
+   tools/openspec-issue/openspec-issue.sh get-section <issue> verification
    ```
 
-   This returns the change directory and `contextFiles` (artifact ID -> array of concrete file paths). Read all available artifacts from `contextFiles`.
+3. **Initialize verification report structure**
 
-4. **Initialize verification report structure**
-
-   Create a report structure with three dimensions:
-   - **Completeness**: Track tasks and spec coverage
-   - **Correctness**: Track requirement implementation and scenario coverage
-   - **Coherence**: Track design adherence and pattern consistency
+   Create a report with three dimensions:
+   - **Completeness**: task and requirement coverage
+   - **Correctness**: requirement implementation and scenario coverage
+   - **Coherence**: design adherence and pattern consistency
 
    Each dimension can have CRITICAL, WARNING, or SUGGESTION issues.
 
-5. **Verify Completeness**
+4. **Verify Completeness**
 
    **Task Completion**:
-   - If `contextFiles.tasks` exists, read every file path in it
-   - Parse checkboxes: `- [ ]` (incomplete) vs `- [x]` (complete)
-   - Count complete vs total tasks
-   - If incomplete tasks exist:
-     - Add CRITICAL issue for each incomplete task
-     - Recommendation: "Complete task: <description>" or "Mark as done if already implemented"
+   - Parse task checkboxes in the `tasks` section: `- [ ]` vs `- [x]`.
+   - Add a CRITICAL issue for each incomplete task.
 
-   **Spec Coverage**:
-   - If delta specs exist in `contextFiles.specs`:
-     - Extract all requirements (marked with "### Requirement:")
-     - For each requirement:
-       - Search codebase for keywords related to the requirement
-       - Assess if implementation likely exists
-     - If requirements appear unimplemented:
-       - Add CRITICAL issue: "Requirement not found: <requirement name>"
-       - Recommendation: "Implement requirement X: <description>"
+   **Requirement Coverage**:
+   - Extract requirements from the `requirements` section.
+   - Search the codebase for implementation evidence and tests.
+   - Add CRITICAL issues for apparently unimplemented requirements.
 
-6. **Verify Correctness**
+5. **Verify Correctness**
 
-   **Requirement Implementation Mapping**:
-   - For each requirement from delta specs:
-     - Search codebase for implementation evidence
-     - If found, note file paths and line ranges
-     - Assess if implementation matches requirement intent
-     - If divergence detected:
-       - Add WARNING: "Implementation may diverge from spec: <details>"
-       - Recommendation: "Review <file>:<lines> against requirement X"
+   For each requirement and scenario:
+   - Search codebase for implementation evidence.
+   - Note file paths and line ranges when found.
+   - Add WARNING issues when implementation appears to diverge from the requirement or scenario.
 
-   **Scenario Coverage**:
-   - For each scenario in delta specs (marked with "#### Scenario:"):
-     - Check if conditions are handled in code
-     - Check if tests exist covering the scenario
-     - If scenario appears uncovered:
-       - Add WARNING: "Scenario not covered: <scenario name>"
-       - Recommendation: "Add test or implementation for scenario: <description>"
+6. **Verify Coherence**
 
-7. **Verify Coherence**
+   - If the `design` section exists, verify implementation follows key decisions.
+   - Review new code for significant consistency issues with project patterns.
+   - Prefer SUGGESTION for uncertain or minor issues.
 
-   **Design Adherence**:
-   - If `contextFiles.design` exists:
-     - Extract key decisions (look for sections like "Decision:", "Approach:", "Architecture:")
-     - Verify implementation follows those decisions
-     - If contradiction detected:
-       - Add WARNING: "Design decision not followed: <decision>"
-       - Recommendation: "Update implementation or revise design.md to match reality"
-   - If no design.md: Skip design adherence check, note "No design.md to verify against"
+7. **Validate durable specs when relevant**
 
-   **Code Pattern Consistency**:
-   - Review new code for consistency with project patterns
-   - Check file naming, directory structure, coding style
-   - If significant deviations found:
-     - Add SUGGESTION: "Code pattern deviation: <details>"
-     - Recommendation: "Consider following project pattern: <example>"
-
-8. **Generate Verification Report**
-
-   **Summary Scorecard**:
-   ```markdown
-   ## Verification Report: <change-name>
-
-   ### Summary
-   | Dimension    | Status           |
-   |--------------|------------------|
-   | Completeness | X/Y tasks, N reqs|
-   | Correctness  | M/N reqs covered |
-   | Coherence    | Followed/Issues  |
+   If durable specs under `openspec/specs/` were changed or are part of the verification, run:
+   ```bash
+   npx --yes @fission-ai/openspec@latest validate --all --strict
    ```
+   This validates source-controlled durable specs, not GitHub issue change state.
 
-   **Issues by Priority**:
+8. **Write verification evidence to the issue**
 
-   1. **CRITICAL** (Must fix before archive):
-      - Incomplete tasks
-      - Missing requirement implementations
-      - Each with specific, actionable recommendation
-
-   2. **WARNING** (Should fix):
-      - Spec/design divergences
-      - Missing scenario coverage
-      - Each with specific recommendation
-
-   3. **SUGGESTION** (Nice to fix):
-      - Pattern inconsistencies
-      - Minor improvements
-      - Each with specific recommendation
-
-   **Final Assessment**:
-   - If CRITICAL issues: "X critical issue(s) found. Fix before archiving."
-   - If only warnings: "No critical issues. Y warning(s) to consider. Ready for archive (with noted improvements)."
-   - If all clear: "All checks passed. Ready for archive."
-
-**Verification Heuristics**
-
-- **Completeness**: Focus on objective checklist items (checkboxes, requirements list)
-- **Correctness**: Use keyword search, file path analysis, reasonable inference - don't require perfect certainty
-- **Coherence**: Look for glaring inconsistencies, don't nitpick style
-- **False Positives**: When uncertain, prefer SUGGESTION over WARNING, WARNING over CRITICAL
-- **Actionability**: Every issue must have a specific recommendation with file/line references where applicable
-
-**Graceful Degradation**
-
-- If only tasks.md exists: verify task completion only, skip spec/design checks
-- If tasks + specs exist: verify completeness and correctness, skip design
-- If full artifacts: verify all three dimensions
-- Always note which checks were skipped and why
+   Generate the report and save it:
+   ```bash
+   tools/openspec-issue/openspec-issue.sh preflight --write
+   tools/openspec-issue/openspec-issue.sh set-section <issue> verification --body-file <verification-file>
+   tools/openspec-issue/openspec-issue.sh validate <issue>
+   ```
 
 **Output Format**
 
@@ -165,3 +92,16 @@ Use clear markdown with:
 - Code references in format: `file.ts:123`
 - Specific, actionable recommendations
 - No vague suggestions like "consider reviewing"
+
+**Final Assessment**
+- If CRITICAL issues: "X critical issue(s) found. Fix before archiving."
+- If only warnings: "No critical issues. Y warning(s) to consider. Ready for archive (with noted improvements)."
+- If all clear: "All checks passed. Ready for archive."
+
+**Guardrails**
+- Focus on objective checklist items and requirement evidence.
+- Use reasonable inference; don't require perfect certainty.
+- When uncertain, prefer SUGGESTION over WARNING, WARNING over CRITICAL.
+- Every issue must have a specific recommendation with file/line references where applicable.
+- Always record verification output in the issue before reporting completion.
+- Never create a per-change directory or Markdown artifact under `openspec/changes/`; change state lives only in GitHub issues via the adapter.

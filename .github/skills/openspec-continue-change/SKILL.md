@@ -1,118 +1,77 @@
 ---
 name: openspec-continue-change
 description: Continue working on an OpenSpec change by creating the next artifact. Use when the user wants to progress their change, create the next artifact, or continue their workflow.
-allowed-tools: Bash(openspec:*)
+allowed-tools: Bash(tools/openspec-issue/openspec-issue.sh:*), Bash(gh:*), Bash(npx:*), Bash(openspec:*)
 license: MIT
-compatibility: Requires openspec CLI.
+compatibility: Requires the tools/openspec-issue GitHub-issue adapter and the gh CLI; openspec CLI (via npx) is used only for durable-spec validation.
 metadata:
   author: openspec
   version: "1.0"
   generatedBy: "1.8.0"
 ---
 
-Continue working on a change by creating the next artifact.
+> **Authoritative store: GitHub issues.** OpenSpec change state for this repository lives in GitHub issues — one issue per change, discovered by the `openspec` label — and no longer in per-change Markdown under `openspec/changes/`. Read and write change state through the repository adapter `tools/openspec-issue/openspec-issue.sh` (contract: `tools/openspec-issue/CONTRACT.md`). The adapter uses `gh` and fails explicitly when GitHub is unavailable, unauthenticated, or lacks permission; there is no local Markdown fallback. Never create per-change directories or Markdown artifacts for change state. Durable capability specs remain source-controlled under `openspec/specs/`.
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
+Continue a GitHub-issue-backed OpenSpec change by creating the next missing section.
+**Adapter rule:** Use `tools/openspec-issue/openspec-issue.sh` for all change-state reads and writes. Run `tools/openspec-issue/openspec-issue.sh preflight` before reading change state and `tools/openspec-issue/openspec-issue.sh preflight --write` before any create, section update, lifecycle update, or verification recording. If preflight or any adapter command fails because GitHub is unreachable, unauthenticated, or lacks permission, stop and report the explicit failure. Do not create any local fallback artifact.
 
-**Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a change name. If omitted, infer from context only when unambiguous; otherwise list open changes and ask the user to select one.
 
 **Steps**
 
 1. **Select the change**
-
-   If a name is provided, use it. Otherwise:
-   - Infer from conversation context if the user mentioned a change
-   - Auto-select if only one active change exists
-   - If ambiguous, run `openspec list --json` to get available changes sorted by most recently modified, and ask the user to select one
-
-   When prompting, present the top 3-4 most recently modified changes as options, showing:
-   - Change name
-   - Schema (from `schema` field if present, otherwise "spec-driven")
-   - Status (e.g., "0/5 tasks", "complete", "no tasks")
-   - How recently it was modified (from `lastModified` field)
-
-   Mark the most recently modified change as "(Recommended)" since it's likely what the user wants to continue.
-
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx-continue <other>`).
-
-2. **Check current status**
    ```bash
-   openspec status --change "<name>" --json
+   tools/openspec-issue/openspec-issue.sh preflight
+   tools/openspec-issue/openspec-issue.sh list --state open
+   tools/openspec-issue/openspec-issue.sh find "<name>"
    ```
-   Parse the JSON to understand current state. The response includes:
-   - `schemaName`: The workflow schema being used (e.g., "spec-driven")
-   - `artifacts`: Array of artifacts with their status ("done", "skipped", "ready", "blocked")
-   - `isPlanningComplete`: Boolean indicating if all planning artifacts are complete. Older CLI versions expose the same value as `isComplete`.
-   - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
+   Present the most relevant open changes with name, issue number, lifecycle, state, and task progress from the adapter list output.
 
-3. **Act based on status**:
-
-   ---
-
-   **If all planning artifacts are complete (`isPlanningComplete: true`, or legacy `isComplete: true`)**:
-   - Congratulate the user
-   - Show final status including the schema used
-   - Suggest: "Planning is complete! You can now implement this change. Once implementation and any tracked work are complete, archive it."
-   - STOP
-
-   ---
-
-   **If artifacts are ready to create** (status shows artifacts with `status: "ready"`):
-   - Pick the FIRST artifact with `status: "ready"` from the status output
-   - Get its instructions:
-     ```bash
-     openspec instructions <artifact-id> --change "<name>" --json
-     ```
-   - Parse the JSON. The key fields are:
-     - `context`: Project background (constraints for you - do NOT include in output)
-     - `rules`: Artifact-specific rules (constraints for you - do NOT include in output)
-     - `template`: The structure to use for your output file
-     - `instruction`: Schema-specific guidance
-     - `resolvedOutputPath`: Resolved path or pattern to write the artifact
-     - `dependencies`: Completed artifacts to read for context (entries with `skipped: true` have no files - do not look for them)
-     - `skipped`/`warning`: present when the change declares skip_specs and this artifact must NOT be created - pick another artifact
-   - **Create the artifact file**:
-     - Read any completed dependency files for context - always re-read them from disk, even if you saw them earlier in the conversation (the user may have edited them)
-     - If the `instruction` field delegates creation to a specific skill or command, invoke it to produce the artifact instead of writing the file yourself, then verify the artifact file exists at `resolvedOutputPath`
-     - Otherwise use `template` as the structure - fill in its sections
-     - Apply `context` and `rules` as constraints when writing - but do NOT copy them into the file
-     - Write to the `resolvedOutputPath` specified in instructions. If it is a glob pattern, choose the concrete file path using the schema instruction and the change's context
-   - Show what was created and what's now unlocked
-   - STOP after creating ONE artifact
-
-   ---
-
-   **If no artifacts are ready (all blocked)**:
-   - This shouldn't happen with a valid schema
-   - Show status and suggest checking for issues
-
-4. **After creating an artifact, show progress**
+2. **Read current sections**
    ```bash
-   openspec status --change "<name>"
+   tools/openspec-issue/openspec-issue.sh get-section <issue> proposal
+   tools/openspec-issue/openspec-issue.sh get-section <issue> requirements
+   tools/openspec-issue/openspec-issue.sh get-section <issue> design
+   tools/openspec-issue/openspec-issue.sh get-section <issue> tasks
+   tools/openspec-issue/openspec-issue.sh get-section <issue> verification
+   ```
+   Use issue metadata from `read <issue>` only for schema/lifecycle context.
+
+3. **Choose the next section**
+   - If `proposal` is empty, draft proposal.
+   - Else if `requirements` is empty and requirements are needed, draft delta requirements.
+   - Else if `design` is empty and design is warranted, draft design; otherwise record in `verification` why design is skipped.
+   - Else if `tasks` is empty, draft tasks.
+   - If all planning sections needed for apply exist, set lifecycle to `ready` after write preflight.
+
+4. **Write exactly one section**
+   Before writing:
+   ```bash
+   tools/openspec-issue/openspec-issue.sh preflight --write
+   ```
+   Then:
+   ```bash
+   tools/openspec-issue/openspec-issue.sh set-section <issue> <section> --body-file <section.md>
+   tools/openspec-issue/openspec-issue.sh validate <issue>
+   ```
+   If this completes the planning set:
+   ```bash
+   tools/openspec-issue/openspec-issue.sh set-lifecycle <issue> ready
+   tools/openspec-issue/openspec-issue.sh validate <issue>
    ```
 
 **Output**
 
-After each invocation, show:
-- Which artifact was created
-- Schema workflow being used
-- Current progress (N/M complete)
-- What artifacts are now unlocked
-- Prompt: "Want to continue? Just ask me to continue or tell me what to do next."
-
-**Artifact Creation Guidelines**
-
-The artifact types and their purpose depend on the schema. The `instruction` field from the instructions output is the authoritative guidance for each artifact - follow it even when the artifact has a familiar name (proposal.md, tasks.md, etc.), since custom schemas may define different content or a different process for the same file names.
-
-If the `instruction` field directs you to use a specific skill or command to create the artifact, invoke it instead of writing the artifact directly.
+Show:
+- Which section was created
+- Schema/lifecycle context
+- Current progress through proposal → requirements → design → tasks
+- What is now unlocked
+- Prompt: "Want to continue? Ask me to continue or tell me what to do next."
 
 **Guardrails**
-- Create ONE artifact per invocation
-- Always read dependency artifacts before creating a new one - re-read from disk, not from conversation memory (files may have changed since you last saw them)
-- Never skip artifacts or create out of order
-- If context is unclear, ask the user before creating
-- Verify the artifact file exists after writing before marking progress
-- Use the schema's artifact sequence, don't assume specific artifact names
-- **IMPORTANT**: `context` and `rules` are constraints for YOU, not content for the file
-  - Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into the artifact
-  - These guide what you write, but should never appear in the output
+- Create one section per invocation.
+- Never skip required planning content silently.
+- Read dependency sections from the issue, not from conversation memory.
+- Never write per-change local artifacts; change state lives in the issue.
+- Stop explicitly on GitHub/auth/permission failures.

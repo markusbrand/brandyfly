@@ -1,185 +1,108 @@
 ---
 name: openspec-apply-change
 description: Implement tasks from an OpenSpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.
-allowed-tools: Bash(openspec:*)
+allowed-tools: Bash(tools/openspec-issue/openspec-issue.sh:*), Bash(gh:*), Bash(npx:*), Bash(openspec:*)
 license: MIT
-compatibility: Requires openspec CLI.
+compatibility: Requires the tools/openspec-issue GitHub-issue adapter and the gh CLI; openspec CLI (via npx) is used only for durable-spec validation.
 metadata:
   author: openspec
   version: "1.0"
   generatedBy: "1.8.0"
 ---
 
-Implement tasks from an OpenSpec change.
+> **Authoritative store: GitHub issues.** OpenSpec change state for this repository lives in GitHub issues — one issue per change, discovered by the `openspec` label — and no longer in per-change Markdown under `openspec/changes/`. Read and write change state through the repository adapter `tools/openspec-issue/openspec-issue.sh` (contract: `tools/openspec-issue/CONTRACT.md`). The adapter uses `gh` and fails explicitly when GitHub is unavailable, unauthenticated, or lacks permission; there is no local Markdown fallback. Never create per-change directories or Markdown artifacts for change state. Durable capability specs remain source-controlled under `openspec/specs/`.
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
+Implement tasks from a GitHub-issue-backed OpenSpec change.
+**Adapter rule:** Use `tools/openspec-issue/openspec-issue.sh` for all change-state reads and writes. Run `tools/openspec-issue/openspec-issue.sh preflight` before reading change state and `tools/openspec-issue/openspec-issue.sh preflight --write` before any create, section update, lifecycle update, or verification recording. If preflight or any adapter command fails because GitHub is unreachable, unauthenticated, or lacks permission, stop and report the explicit failure. Do not create any local fallback artifact.
 
-**Input**: Optionally specify a change name (e.g., `/opsx-apply add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a change name. If omitted, infer only when unambiguous; otherwise list open changes and ask the user to select one.
 
 **Steps**
 
 1. **Select the change**
-
-   If a name is provided, use it. Otherwise:
-   - Infer from conversation context if the user mentioned a change
-   - Auto-select if only one active change exists
-   - If ambiguous, run `openspec list --json` to get available changes and ask the user to select one
-
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx-apply <other>`).
-
-2. **Check status to understand the schema**
    ```bash
-   openspec status --change "<name>" --json
+   tools/openspec-issue/openspec-issue.sh preflight --write
+   tools/openspec-issue/openspec-issue.sh list --state open
+   tools/openspec-issue/openspec-issue.sh find "<name>"
    ```
-   Parse the JSON to understand:
-   - `schemaName`: The workflow being used (e.g., "spec-driven")
-   - `planningHome`, `changeRoot`, and `actionContext`: planning scope and edit constraints
-   - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
+   Announce the selected change and issue number.
 
-3. **Get apply instructions**
-
+2. **Read planning sections from the issue**
    ```bash
-   openspec instructions apply --change "<name>" --json
+   tools/openspec-issue/openspec-issue.sh get-section <issue> proposal
+   tools/openspec-issue/openspec-issue.sh get-section <issue> requirements
+   tools/openspec-issue/openspec-issue.sh get-section <issue> design
+   tools/openspec-issue/openspec-issue.sh get-section <issue> tasks
+   tools/openspec-issue/openspec-issue.sh get-section <issue> verification
    ```
+   Treat issue sections as the only change-state source. Do not look for local `proposal.md`, `tasks.md`, `changeRoot`, or `artifactPaths`.
 
-   This returns:
-   - `contextFiles`: artifact ID -> array of concrete file paths (varies by schema - could be proposal/specs/design/tasks or spec/tests/implementation/docs)
-   - Progress (total, complete, remaining)
-   - Task list with status
-   - Dynamic instruction based on current state
-   - Optional `context`: current required project instruction input from the selected root
-   - Optional `operationGuidance`: current advisory guidance for apply
+3. **Enter the implementing lifecycle through valid transitions**
 
-   **Handle states:**
-   - If `state: "blocked"` (missing artifacts): show message, suggest using `/opsx-continue` (if it is not installed, run `openspec status --change "<name>" --json` to see the next artifact and `openspec instructions <artifact-id> --change "<name>" --json` for how to create it)
-   - If `state: "all_done"`: congratulate, suggest archive
-   - Otherwise: proceed to implementation
+   The adapter only permits `ready -> implementing` (and `proposed -> ready`).
+   Read the current lifecycle and advance it through the allowed path — never
+   attempt `proposed -> implementing` directly (the adapter refuses it).
 
-   Treat `context` as a required prompt-level input. Read and consider it, and
-   apply relevant project facts, conventions, and constraints while implementing.
-   Treat `operationGuidance` as optional additive advice. Read and consider every
-   entry, and follow entries that are applicable and compatible with the built-in
-   workflow.
+   Determine the current lifecycle from the issue metadata (the `list`/`validate`
+   output reports it). Then:
 
-   Keep both fields separate from CLI-returned state, missing artifacts, tasks,
-   progress, `contextFiles`, and the built-in `instruction`. They are not
-   evidence of task completion, do not replace the built-in instruction, and do
-   not permit bypassing a blocked state. If context conflicts with the built-in
-   instruction, an explicit user choice, or a CLI-controlled value, report the
-   conflict and preserve the controlling value. If guidance is inapplicable or
-   conflicts with those controlling inputs, do not follow it and explain why.
-   These are prompt-level behavior contracts, not enforceable checks.
+   - **implementing** — already implementing; continue to step 4.
+   - **ready** — advance to implementing:
+     ```bash
+     tools/openspec-issue/openspec-issue.sh preflight --write
+     tools/openspec-issue/openspec-issue.sh set-lifecycle <issue> ready        # no-op if already ready
+     tools/openspec-issue/openspec-issue.sh set-lifecycle <issue> implementing
+     tools/openspec-issue/openspec-issue.sh validate <issue>
+     ```
+   - **proposed** — first confirm the change is **ready** (readiness criteria
+     below). If ready, promote `proposed -> ready -> implementing`:
+     ```bash
+     tools/openspec-issue/openspec-issue.sh set-lifecycle <issue> ready
+     tools/openspec-issue/openspec-issue.sh set-lifecycle <issue> implementing
+     ```
+     If it is **not** ready, STOP and suggest `/opsx-continue`; do not force the
+     transition.
+   - **completed** — the issue is closed/archived; refuse to apply.
 
-4. **Read context files**
+   **Readiness criteria (all must hold before `ready`):** the `proposal`,
+   `requirements`, `design`, and `tasks` sections are all present and non-empty,
+   and the `tasks` section contains at least one actionable `- [ ]`/`- [x]` item.
+   If any planning section is missing or the tasks list is empty, the change is
+   not ready — stop and route to `/opsx-continue`.
 
-   Read every file path listed under `contextFiles` from the apply instructions output.
-   The files depend on the schema being used:
-   - **spec-driven**: proposal, specs, design, tasks
-   - Other schemas: follow the contextFiles from CLI output
+4. **Show current progress**
+   Parse the `tasks` section for `- [ ]` and `- [x]` checkboxes. Display total, completed, and remaining tasks.
 
-   Do not copy `context` or `operationGuidance` verbatim into implementation
-   files or planning artifacts unless the user separately asks for that content.
-
-5. **Show current progress**
-
-   Display:
-   - Schema being used
-   - Progress: "N/M tasks complete"
-   - Remaining tasks overview
-   - Dynamic instruction from CLI
-
-6. **Implement tasks (loop until done or blocked)**
-
+5. **Implement tasks one at a time**
    For each pending task:
-   - Show which task is being worked on
-   - Make the code changes required
-   - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` → `- [x]`
-   - Continue to next task
+   - Announce the task.
+   - Make minimal, focused code changes.
+   - Run the smallest existing verification command that covers the change.
+   - If verification passes, update the `tasks` section checkbox and record evidence in `verification` before starting the next task:
+     ```bash
+     tools/openspec-issue/openspec-issue.sh set-section <issue> tasks --body-file <tasks.md>
+     tools/openspec-issue/openspec-issue.sh set-section <issue> verification --body-file <verification.md>
+     tools/openspec-issue/openspec-issue.sh validate <issue>
+     ```
+   - If verification fails or the task is unclear, pause and report the blocker without checking off the task.
 
-   **Pause if:**
-   - Task is unclear → ask for clarification
-   - Implementation reveals a design issue → suggest updating artifacts
-   - Error or blocker encountered → report and wait for guidance
-   - User interrupts
-
-7. **On completion or pause, show status**
-
-   Display:
-   - Tasks completed this session
-   - Overall progress: "N/M tasks complete"
-   - If all done: suggest archive
-   - If paused: explain why and wait for guidance
+6. **On completion or pause**
+   Show tasks completed this session, overall progress, and any verification evidence recorded. If all tasks are complete, suggest `/opsx-verify` or `/opsx-archive`.
 
 **Output During Implementation**
 
-```
-## Implementing: <change-name> (schema: <schema-name>)
+```markdown
+## Implementing: <change-name>
 
 Working on task 3/7: <task description>
-[...implementation happening...]
-✓ Task complete
-
-Working on task 4/7: <task description>
-[...implementation happening...]
-✓ Task complete
-```
-
-**Output On Completion**
-
-```
-## Implementation Complete
-
-**Change:** <change-name>
-**Schema:** <schema-name>
-**Progress:** 7/7 tasks complete ✓
-
-### Completed This Session
-- [x] Task 1
-- [x] Task 2
-...
-
-All tasks complete! You can archive this change with `/opsx-archive`.
-```
-
-**Output On Pause (Issue Encountered)**
-
-```
-## Implementation Paused
-
-**Change:** <change-name>
-**Schema:** <schema-name>
-**Progress:** 4/7 tasks complete
-
-### Issue Encountered
-<description of the issue>
-
-**Options:**
-1. <option 1>
-2. <option 2>
-3. Other approach
-
-What would you like to do?
+✓ Task complete — evidence recorded in issue verification section
 ```
 
 **Guardrails**
-- Keep going through tasks until done or blocked
-- Always read context files before starting (from the apply instructions output)
-- If task is ambiguous, pause and ask before implementing
-- If implementation reveals issues, pause and suggest artifact updates
-- Keep code changes minimal and scoped to each task
-- Update task checkbox immediately after completing each task
-- Pause on errors, blockers, or unclear requirements - don't guess
-- Use contextFiles from CLI output, don't assume specific file names
-- Do not use context or operation guidance as proof that a task is complete
-- Apply relevant project context; report conflicts with controlling workflow inputs
-- Consider every guidance entry; explain any inapplicable or conflicting advice
-- Do not copy runtime context or operation guidance into implementation files or planning artifacts
-- Preserve CLI-controlled blocked/ready/all-done behavior and completion criteria
-
-**Fluid Workflow Integration**
-
-This skill supports the "actions on a change" model:
-
-- **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
-- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly
+- Keep going through tasks until done or blocked.
+- Always read issue sections before starting.
+- Update the issue `tasks` and `verification` sections after each verified task, then validate before the next task.
+- Do not mark a task complete before verification succeeds.
+- Keep code changes minimal and scoped to each task.
+- Never use local change Markdown as authoritative state.
+- Stop explicitly on adapter/GitHub failures; no fallback artifacts.

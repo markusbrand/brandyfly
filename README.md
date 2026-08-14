@@ -19,8 +19,13 @@ See [Architecture](docs/architecture.md) and
 
 ## OpenSpec workflow
 
-Non-trivial changes start with the repository-local OpenSpec commands generated
-for GitHub Copilot:
+Non-trivial changes are tracked with the repository-local OpenSpec commands
+generated for GitHub Copilot. Change state (proposal, requirements, design,
+tasks, and verification) lives in **GitHub issues** — one issue per change,
+labelled `openspec` — through the repository adapter
+[`tools/openspec-issue`](tools/openspec-issue/CONTRACT.md), not in per-change
+Markdown files. Durable capability specifications remain source-controlled under
+`openspec/specs/`.
 
 1. `/opsx-explore`
 2. `/opsx-propose`

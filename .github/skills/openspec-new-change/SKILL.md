@@ -1,77 +1,67 @@
 ---
 name: openspec-new-change
 description: Start a new OpenSpec change using the experimental artifact workflow. Use when the user wants to create a new feature, fix, or modification with a structured step-by-step approach.
-allowed-tools: Bash(openspec:*)
+allowed-tools: Bash(tools/openspec-issue/openspec-issue.sh:*), Bash(gh:*), Bash(npx:*), Bash(openspec:*)
 license: MIT
-compatibility: Requires openspec CLI.
+compatibility: Requires the tools/openspec-issue GitHub-issue adapter and the gh CLI; openspec CLI (via npx) is used only for durable-spec validation.
 metadata:
   author: openspec
   version: "1.0"
   generatedBy: "1.8.0"
 ---
 
-Start a new change using the experimental artifact-driven approach.
+> **Authoritative store: GitHub issues.** OpenSpec change state for this repository lives in GitHub issues — one issue per change, discovered by the `openspec` label — and no longer in per-change Markdown under `openspec/changes/`. Read and write change state through the repository adapter `tools/openspec-issue/openspec-issue.sh` (contract: `tools/openspec-issue/CONTRACT.md`). The adapter uses `gh` and fails explicitly when GitHub is unavailable, unauthenticated, or lacks permission; there is no local Markdown fallback. Never create per-change directories or Markdown artifacts for change state. Durable capability specs remain source-controlled under `openspec/specs/`.
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
+Start a new change using the GitHub-issue-backed OpenSpec workflow.
+**Adapter rule:** Use `tools/openspec-issue/openspec-issue.sh` for all change-state reads and writes. Run `tools/openspec-issue/openspec-issue.sh preflight` before reading change state and `tools/openspec-issue/openspec-issue.sh preflight --write` before any create, section update, lifecycle update, or verification recording. If preflight or any adapter command fails because GitHub is unreachable, unauthenticated, or lacks permission, stop and report the explicit failure. Do not create any local fallback artifact.
 
 **Input**: The user's request should include a change name (kebab-case) OR a description of what they want to build.
 
 **Steps**
 
-1. **If no clear input provided, ask what they want to build**
+1. **Clarify the change**
+   - If no clear input is provided, ask what they want to build or fix.
+   - Derive a kebab-case change name from the request.
+   - If the name is invalid, ask for a valid kebab-case name.
 
-   Ask the user (open-ended, no preset options):
-   > "What change do you want to work on? Describe what you want to build or fix."
-
-   From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
-
-   **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
-
-2. **Determine the workflow schema**
-
-   Use the default schema (omit `--schema`) unless the user explicitly requests a different workflow.
-
-   **Use a different schema only if the user mentions:**
-   - A specific schema name → use `--schema <name>`
-   - "show workflows" or "what workflows" → run `openspec schemas --json` and let them choose
-
-   **Otherwise**: Omit `--schema` to use the default.
-
-3. **Create the change directory**
+2. **Check GitHub-backed change state**
    ```bash
-   openspec new change "<name>"
+   tools/openspec-issue/openspec-issue.sh preflight --write
+   tools/openspec-issue/openspec-issue.sh list --state open
+   tools/openspec-issue/openspec-issue.sh find "<name>"
    ```
-   Add `--schema <name>` only if the user requested a specific workflow.
-   This creates a scaffolded change in the planning home resolved by the CLI.
+   If `find` resolves an issue, do not create another change; suggest continuing that issue instead.
 
-4. **Show the artifact status**
+3. **Determine schema metadata**
+   Use `spec-driven` unless the user explicitly requests a different schema. Store the schema only in the issue metadata; do not create `.openspec.yaml` or a change directory.
+
+4. **Create the issue container**
+   Build transient command-input files for metadata and any initial section content, then render and create the managed issue body:
    ```bash
-   openspec status --change "<name>" --json
+   tools/openspec-issue/openspec-issue.sh render-body --meta <meta.json> --proposal <proposal.md> --requirements <requirements.md> --design <design.md> --tasks <tasks.md> --verification <verification.md> > <body.md>
+   tools/openspec-issue/openspec-issue.sh scan-content --body-file <body.md>
+   tools/openspec-issue/openspec-issue.sh create --name "<name>" --title "<title>" --schema "<schema>" --lifecycle proposed --body-file <body.md>
+   tools/openspec-issue/openspec-issue.sh validate <issue>
    ```
-   Use the returned `planningHome`, `changeRoot`, `artifactPaths`, and `nextSteps` instead of assuming repo-local paths.
+   Transient files are only adapter inputs; remove them after success and never treat them as change state.
 
-5. **Get instructions for the first artifact**
-   The first artifact depends on the schema (e.g., `proposal` for spec-driven).
-   Check the status output to find the first artifact with status "ready".
+5. **Show first-artifact guidance**
+   Explain that the issue now holds empty managed sections: `proposal`, `requirements`, `design`, `tasks`, and `verification`. The next step is to draft the proposal section and save it with:
    ```bash
-   openspec instructions <first-artifact-id> --change "<name>"
+   tools/openspec-issue/openspec-issue.sh set-section <issue> proposal --body-file <proposal.md>
+   tools/openspec-issue/openspec-issue.sh validate <issue>
    ```
-   This outputs the template and context for creating the first artifact.
-
-6. **STOP and wait for user direction**
 
 **Output**
 
-After completing the steps, summarize:
-- Change name and location
-- Schema/workflow being used and its artifact sequence
-- Current status (0/N artifacts complete)
-- The template for the first artifact
-- Prompt: "Ready to create the first artifact? Just describe what this change is about and I'll draft it, or ask me to continue."
+Summarize:
+- Change name and GitHub issue number
+- Schema metadata
+- Current lifecycle (`proposed`)
+- The first section to create (`proposal`)
+- Prompt: "Ready to draft the proposal? Describe the change and I'll capture it in the issue."
 
 **Guardrails**
-- Do NOT create any artifacts yet - just show the instructions
-- Do NOT advance beyond showing the first artifact template
-- If the name is invalid (not kebab-case), ask for a valid name
-- If a change with that name already exists, suggest continuing that change instead
-- Pass --schema if using a non-default workflow
+- Do not create proposal, requirements, design, or tasks content unless the user asks.
+- Never create a per-change directory or Markdown artifact under `openspec/changes/`; change state lives only in the GitHub issue created via the adapter.
+- Durable capability specs under `openspec/specs/` are not edited in this workflow.
