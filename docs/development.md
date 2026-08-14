@@ -8,6 +8,8 @@
 - Node.js 20.19 or newer for OpenSpec
 - Docker with BuildKit for backend container validation
 - Xcode for iOS builds and the Android SDK for Android builds
+- Linux desktop preview needs the Flutter Linux desktop dependencies (clang,
+  cmake, ninja, pkg-config, gtk3 development headers)
 
 ## Validation
 
@@ -22,6 +24,7 @@ cd apps/mobile
 flutter pub get
 flutter analyze
 flutter test
+flutter build web
 
 cd ../../plugins/brandyfly_native
 flutter pub get
