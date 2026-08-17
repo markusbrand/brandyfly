@@ -251,11 +251,9 @@ class LayoutStrategyContainer extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Opacity(opacity: 0.8, child: content),
-            ),
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: Opacity(opacity: 0.8, child: content),
           ),
           Positioned(
             top: 2,
