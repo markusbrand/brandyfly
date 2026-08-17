@@ -5,6 +5,7 @@ import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/widgets/flight/numeric_text_widget.dart';
 import 'package:brandyfly/widgets/flight/vario_lift_sink_bar.dart';
 import 'package:brandyfly/widgets/flight/wind_direction_widget.dart';
+import 'package:brandyfly/widgets/layout/layout_strategy_container.dart';
 import 'package:brandyfly/widgets/navigation/top_nav_bar.dart';
 import 'package:brandyfly/widgets/settings/ui_settings_panel.dart';
 
@@ -91,6 +92,38 @@ void main() {
       await tester.pump();
 
       expect(manager.config.numericWidgetStyle, NumericWidgetStyle.highContrastBox);
+    });
+
+    testWidgets('LayoutStrategyContainer renders in edit mode and across all strategies', (tester) async {
+      final manager = ScreenManagerService();
+      manager.toggleEditMode(true);
+
+      for (final strategy in LayoutStrategyStyle.values) {
+        manager.setLayoutStrategyStyle(strategy);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {
+                  'altitude': 1450.0,
+                  'speed': 42.5,
+                  'glide': 8.4,
+                  'hag': 320.0,
+                  'climb': 1.8,
+                  'windDir': 220.0,
+                  'windSpeed': 14.0,
+                  'history': [1400.0, 1420.0, 1450.0],
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Done Editing'), findsOneWidget);
+        expect(find.text('Add Widget'), findsOneWidget);
+      }
     });
   });
 }
