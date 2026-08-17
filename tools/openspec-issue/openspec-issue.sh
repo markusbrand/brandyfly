@@ -338,6 +338,7 @@ cmd_find() {
   out="$(filter_issue_numbers "$name" "$OPENSPEC_ISSUES_JSON")"
   mapfile -t nums < <(printf '%s' "$out" | grep -E '^[0-9]+$' || true)
   if [[ "${#nums[@]}" -eq 0 ]]; then
+    echo "DEBUG_FIND_FAIL name='$name' JSON=$OPENSPEC_ISSUES_JSON" >&2
     die "$EX_NOT_FOUND" "no OpenSpec issue found for change '$name'"
   elif [[ "${#nums[@]}" -gt 1 ]]; then
     die "$EX_DUPLICATE" "duplicate OpenSpec issues for change '$name': ${nums[*]}"
