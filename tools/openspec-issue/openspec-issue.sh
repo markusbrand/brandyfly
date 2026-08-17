@@ -36,8 +36,7 @@ cleanup() { [[ -n "$WORKDIR" && -d "$WORKDIR" ]] && rm -rf "$WORKDIR" || true; }
 trap cleanup EXIT
 ensure_workdir() {
   if [[ -z "$WORKDIR" ]]; then
-    WORKDIR="$(dirname "${BASH_SOURCE[0]}")/.work.$$"
-    mkdir -p "$WORKDIR"
+    WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/openspec-issue.XXXXXX")"
   fi
 }
 
