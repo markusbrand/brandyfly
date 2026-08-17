@@ -112,13 +112,14 @@ render_body() {
 
 extract_metadata() {
   # stdin: full body -> stdout: metadata JSON (content of the first block)
-  awk '/^<!-- openspec:metadata$/{f=1;next} /^openspec:metadata-end -->$/{f=0} f'
+  awk '{sub(/\r$/,"")} /^<!-- openspec:metadata$/{f=1;next} /^openspec:metadata-end -->$/{f=0} f'
 }
 
 extract_section() {
   # extract_section <section> ; stdin body -> inner content
   local sec="$1"
   awk -v s="$sec" '
+    {sub(/\r$/,"")}
     $0 ~ "<!-- openspec:section:" s ":start -->" {f=1;next}
     $0 ~ "<!-- openspec:section:" s ":end -->" {f=0}
     f {print}
@@ -164,14 +165,14 @@ validate_body_string() {
   local body="$1" meta
   # Exactly one metadata block, correctly delimited, no duplicates/nesting.
   local mstart mend
-  mstart="$(grep -cE '^<!-- openspec:metadata$' <<<"$body" || true)"
-  mend="$(grep -cE '^openspec:metadata-end -->$' <<<"$body" || true)"
+  mstart="$(grep -cE '^<!-- openspec:metadata[[:space:]]*$' <<<"$body" || true)"
+  mend="$(grep -cE '^openspec:metadata-end -->[[:space:]]*$' <<<"$body" || true)"
   [[ "$mstart" == "1" ]] || die "$EX_MALFORMED" "issue body must contain exactly one metadata block start (found $mstart)"
   [[ "$mend" == "1" ]] || die "$EX_MALFORMED" "issue body must contain exactly one metadata block end (found $mend)"
   # The end must come after the start.
   local sline eline
-  sline="$(grep -nE '^<!-- openspec:metadata$' <<<"$body" | head -1 | cut -d: -f1)"
-  eline="$(grep -nE '^openspec:metadata-end -->$' <<<"$body" | head -1 | cut -d: -f1)"
+  sline="$(grep -nE '^<!-- openspec:metadata[[:space:]]*$' <<<"$body" | head -1 | cut -d: -f1)"
+  eline="$(grep -nE '^openspec:metadata-end -->[[:space:]]*$' <<<"$body" | head -1 | cut -d: -f1)"
   [[ "$sline" -lt "$eline" ]] || die "$EX_MALFORMED" "issue metadata block markers are out of order"
   meta="$(printf '%s' "$body" | extract_metadata)"
   validate_metadata_json "$meta"
@@ -321,7 +322,7 @@ filter_issue_numbers() {
   jq -r --arg n "$name" '
     .[] | . as $i
     | ($i.body // "")
-    | capture("<!-- openspec:metadata\\n(?<m>[\\s\\S]*?)\\nopenspec:metadata-end -->"; "m")?.m as $meta
+    | capture("<!-- openspec:metadata\\r?\\n(?<m>[\\s\\S]*?)\\r?\\nopenspec:metadata-end -->"; "m")?.m as $meta
     | select($meta != null)
     | ($meta | fromjson? // {}) as $md
     | select($md.changeName == $n)
@@ -354,7 +355,7 @@ cmd_list() {
   load_openspec_issues
   assert_issues_wellformed "$OPENSPEC_ISSUES_JSON"
   jq -r --arg state "$state" '
-    def meta: (capture("<!-- openspec:metadata\\n(?<m>[\\s\\S]*?)\\nopenspec:metadata-end -->"; "m")?.m // "{}") | (fromjson? // {});
+    def meta: (capture("<!-- openspec:metadata\\r?\\n(?<m>[\\s\\S]*?)\\r?\\nopenspec:metadata-end -->"; "m")?.m // "{}") | (fromjson? // {});
     def tasks($b): [ ($b | [scan("(?m)^[[:space:]]*- \\[[xX]\\]")] | length),
                      ($b | [scan("(?m)^[[:space:]]*- \\[( |x|X)\\]")] | length) ];
     [ .[]
@@ -476,6 +477,7 @@ rewrite_metadata_field() {
   printf '%s\n' "$newmeta" >"$WORKDIR/rmf.meta"
   awk -v mf="$WORKDIR/rmf.meta" '
     BEGIN { while ((getline line < mf) > 0) m = m line "\n" }
+    {sub(/\r$/,"")}
     /^<!-- openspec:metadata$/ { print; printf "%s", m; skip=1; next }
     /^openspec:metadata-end -->$/ { skip=0; print; next }
     skip { next }
@@ -515,6 +517,7 @@ cmd_set_section() {
   # Rebuild: everything before start marker + new content + everything after end marker.
   awk -v s="$sec" -v nf="$work/new" '
     BEGIN { while ((getline line < nf) > 0) newc = newc line "\n" }
+    {sub(/\r$/,"")}
     $0 ~ "<!-- openspec:section:" s ":start -->" { print; printf "%s", newc; skip=1; next }
     $0 ~ "<!-- openspec:section:" s ":end -->" { skip=0; print; next }
     skip { next }
@@ -552,6 +555,7 @@ cmd_set_metadata() {
   printf '%s\n' "$newmeta" >"$work/meta"
   awk -v mf="$work/meta" '
     BEGIN { while ((getline line < mf) > 0) m = m line "\n" }
+    {sub(/\r$/,"")}
     /<!-- openspec:metadata/ { print; printf "%s", m; skip=1; next }
     /openspec:metadata-end -->/ { skip=0; print; next }
     skip { next }
