@@ -20,8 +20,8 @@ The BrandyFly mobile application currently lacks the foundational UI layout, nav
 - **Alternatives:** BLoC (more boilerplate for simple state, though good for complex events), Provider (lacks compile safety and can lead to runtime errors on missing providers).
 
 ### UI Configuration Serialization
-- **Decision:** Model screens and widgets using Dart `freezed` classes and serialize them to local storage using `shared_preferences` or a local SQLite/Hive DB depending on size. Since configuration is relatively small (JSON), `shared_preferences` is sufficient for MVP.
-- **Rationale:** Easy to persist and reload across app restarts. Freezed provides immutability, which pairs perfectly with Riverpod.
+- **Decision:** Model screens, widgets, navigation bar, and settings layout using Dart `freezed` classes and serialize them to local storage using `shared_preferences` or a local SQLite/Hive DB depending on size. Since configuration is relatively small (JSON), `shared_preferences` is sufficient for MVP. This data model will explicitly store the user's chosen visual style (e.g., via an `enum`) for each configurable component, allowing seamless switching between mockup options.
+- **Rationale:** Easy to persist and reload across app restarts. Freezed provides immutability, which pairs perfectly with Riverpod. Using an enum for visual styles keeps the state type-safe and maps cleanly to the mockup options defined in the requirements.
 - **Alternatives:** Direct JSON manipulation (error-prone), heavy local database like Isar (overkill for UI configs).
 
 ### High-Frequency Sensor Updates
