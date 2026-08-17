@@ -12,17 +12,25 @@ class MethodChannelBrandyflyNative extends BrandyflyNativePlatform {
 
   @override
   Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>(
-      'getPlatformVersion',
-    );
-    return version;
+    try {
+      final version = await methodChannel.invokeMethod<String>(
+        'getPlatformVersion',
+      );
+      return version;
+    } on MissingPluginException {
+      return null;
+    }
   }
 
   @override
   Future<void> configureLocalMockFlightMode(MockFlightModeConfig config) async {
-    await methodChannel.invokeMethod<void>(
-      'configureLocalMockFlightMode',
-      config.toMap(),
-    );
+    try {
+      await methodChannel.invokeMethod<void>(
+        'configureLocalMockFlightMode',
+        config.toMap(),
+      );
+    } on MissingPluginException {
+      // Fallback on platforms where native method channel is unhandled
+    }
   }
 }
