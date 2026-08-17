@@ -136,14 +136,19 @@ Archive a completed change in the experimental workflow.
    mv "<changeRoot>" "<planningHome.changesDir>/archive/<target-name>"
    ```
 
-6. **Display summary**
+6. **Display summary & Sync GitHub Issue**
+
+   If the change was linked to a GitHub issue:
+   - Update the GitHub issue metadata: `lifecycle: archived`, `archivedDate: YYYY-MM-DD`.
+   - Post a closing comment or close the issue via `gh issue close <issue-number> --comment "OpenSpec change <change-name> archived."` if confirmed.
 
    Show archive completion summary including:
    - Change name
    - Schema that was used
    - Archive location
-   - Spec sync status (synced / sync skipped / no delta specs)
+   - Whether specs were synced (if applicable)
    - Note about any warnings (incomplete artifacts/tasks)
+   - GitHub Issue sync/closure status (if applicable)
 
 **Output On Success**
 

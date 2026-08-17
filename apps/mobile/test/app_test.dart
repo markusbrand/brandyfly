@@ -1,6 +1,7 @@
 import 'package:brandyfly/main.dart';
 import 'package:brandyfly_native/brandyfly_native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeBrandyflyNative extends BrandyflyNative {
   @override
@@ -13,6 +14,9 @@ class FakeBrandyflyNative extends BrandyflyNative {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
   testWidgets('renders the live application shell', (tester) async {
     await tester.pumpWidget(
       BrandyFlyApp(
@@ -28,6 +32,7 @@ void main() {
       ),
     );
 
+    await tester.pump();
     await tester.pump();
     await tester.pump();
 
@@ -51,6 +56,7 @@ void main() {
       ),
     );
 
+    await tester.pump();
     await tester.pump();
     await tester.pump();
 

@@ -5,7 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'demo/vario_screen.dart';
+import 'services/screen_manager_service.dart';
+import 'services/ui_persistence_service.dart';
+import 'widgets/layout/layout_strategy_container.dart';
+import 'widgets/navigation/top_nav_bar.dart';
+import 'widgets/settings/ui_settings_panel.dart';
 
 void main() {
   final config = MockFlightModeConfig.fromEnvironment();
@@ -19,10 +23,12 @@ class BrandyFlyApp extends StatefulWidget {
     super.key,
     required this.config,
     this.native = const BrandyflyNative(),
+    this.screenManager,
   });
 
   final MockFlightModeConfig config;
   final BrandyflyNative native;
+  final ScreenManagerService? screenManager;
 
   @override
   State<BrandyFlyApp> createState() => _BrandyFlyAppState();
@@ -34,15 +40,26 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   String? _platformVersion;
   String? _startupError;
   bool _loading = true;
+  late ScreenManagerService _screenManager;
 
   @override
   void initState() {
     super.initState();
+    _screenManager = widget.screenManager ?? ScreenManagerService();
     _bootstrap();
   }
 
   Future<void> _bootstrap() async {
     try {
+      if (widget.screenManager == null) {
+        final persistence = await UIPersistenceService.init();
+        final loadedConfig = persistence.loadConfig();
+        _screenManager = ScreenManagerService(
+          initialConfig: loadedConfig,
+          persistenceService: persistence,
+        );
+      }
+
       if (widget.config.enabled) {
         await widget.native.configureLocalMockFlightMode(widget.config);
         _replay = MockFlightReplay(widget.config);
@@ -74,40 +91,56 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   @override
   void dispose() {
     _timer?.cancel();
+    _screenManager.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'BrandyFly',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
-        ),
-      ),
-      themeMode: ThemeMode.dark,
-      home: _startupError != null
-          ? _StartupErrorView(message: _startupError!)
-          : _loading
-              ? const _LoadingView()
-              : widget.config.enabled
-                  ? _MockFlightView(
-                      config: widget.config,
-                      replay: _replay!,
-                      onNext: () => setState(() {
-                        _replay!.advance();
-                      }),
-                      onReset: () => setState(() {
-                        _replay!.reset();
-                      }),
-                    )
-                  : _LiveFlightView(platformVersion: _platformVersion ?? 'Unknown'),
+    return AnimatedBuilder(
+      animation: _screenManager,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'BrandyFly',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.blue,
+              brightness: Brightness.dark,
+            ),
+          ),
+          themeMode: ThemeMode.dark,
+          home: _startupError != null
+              ? _StartupErrorView(message: _startupError!)
+              : _loading
+                  ? const _LoadingView()
+                  : TopNavBarOverlay(
+                      screenManager: _screenManager,
+                      child: _screenManager.isSettingsVisible
+                          ? UISettingsPanel(screenManager: _screenManager)
+                          : widget.config.enabled
+                              ? _MockFlightView(
+                                  config: widget.config,
+                                  replay: _replay!,
+                                  screenManager: _screenManager,
+                                  onNext: () => setState(() {
+                                    _replay!.advance();
+                                  }),
+                                  onReset: () => setState(() {
+                                    _replay!.reset();
+                                  }),
+                                )
+                              : _LiveFlightView(
+                                  platformVersion:
+                                      _platformVersion ?? 'Unknown',
+                                  screenManager: _screenManager,
+                                ),
+                    ),
+        );
+      },
     );
   }
 }
@@ -146,29 +179,53 @@ class _StartupErrorView extends StatelessWidget {
 }
 
 class _LiveFlightView extends StatelessWidget {
-  const _LiveFlightView({required this.platformVersion});
+  const _LiveFlightView({
+    required this.platformVersion,
+    required this.screenManager,
+  });
 
   final String platformVersion;
+  final ScreenManagerService screenManager;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('BrandyFly'),
-        actions: const [_ModeChip(label: 'LIVE', color: Colors.green)],
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => screenManager.toggleNavBar(true),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_note),
+            onPressed: () => screenManager.toggleEditMode(true),
+          ),
+          const _ModeChip(label: 'LIVE', color: Colors.green),
+        ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         children: [
           _SectionCard(
             title: 'Native platform',
             child: Text('Running on: $platformVersion'),
           ),
           const SizedBox(height: 16),
-          const _SectionCard(
-            title: 'Mock flight mode',
-            child: Text(
-              'Disabled. Use BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true for deterministic local testing.',
+          SizedBox(
+            height: 480,
+            child: LayoutStrategyContainer(
+              screenManager: screenManager,
+              telemetryData: const {
+                'altitude': 1250.0,
+                'speed': 38.0,
+                'glide': 7.5,
+                'hag': 280.0,
+                'climb': 1.2,
+                'windDir': 180.0,
+                'windSpeed': 12.0,
+                'history': [1200.0, 1220.0, 1235.0, 1250.0],
+              },
             ),
           ),
         ],
@@ -181,12 +238,14 @@ class _MockFlightView extends StatelessWidget {
   const _MockFlightView({
     required this.config,
     required this.replay,
+    required this.screenManager,
     required this.onNext,
     required this.onReset,
   });
 
   final MockFlightModeConfig config;
   final MockFlightReplay replay;
+  final ScreenManagerService screenManager;
   final VoidCallback onNext;
   final VoidCallback onReset;
 
@@ -196,10 +255,20 @@ class _MockFlightView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('BrandyFly'),
-        actions: const [_ModeChip(label: 'SIMULATED', color: Colors.orange)],
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => screenManager.toggleNavBar(true),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_note),
+            onPressed: () => screenManager.toggleEditMode(true),
+          ),
+          const _ModeChip(label: 'SIMULATED', color: Colors.orange),
+        ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         children: [
           _SectionCard(
             title: 'Mock flight session',
@@ -237,35 +306,23 @@ class _MockFlightView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _FeatureLine(label: 'Telemetry', value: frame.telemetrySummary),
-                _FeatureLine(label: 'Map', value: frame.mapSummary),
-                _FeatureLine(label: 'Logs', value: frame.logSummary),
-                _FeatureLine(label: 'Alerts', value: frame.alertSummary),
-                _FeatureLine(label: 'Upload', value: frame.uploadSummary),
-                _FeatureLine(label: 'Export', value: frame.exportSummary),
-                _FeatureLine(
-                  label: 'State',
-                  value: frame.degraded
-                      ? (frame.stale ? 'Stale and degraded' : 'Degraded')
-                      : 'Healthy',
-                ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 420,
-                  child: VarioDemoCard(),
+                  height: 380,
+                  child: LayoutStrategyContainer(
+                    screenManager: screenManager,
+                    telemetryData: {
+                      'altitude': 1450.0,
+                      'speed': 42.5,
+                      'glide': 8.4,
+                      'hag': 320.0,
+                      'climb': 1.8,
+                      'windDir': 220.0,
+                      'windSpeed': 14.0,
+                      'history': [1400.0, 1410.0, 1430.0, 1425.0, 1450.0],
+                    },
+                  ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _SectionCard(
-            title: 'Simulation details',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Scenario kind: ${frame.scenarioName}'),
-                Text('Occurred at: ${frame.occurredAt.toUtc()}'),
-                Text('Canonical event hash: ${frame.canonicalEventHash}'),
-                Text('Mode is explicit and local-only: ${config.enabled}'),
               ],
             ),
           ),
