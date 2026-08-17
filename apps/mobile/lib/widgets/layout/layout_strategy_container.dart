@@ -285,15 +285,19 @@ class LayoutStrategyContainer extends StatelessWidget {
     );
   }
 
+  double _parseTelemetryDouble(String key, double defaultValue) {
+    return (telemetryData[key] as num?)?.toDouble() ?? defaultValue;
+  }
+
   Widget _renderWidgetContent(WidgetPlacementModel model) {
     final cfg = screenManager.config;
-    final alt = (telemetryData['altitude'] as num?)?.toDouble() ?? 1450.0;
-    final speed = (telemetryData['speed'] as num?)?.toDouble() ?? 42.5;
-    final glide = (telemetryData['glide'] as num?)?.toDouble() ?? 8.4;
-    final hag = (telemetryData['hag'] as num?)?.toDouble() ?? 320.0;
-    final climb = (telemetryData['climb'] as num?)?.toDouble() ?? 1.8;
-    final windDeg = (telemetryData['windDir'] as num?)?.toDouble() ?? 220.0;
-    final windSpd = (telemetryData['windSpeed'] as num?)?.toDouble() ?? 14.0;
+    final alt = _parseTelemetryDouble('altitude', 1450.0);
+    final speed = _parseTelemetryDouble('speed', 42.5);
+    final glide = _parseTelemetryDouble('glide', 8.4);
+    final hag = _parseTelemetryDouble('hag', 320.0);
+    final climb = _parseTelemetryDouble('climb', 1.8);
+    final windDeg = _parseTelemetryDouble('windDir', 220.0);
+    final windSpd = _parseTelemetryDouble('windSpeed', 14.0);
     final history = (telemetryData['history'] as List<dynamic>?)
             ?.map((e) => (e as num).toDouble())
             .toList() ??
