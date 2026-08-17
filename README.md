@@ -19,14 +19,13 @@ See [Architecture](docs/architecture.md) and
 
 ## OpenSpec workflow
 
-Non-trivial changes start with the repository-local OpenSpec commands generated
-for GitHub Copilot:
+Non-trivial changes start with the repository-local OpenSpec skills configured for Antigravity:
 
-1. `/opsx-explore`
-2. `/opsx-propose`
-3. `/opsx-apply`
-4. `/opsx-verify`
-5. `/opsx-archive`
+- `openspec-explore`: Enter explore mode to think through ideas or investigate issues.
+- `openspec-propose`: Propose a new change and generate planning artifacts.
+- `openspec-apply-change`: Guide the implementation of a change.
+- `openspec-verify-change`: Run verification and gather evidence.
+- `openspec-archive-change`: Archive a completed change and update main specs.
 
 ## Safety
 

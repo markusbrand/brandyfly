@@ -30,9 +30,9 @@ distinguish third-party data attribution from source-code licensing.
 - **THEN** the source license and the requirement to inspect dataset-specific attribution are clear
 
 ### Requirement: Agent-readable change workflow
-The repository SHALL provide OpenSpec workflows for GitHub Copilot proposal,
+The repository SHALL provide OpenSpec workflows for Antigravity proposal,
 implementation, verification, synchronization, and archival activities.
 
 #### Scenario: Agent starts a feature
-- **WHEN** a GitHub Copilot agent receives a non-trivial feature request
+- **WHEN** an Antigravity agent receives a non-trivial feature request
 - **THEN** it can discover repository-local OpenSpec instructions before editing source code
