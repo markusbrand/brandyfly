@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: [REQ-SETTINGS-001] Settings Configuration
-The application SHALL provide a Settings screen accessible from the main navigation to configure external Bluetooth devices, XContest accounts, UI preferences, license info, and app version.
+The application SHALL provide a Settings screen accessible from the main navigation to configure external Bluetooth devices, XContest accounts, UI preferences, license info, and app version. The user SHALL be able to configure the Settings screen visual style from predefined mockup options, defaulting to Option 2.
 
 #### Scenario: Navigating to Settings
 Given the user opens the main navigation bar
