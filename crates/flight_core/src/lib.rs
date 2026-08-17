@@ -197,12 +197,11 @@ impl MockFlightReplay {
 
     #[must_use]
     pub fn canonical_replay_hash(&self) -> String {
-        let hashes = self
-            .frames
-            .iter()
-            .map(|frame| frame.canonical_event_hash.clone())
-            .collect::<Vec<_>>();
-        stable_hash(&hashes)
+        stable_hash(
+            self.frames
+                .iter()
+                .map(|frame| &frame.canonical_event_hash),
+        )
     }
 
     #[must_use]
@@ -237,22 +236,30 @@ struct FrameSpec {
 
 fn build_frame(config: &LocalMockFlightModeConfig, spec: FrameSpec) -> MockFlightFrame {
     let occurred_at_ms = config.start_time_ms + config.logical_clock_step_ms * spec.step;
+
+    // Convert numerical and boolean fields to string once for hashing
+    let seed_str = config.seed.to_string();
+    let logical_clock_str = config.logical_clock_step_ms.to_string();
+    let stale_str = spec.stale.to_string();
+    let degraded_str = spec.degraded.to_string();
+    let occurred_at_str = occurred_at_ms.to_string();
+
     let canonical_event_hash = stable_hash(&[
-        config.fixture_version.to_string(),
-        config.seed.to_string(),
-        config.logical_clock_step_ms.to_string(),
-        config.provenance.to_string(),
-        kind_name(spec.kind).to_string(),
-        spec.title.to_string(),
-        spec.telemetry_summary.clone(),
-        spec.map_summary.clone(),
-        spec.log_summary.clone(),
-        spec.alert_summary.clone(),
-        spec.upload_summary.clone(),
-        spec.export_summary.clone(),
-        spec.stale.to_string(),
-        spec.degraded.to_string(),
-        occurred_at_ms.to_string(),
+        config.fixture_version,
+        seed_str.as_str(),
+        logical_clock_str.as_str(),
+        config.provenance,
+        kind_name(spec.kind),
+        spec.title,
+        spec.telemetry_summary.as_str(),
+        spec.map_summary.as_str(),
+        spec.log_summary.as_str(),
+        spec.alert_summary.as_str(),
+        spec.upload_summary.as_str(),
+        spec.export_summary.as_str(),
+        stale_str.as_str(),
+        degraded_str.as_str(),
+        occurred_at_str.as_str(),
     ]);
 
     MockFlightFrame {
@@ -280,13 +287,25 @@ fn kind_name(kind: MockFlightScenarioKind) -> &'static str {
     }
 }
 
-fn stable_hash(parts: &[String]) -> String {
+fn stable_hash<I, S>(parts: I) -> String
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x100000001b3;
     let mut hash = OFFSET;
-    for byte in parts.join("|").bytes() {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(PRIME);
+    let mut first = true;
+    for part in parts {
+        if !first {
+            hash ^= u64::from(b'|');
+            hash = hash.wrapping_mul(PRIME);
+        }
+        first = false;
+        for byte in part.as_ref().bytes() {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(PRIME);
+        }
     }
     format!("{hash:016x}")
 }
