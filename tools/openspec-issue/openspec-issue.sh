@@ -311,6 +311,7 @@ assert_issues_wellformed() {
     msg="$( ( validate_body_string "$body" ) 2>&1 1>/dev/null )"; rc=$?
     set -e
     if [[ $rc -ne 0 ]]; then
+      echo "DEBUG_MALFORMED [#$n]: $msg" >&2
       die "$EX_MALFORMED" "issue #$n is labeled '$DISCOVERY_LABEL' but is malformed: ${msg#openspec-issue: }"
     fi
   done < <(jq -r '.[].number' <<<"$json")
