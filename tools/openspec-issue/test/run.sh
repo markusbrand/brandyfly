@@ -390,7 +390,7 @@ fi
 
 rm -f "$BODY"
 # cleanup stores
-rm -rf "$HERE"/.store.* "$HERE"/.sec.* "$HERE"/.body.* "$HERE"/.meta.* 2>/dev/null || true
+rm -rf "$HERE"/.store.$$* "$HERE"/.sec.$$* "$HERE"/.body.$$ "$HERE"/.meta.$$* 2>/dev/null || true
 
 echo
 echo "== repository local-storage guard (informational: passes post-cutover) =="
