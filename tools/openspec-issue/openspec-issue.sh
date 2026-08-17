@@ -489,11 +489,13 @@ cmd_read() { issue_body "${1:?issue number required}"; }
 
 cmd_get_section() {
   local num="${1:?issue}" sec="${2:?section}"
+  if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   issue_body "$num" | extract_section "$sec"
 }
 
 cmd_set_section() {
   local num="${1:?issue}" sec="${2:?section}"; shift 2
+  if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   local bodyfile=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -518,8 +520,18 @@ cmd_set_section() {
   awk -v s="$sec" -v nf="$work/new" '
     BEGIN { while ((getline line < nf) > 0) newc = newc line "\n" }
     {sub(/\r$/,"")}
-    $0 ~ "<!-- openspec:section:" s ":start -->" { print; printf "%s", newc; skip=1; next }
-    $0 ~ "<!-- openspec:section:" s ":end -->" { skip=0; print; next }
+    /<!-- openspec:section:[a-z]+:start -->/ {
+      match($0, /<!-- openspec:section:([a-z]+):start -->/, m)
+      print
+      if (m[1] == s) { printf "%s", newc; skip=1 }
+      next
+    }
+    /<!-- openspec:section:[a-z]+:end -->/ {
+      match($0, /<!-- openspec:section:([a-z]+):end -->/, m)
+      if (m[1] == s) skip=0
+      print
+      next
+    }
     skip { next }
     { print }
   ' "$work/body" >"$work/rebuilt"
@@ -532,6 +544,7 @@ cmd_set_section() {
 
 cmd_set_metadata() {
   local num="${1:?issue}"; shift
+  if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   local key="" value=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -582,6 +595,7 @@ lifecycle_transition_allowed() {
 
 cmd_set_lifecycle() {
   local num="${1:?issue}" lifecycle="${2:?lifecycle}"
+  if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   printf '%s\n' " ${LIFECYCLE_LABELS[*]} " | grep -qF " openspec:$lifecycle " \
     || die "$EX_USAGE" "unknown lifecycle: $lifecycle"
 
@@ -706,7 +720,11 @@ edit_body_or_rollback() {
   fi
 }
 
-cmd_validate() { _validate_issue "$@"; }
+cmd_validate() {
+  local num="${1:?issue}"
+  if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
+  _validate_issue "$num"
+}
 
 cmd_scan_content() {
   local bodyfile=""
