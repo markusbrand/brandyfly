@@ -1,4 +1,4 @@
-schema: spec-driven
+schema: spec-driven-github
 githubCopilot:
   cloudAgent: true
 
