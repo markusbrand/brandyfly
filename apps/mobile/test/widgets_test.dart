@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:brandyfly/models/ui_config.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
+import 'package:brandyfly/widgets/flight/altitude_sparkline_chart.dart';
 import 'package:brandyfly/widgets/flight/numeric_text_widget.dart';
 import 'package:brandyfly/widgets/flight/vario_lift_sink_bar.dart';
 import 'package:brandyfly/widgets/flight/wind_direction_widget.dart';
@@ -56,6 +57,21 @@ void main() {
         ),
       );
       expect(find.textContaining('+2.4'), findsOneWidget);
+    });
+
+    testWidgets('AltitudeSparklineChart renders with empty history without crashing', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AltitudeSparklineChart(
+              history: [],
+              style: AltitudeChartStyle.minimalSparkline,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(AltitudeSparklineChart), findsOneWidget);
     });
 
     testWidgets('TopNavBarOverlay slides down and shows controls', (tester) async {
