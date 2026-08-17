@@ -49,10 +49,10 @@ EOF
 
 run_migrate() { # run_migrate <store> <mode> [FAIL]
   local store="$1" mode="$2" failmode="${3:-}"
-  MOCK_GH_STORE="$store" OPENSPEC_ISSUE_GH="$MOCK" \
+  export MOCK_GH_STORE="$store" OPENSPEC_ISSUE_GH="$MOCK" \
     OPENSPEC_MIGRATION_CHANGES_DIR="$CH" OPENSPEC_MIGRATION_OUT="$store/out" \
-    ${failmode:+MOCK_GH_FAIL="$failmode"} \
-    bash "$MIGRATE" "$mode"
+    MOCK_GH_FAIL="${failmode:-}"
+  bash "$MIGRATE" "$mode"
 }
 
 echo "== migration tests =="

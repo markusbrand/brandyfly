@@ -24,7 +24,8 @@ new_store() {
 run() {
   # run <store> [FAIL=mode] -- adapter args...
   local store="$1"; shift
-  MOCK_GH_STORE="$store" OPENSPEC_ISSUE_GH="$MOCK" bash "$ADAPTER" "$@"
+  export MOCK_GH_STORE="$store" OPENSPEC_ISSUE_GH="$MOCK"
+  bash "$ADAPTER" "$@"
 }
 
 # ---- fixtures ---------------------------------------------------------------
