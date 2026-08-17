@@ -4,7 +4,7 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$HERE/../../.." && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
 ADAPTER="$HERE/../openspec-issue.sh"
 MOCK="$HERE/mock-gh.sh"
 FIX="$HERE/fixtures"
