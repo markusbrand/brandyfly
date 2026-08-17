@@ -19,7 +19,7 @@ When the flight core detects straight flight
 Then the "Map" screen SHALL be restored
 
 ### Requirement: [REQ-UI-003] Top-down navigation
-The application SHALL provide a main navigation bar that is hidden by default, appears via swipe-down, has configurable opacity, contains Settings and Edit Mode buttons, and dismisses when tapped outside.
+The application SHALL provide a main navigation bar that is hidden by default, appears via swipe-down, has configurable opacity, contains Settings and Edit Mode buttons, and dismisses when tapped outside. The user SHALL be able to configure the Navigation Bar visual style from predefined mockup options, defaulting to Option 1.
 
 #### Scenario: Opening and Closing Navigation
 Given the main navigation bar is hidden
@@ -29,7 +29,7 @@ When the user taps outside the navigation bar
 Then the navigation bar SHALL disappear
 
 ### Requirement: [REQ-UI-004] User configurable screens
-The application SHALL allow the user to freely configure screens, add new screens, remove screens, and edit the layout of widgets within those screens via an "Edit Mode".
+The application SHALL allow the user to freely configure screens, add new screens, remove screens, and edit the layout of widgets within those screens via an "Edit Mode". The user SHALL be able to configure the normal flight screen layout strategy and thermaling screen visual style from predefined mockup options, defaulting to Option 3 for both.
 
 #### Scenario: Adding a Screen
 Given the user is in Edit Mode
