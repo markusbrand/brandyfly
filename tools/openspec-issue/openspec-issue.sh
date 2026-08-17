@@ -311,7 +311,6 @@ assert_issues_wellformed() {
     msg="$( ( validate_body_string "$body" ) 2>&1 1>/dev/null )"; rc=$?
     set -e
     if [[ $rc -ne 0 ]]; then
-      echo "DEBUG_MALFORMED [#$n]: $msg" >&2
       die "$EX_MALFORMED" "issue #$n is labeled '$DISCOVERY_LABEL' but is malformed: ${msg#openspec-issue: }"
     fi
   done < <(jq -r '.[].number' <<<"$json")
@@ -338,7 +337,7 @@ cmd_find() {
   out="$(filter_issue_numbers "$name" "$OPENSPEC_ISSUES_JSON")"
   mapfile -t nums < <(printf '%s' "$out" | grep -E '^[0-9]+$' || true)
   if [[ "${#nums[@]}" -eq 0 ]]; then
-    echo "DEBUG_FIND_FAIL name='$name' JSON=$OPENSPEC_ISSUES_JSON" >&2
+    echo "DEBUG_FIND_FAIL name='$name' JSON=$OPENSPEC_ISSUES_JSON PAGE1=$(cat "$WORKDIR/pages/p00001.json" 2>/dev/null || echo MISSING)" >&2
     die "$EX_NOT_FOUND" "no OpenSpec issue found for change '$name'"
   elif [[ "${#nums[@]}" -gt 1 ]]; then
     die "$EX_DUPLICATE" "duplicate OpenSpec issues for change '$name': ${nums[*]}"
