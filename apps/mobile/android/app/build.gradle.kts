@@ -9,6 +9,29 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    val keystorePropertiesFile = rootProject.file("key.properties")
+    val keystoreProperties = java.util.Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+    }
+
+    val keyAliasValue = System.getenv("KEY_ALIAS") ?: keystoreProperties["keyAlias"] as String?
+    val keyPasswordValue = System.getenv("KEY_PASSWORD") ?: keystoreProperties["keyPassword"] as String?
+    val storeFileValue = System.getenv("STORE_FILE") ?: keystoreProperties["storeFile"] as String?
+    val storePasswordValue = System.getenv("STORE_PASSWORD") ?: keystoreProperties["storePassword"] as String?
+    val hasReleaseSigningConfig = keyAliasValue != null && keyPasswordValue != null && storeFileValue != null && storePasswordValue != null
+
+    if (hasReleaseSigningConfig) {
+        signingConfigs {
+            create("release") {
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+                storeFile = file(storeFileValue!!)
+                storePassword = storePasswordValue
+            }
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -24,9 +47,12 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Signing with the debug keys for now, so `flutter run --release` works.
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
