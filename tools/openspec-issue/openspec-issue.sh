@@ -319,15 +319,17 @@ assert_issues_wellformed() {
 filter_issue_numbers() {
   # filter_issue_numbers <name> <json> -> matching issue numbers
   local name="$1" json="$2"
-  jq -r --arg n "$name" '
-    .[] | . as $i
-    | ($i.body // "")
-    | capture("<!-- openspec:metadata\\r?\\n(?<m>(?s).*?)\\r?\\nopenspec:metadata-end -->")?.m as $meta
-    | select($meta != null)
-    | ($meta | fromjson? // {}) as $md
-    | select($md.changeName == $n)
-    | $i.number
-  ' <<<"$json" 2>/dev/null | grep -E '^[0-9]+$' || true
+  jq -c '.[]' <<<"$json" 2>/dev/null | while IFS= read -r item; do
+    [[ -z "$item" ]] && continue
+    local num body meta cname
+    num="$(jq -r '.number' <<<"$item")"
+    body="$(jq -r '.body' <<<"$item")"
+    meta="$(printf '%s' "$body" | extract_metadata)"
+    cname="$(jq -r '.changeName // ""' <<<"$meta" 2>/dev/null || true)"
+    if [[ "$cname" == "$name" ]]; then
+      printf '%s\n' "$num"
+    fi
+  done
 }
 
 cmd_find() {
@@ -354,17 +356,27 @@ cmd_list() {
   done
   load_openspec_issues
   assert_issues_wellformed "$OPENSPEC_ISSUES_JSON"
-  jq -r --arg state "$state" '
-    def meta: (capture("<!-- openspec:metadata\\r?\\n(?<m>(?s).*?)\\r?\\nopenspec:metadata-end -->")?.m // "{}") | (fromjson? // {});
-    def tasks($b): [ ($b | [scan("(?m)^[[:space:]]*- \\[[xX]\\]")] | length),
-                     ($b | [scan("(?m)^[[:space:]]*- \\[( |x|X)\\]")] | length) ];
-    [ .[]
-      | select($state=="all" or (.state|ascii_downcase)==$state)
-      | . as $i | (.body // "") as $b | ($b | meta) as $md
-      | { number: $i.number, name: ($md.changeName // "?"),
-          lifecycle: ($md.lifecycle // "?"), state: ($i.state|ascii_downcase),
-          tasksDone: (tasks($b)[0]), tasksTotal: (tasks($b)[1]) } ]
-  ' <<<"$OPENSPEC_ISSUES_JSON"
+
+  jq -c '.[]' <<<"$OPENSPEC_ISSUES_JSON" | while IFS= read -r item; do
+    [[ -z "$item" ]] && continue
+    local num body st meta cname lc tasks_done tasks_total req_state
+    num="$(jq -r '.number' <<<"$item")"
+    body="$(jq -r '.body' <<<"$item")"
+    st="$(jq -r '.state' <<<"$item")"
+    meta="$(printf '%s' "$body" | extract_metadata)"
+    cname="$(jq -r '.changeName // ""' <<<"$meta" 2>/dev/null || true)"
+    lc="$(jq -r '.lifecycle // ""' <<<"$meta" 2>/dev/null || true)"
+    [[ -z "$cname" ]] && continue
+    if [[ "$state" != "all" ]]; then
+      req_state="$(tr '[:lower:]' '[:upper:]' <<<"$state")"
+      [[ "$st" != "$req_state" ]] && continue
+    fi
+    tasks_done="$(printf '%s\n' "$body" | grep -cE '^[[:space:]]*- \[[xX]\]' || true)"
+    tasks_total="$(printf '%s\n' "$body" | grep -cE '^[[:space:]]*- \[( |x|X)\]' || true)"
+    jq -nc --arg name "$cname" --arg lc "$lc" --arg st "$st" \
+       --argjson num "$num" --argjson td "$tasks_done" --argjson tt "$tasks_total" \
+       '{name:$name, lifecycle:$lc, state:$st, issueNumber:$num, tasksDone:$td, tasksTotal:$tt}'
+  done | jq -s 'sort_by(.name)'
 }
 
 cmd_create() {
