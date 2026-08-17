@@ -19,19 +19,13 @@ See [Architecture](docs/architecture.md) and
 
 ## OpenSpec workflow
 
-Non-trivial changes are tracked with the repository-local OpenSpec commands
-generated for GitHub Copilot. Change state (proposal, requirements, design,
-tasks, and verification) lives in **GitHub issues** — one issue per change,
-labelled `openspec` — through the repository adapter
-[`tools/openspec-issue`](tools/openspec-issue/CONTRACT.md), not in per-change
-Markdown files. Durable capability specifications remain source-controlled under
-`openspec/specs/`.
+Non-trivial changes start with the repository-local OpenSpec skills configured for Antigravity:
 
-1. `/opsx-explore`
-2. `/opsx-propose`
-3. `/opsx-apply`
-4. `/opsx-verify`
-5. `/opsx-archive`
+- `openspec-explore`: Enter explore mode to think through ideas or investigate issues.
+- `openspec-propose`: Propose a new change and generate planning artifacts.
+- `openspec-apply-change`: Guide the implementation of a change.
+- `openspec-verify-change`: Run verification and gather evidence.
+- `openspec-archive-change`: Archive a completed change and update main specs.
 
 ## Safety
 

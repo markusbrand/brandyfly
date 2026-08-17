@@ -1,14 +1,5 @@
 schema: spec-driven
 
-# OpenSpec change state (proposal, requirements, design, tasks, verification) is
-# stored in GitHub issues, one issue per change, labelled `openspec`, via the
-# repository adapter tools/openspec-issue (see tools/openspec-issue/CONTRACT.md).
-# This file and the durable capability specs under openspec/specs/ remain
-# source-controlled and are NOT per-change storage. Per-change Markdown
-# directories under openspec/changes/ must not be reintroduced.
-githubCopilot:
-  cloudAgent: true
-
 context: |
   BrandyFly is an MIT-licensed, local-first paragliding vario app.
   Stack: Flutter/Dart UI, Rust flight core, Kotlin/Swift native adapters,
