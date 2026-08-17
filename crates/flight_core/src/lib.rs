@@ -284,10 +284,20 @@ fn stable_hash(parts: &[String]) -> String {
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x100000001b3;
     let mut hash = OFFSET;
-    for byte in parts.join("|").bytes() {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(PRIME);
+
+    let mut first = true;
+    for part in parts {
+        if !first {
+            hash ^= u64::from(b'|');
+            hash = hash.wrapping_mul(PRIME);
+        }
+        first = false;
+        for byte in part.bytes() {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(PRIME);
+        }
     }
+
     format!("{hash:016x}")
 }
 
