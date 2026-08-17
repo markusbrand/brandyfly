@@ -322,7 +322,7 @@ filter_issue_numbers() {
   jq -r --arg n "$name" '
     .[] | . as $i
     | ($i.body // "")
-    | capture("<!-- openspec:metadata\\r?\\n(?<m>[\\s\\S]*?)\\r?\\nopenspec:metadata-end -->")?.m as $meta
+    | capture("<!-- openspec:metadata\\r?\\n(?<m>(?s).*?)\\r?\\nopenspec:metadata-end -->")?.m as $meta
     | select($meta != null)
     | ($meta | fromjson? // {}) as $md
     | select($md.changeName == $n)
@@ -355,7 +355,7 @@ cmd_list() {
   load_openspec_issues
   assert_issues_wellformed "$OPENSPEC_ISSUES_JSON"
   jq -r --arg state "$state" '
-    def meta: (capture("<!-- openspec:metadata\\r?\\n(?<m>[\\s\\S]*?)\\r?\\nopenspec:metadata-end -->")?.m // "{}") | (fromjson? // {});
+    def meta: (capture("<!-- openspec:metadata\\r?\\n(?<m>(?s).*?)\\r?\\nopenspec:metadata-end -->")?.m // "{}") | (fromjson? // {});
     def tasks($b): [ ($b | [scan("(?m)^[[:space:]]*- \\[[xX]\\]")] | length),
                      ($b | [scan("(?m)^[[:space:]]*- \\[( |x|X)\\]")] | length) ];
     [ .[]
