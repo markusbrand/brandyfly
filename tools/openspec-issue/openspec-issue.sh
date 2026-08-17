@@ -286,11 +286,16 @@ load_openspec_issues() {
     page=$((page+1))
     [[ "$page" -gt 10000 ]] && break   # safety valve
   done
-  OPENSPEC_ISSUES_JSON="$(jq -s '
-    (add // [])
-    | [ .[] | select(has("pull_request")|not)
-        | {number, body:(.body // ""), state:(.state|ascii_upcase),
-           labels:[.labels[].name]} ]' "$pagesdir"/p*.json)"
+  local pagefiles=("$pagesdir"/p*.json)
+  if [[ "${#pagefiles[@]}" -eq 0 || ! -e "${pagefiles[0]}" ]]; then
+    OPENSPEC_ISSUES_JSON="[]"
+  else
+    OPENSPEC_ISSUES_JSON="$(jq -s '
+      (add // [])
+      | [ .[] | select(has("pull_request")|not)
+          | {number, body:(.body // ""), state:(.state|ascii_upcase),
+             labels:[.labels[].name]} ]' "${pagefiles[@]}")"
+  fi
 }
 
 assert_issues_wellformed() {
