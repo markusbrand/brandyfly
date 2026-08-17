@@ -240,7 +240,7 @@ fn build_frame(config: &LocalMockFlightModeConfig, spec: FrameSpec) -> MockFligh
     let degraded_str = spec.degraded.to_string();
     let occurred_at_str = occurred_at_ms.to_string();
 
-    let canonical_event_hash = stable_hash(&[
+    let canonical_event_hash = stable_hash([
         config.fixture_version,
         seed_str.as_str(),
         logical_clock_str.as_str(),
