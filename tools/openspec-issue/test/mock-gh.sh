@@ -2,6 +2,7 @@
 # Mock `gh` for openspec-issue adapter tests. No network, no real GitHub.
 # State lives under $MOCK_GH_STORE. Failure injection via $MOCK_GH_FAIL.
 set -euo pipefail
+shopt -s nullglob
 
 STORE="${MOCK_GH_STORE:?MOCK_GH_STORE required}"
 mkdir -p "$STORE/issues"
