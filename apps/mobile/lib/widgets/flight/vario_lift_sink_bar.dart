@@ -14,13 +14,12 @@ class VarioLiftSinkBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (style) {
+      case LiftSinkBarStyle.verticalEdgeBar:
+        return _buildVerticalEdgeBar(context);
       case LiftSinkBarStyle.analogDial:
         return _buildAnalogDial(context);
       case LiftSinkBarStyle.screenEdgeGlow:
         return _buildScreenEdgeGlow(context);
-      case LiftSinkBarStyle.verticalEdgeBar:
-      default:
-        return _buildVerticalEdgeBar(context);
     }
   }
 

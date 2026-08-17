@@ -18,15 +18,14 @@ class NumericTextWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (style) {
+      case NumericWidgetStyle.minimalistText:
+        return _buildMinimalistText(context);
       case NumericWidgetStyle.highContrastBox:
         return _buildHighContrastBox(context);
       case NumericWidgetStyle.circularGauge:
         return _buildCircularGauge(context);
       case NumericWidgetStyle.retroDigital:
         return _buildRetroDigital(context);
-      case NumericWidgetStyle.minimalistText:
-      default:
-        return _buildMinimalistText(context);
     }
   }
 

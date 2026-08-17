@@ -17,13 +17,12 @@ class WindDirectionWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (style) {
+      case WindWidgetStyle.relativeArrow:
+        return _buildRelativeArrow(context);
       case WindWidgetStyle.miniCompassRose:
         return _buildMiniCompassRose(context);
       case WindWidgetStyle.windsockIndicator:
         return _buildWindsockIndicator(context);
-      case WindWidgetStyle.relativeArrow:
-      default:
-        return _buildRelativeArrow(context);
     }
   }
 

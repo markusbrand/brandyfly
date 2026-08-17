@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'demo/vario_screen.dart';
 import 'services/screen_manager_service.dart';
 import 'services/ui_persistence_service.dart';
 import 'widgets/layout/layout_strategy_container.dart';

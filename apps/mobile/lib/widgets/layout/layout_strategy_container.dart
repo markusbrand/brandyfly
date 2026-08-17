@@ -83,7 +83,6 @@ class LayoutStrategyContainer extends StatelessWidget {
       case LayoutStrategyStyle.snapToGrid:
         return _buildSnapToGrid(context, screen, isEditMode);
       case LayoutStrategyStyle.sidebarDashboard:
-      default:
         return _buildSidebarDashboard(context, screen, isEditMode);
     }
   }

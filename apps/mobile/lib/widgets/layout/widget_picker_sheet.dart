@@ -54,7 +54,7 @@ class WidgetPickerSheet extends StatelessWidget {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: available.length,
-              separatorBuilder: (_, __) => const Divider(color: Colors.white12),
+              separatorBuilder: (context, index) => const Divider(color: Colors.white12),
               itemBuilder: (ctx, index) {
                 final item = available[index];
                 return ListTile(

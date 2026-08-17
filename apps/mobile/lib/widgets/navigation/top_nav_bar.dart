@@ -143,13 +143,12 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
 
   Widget _buildNavBarContent(BuildContext context, NavBarStyle style) {
     switch (style) {
+      case NavBarStyle.translucentDrawer:
+        return _buildTranslucentDrawer(context);
       case NavBarStyle.floatingPill:
         return _buildFloatingPill(context);
       case NavBarStyle.cornerMenu:
         return _buildCornerMenu(context);
-      case NavBarStyle.translucentDrawer:
-      default:
-        return _buildTranslucentDrawer(context);
     }
   }
 

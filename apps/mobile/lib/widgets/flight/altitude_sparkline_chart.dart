@@ -14,13 +14,12 @@ class AltitudeSparklineChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (style) {
+      case AltitudeChartStyle.minimalSparkline:
+        return _buildMinimalSparkline(context);
       case AltitudeChartStyle.filledAreaGraph:
         return _buildFilledAreaGraph(context);
       case AltitudeChartStyle.detailedGrid:
         return _buildDetailedGrid(context);
-      case AltitudeChartStyle.minimalSparkline:
-      default:
-        return _buildMinimalSparkline(context);
     }
   }
 

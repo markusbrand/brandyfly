@@ -16,13 +16,12 @@ class UISettingsPanel extends StatelessWidget {
     final style = cfg.settingsStyle;
 
     switch (style) {
+      case SettingsStyle.categorizedList:
+        return _buildCategorizedList(context, cfg);
       case SettingsStyle.modalOverlay:
         return _buildModalOverlay(context, cfg);
       case SettingsStyle.cardDashboard:
         return _buildCardDashboard(context, cfg);
-      case SettingsStyle.categorizedList:
-      default:
-        return _buildCategorizedList(context, cfg);
     }
   }
 
