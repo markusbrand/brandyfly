@@ -1,0 +1,170 @@
+import 'package:flutter/material.dart';
+import '../models/ui_config.dart';
+import 'ui_persistence_service.dart';
+
+class ScreenManagerService extends ChangeNotifier {
+  ScreenManagerService({
+    UIConfig? initialConfig,
+    UIPersistenceService? persistenceService,
+  })  : _config = initialConfig ?? UIConfig.defaultConfig(),
+        _persistence = persistenceService;
+
+  UIConfig _config;
+  final UIPersistenceService? _persistence;
+  bool _isEditMode = false;
+  bool _isNavBarVisible = false;
+  bool _isSettingsVisible = false;
+
+  UIConfig get config => _config;
+  bool get isEditMode => _isEditMode;
+  bool get isNavBarVisible => _isNavBarVisible;
+  bool get isSettingsVisible => _isSettingsVisible;
+
+  FlightScreenModel get activeScreen {
+    final found = _config.screens.firstWhere(
+      (s) => s.id == _config.activeScreenId,
+      orElse: () => _config.screens.isNotEmpty
+          ? _config.screens.first
+          : UIConfig.defaultConfig().screens.first,
+    );
+    return found;
+  }
+
+  void toggleNavBar([bool? visible]) {
+    _isNavBarVisible = visible ?? !_isNavBarVisible;
+    notifyListeners();
+  }
+
+  void toggleEditMode([bool? enabled]) {
+    _isEditMode = enabled ?? !_isEditMode;
+    if (_isEditMode) {
+      _isNavBarVisible = false; // Hide navbar when entering edit mode if desired
+    }
+    notifyListeners();
+  }
+
+  void toggleSettingsPanel([bool? visible]) {
+    _isSettingsVisible = visible ?? !_isSettingsVisible;
+    if (_isSettingsVisible) {
+      _isNavBarVisible = false;
+    }
+    notifyListeners();
+  }
+
+  void setActiveScreen(String screenId) {
+    if (_config.activeScreenId == screenId) return;
+    _config = _config.copyWith(activeScreenId: screenId);
+    _saveAndNotify();
+  }
+
+  void setNavBarStyle(NavBarStyle style) {
+    _config = _config.copyWith(navBarStyle: style);
+    _saveAndNotify();
+  }
+
+  void setLayoutStrategyStyle(LayoutStrategyStyle style) {
+    _config = _config.copyWith(layoutStrategyStyle: style);
+    _saveAndNotify();
+  }
+
+  void setNumericWidgetStyle(NumericWidgetStyle style) {
+    _config = _config.copyWith(numericWidgetStyle: style);
+    _saveAndNotify();
+  }
+
+  void setWindWidgetStyle(WindWidgetStyle style) {
+    _config = _config.copyWith(windWidgetStyle: style);
+    _saveAndNotify();
+  }
+
+  void setLiftSinkBarStyle(LiftSinkBarStyle style) {
+    _config = _config.copyWith(liftSinkBarStyle: style);
+    _saveAndNotify();
+  }
+
+  void setAltitudeChartStyle(AltitudeChartStyle style) {
+    _config = _config.copyWith(altitudeChartStyle: style);
+    _saveAndNotify();
+  }
+
+  void setThermalingStyle(ThermalingStyle style) {
+    _config = _config.copyWith(thermalingStyle: style);
+    _saveAndNotify();
+  }
+
+  void setSettingsStyle(SettingsStyle style) {
+    _config = _config.copyWith(settingsStyle: style);
+    _saveAndNotify();
+  }
+
+  void updateWidgetPlacement(WidgetPlacementModel placement) {
+    final currentActive = activeScreen;
+    final updatedWidgets = currentActive.widgets.map((w) {
+      return w.id == placement.id ? placement : w;
+    }).toList();
+
+    _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
+  }
+
+  void addWidget(WidgetType type) {
+    final currentActive = activeScreen;
+    final newId = 'w_${DateTime.now().millisecondsSinceEpoch}';
+    final newPlacement = WidgetPlacementModel(
+      id: newId,
+      type: type,
+      x: 0,
+      y: 0,
+      w: 2,
+      h: 1,
+    );
+    final updatedWidgets = [...currentActive.widgets, newPlacement];
+    _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
+  }
+
+  void removeWidget(String widgetId) {
+    final currentActive = activeScreen;
+    final updatedWidgets =
+        currentActive.widgets.where((w) => w.id != widgetId).toList();
+    _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
+  }
+
+  void addScreen(String name) {
+    final newId = 'screen_${DateTime.now().millisecondsSinceEpoch}';
+    final newScreen = FlightScreenModel(
+      id: newId,
+      name: name,
+      widgets: const [],
+    );
+    final updatedScreens = [..._config.screens, newScreen];
+    _config = _config.copyWith(
+      screens: updatedScreens,
+      activeScreenId: newId,
+    );
+    _saveAndNotify();
+  }
+
+  void removeScreen(String screenId) {
+    if (_config.screens.length <= 1) return; // Keep at least one screen
+    final updatedScreens =
+        _config.screens.where((s) => s.id != screenId).toList();
+    final nextActive = updatedScreens.first.id;
+    _config = _config.copyWith(
+      screens: updatedScreens,
+      activeScreenId: nextActive,
+    );
+    _saveAndNotify();
+  }
+
+  void _updateActiveScreen(FlightScreenModel updated) {
+    final updatedScreens = _config.screens.map((s) {
+      return s.id == updated.id ? updated : s;
+    }).toList();
+    _config = _config.copyWith(screens: updatedScreens);
+    _saveAndNotify();
+  }
+
+  void _saveAndNotify() {
+    _persistence?.saveConfig(_config);
+    notifyListeners();
+  }
+}
