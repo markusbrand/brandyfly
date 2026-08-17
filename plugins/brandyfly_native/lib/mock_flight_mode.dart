@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 
 String _stableHash(Iterable<Object?> parts) {
   final bytes = utf8.encode(parts.map((part) => part?.toString() ?? '').join('|'));
-  var hash = 0xcbf29ce484222325;
+  var hash = 0xcbf29ce4;
   for (final byte in bytes) {
     hash ^= byte;
-    hash = (hash * 0x100000001b3) & 0xffffffffffffffff;
+    hash = (hash * 0x100000001b3) & 0xffffffff;
   }
   return hash.toRadixString(16).padLeft(16, '0');
 }
