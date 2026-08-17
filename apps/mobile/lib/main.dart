@@ -60,6 +60,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
       }
     } on PlatformException catch (error) {
       _startupError = error.message ?? error.code;
+    } catch (error) {
+      _startupError = error.toString();
     }
     if (!mounted) {
       return;
