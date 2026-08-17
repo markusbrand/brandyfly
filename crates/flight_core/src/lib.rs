@@ -197,11 +197,7 @@ impl MockFlightReplay {
 
     #[must_use]
     pub fn canonical_replay_hash(&self) -> String {
-        stable_hash(
-            self.frames
-                .iter()
-                .map(|frame| &frame.canonical_event_hash),
-        )
+        stable_hash(self.frames.iter().map(|frame| &frame.canonical_event_hash))
     }
 
     #[must_use]
