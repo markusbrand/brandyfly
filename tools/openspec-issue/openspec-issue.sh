@@ -322,7 +322,7 @@ filter_issue_numbers() {
   jq -r --arg n "$name" '
     .[] | . as $i
     | ($i.body // "")
-    | capture("<!-- openspec:metadata\\r?\\n(?<m>[\\s\\S]*?)\\r?\\nopenspec:metadata-end -->"; "m")?.m as $meta
+    | capture("<!-- openspec:metadata\\r?\\n(?<m>[\\s\\S]*?)\\r?\\nopenspec:metadata-end -->")?.m as $meta
     | select($meta != null)
     | ($meta | fromjson? // {}) as $md
     | select($md.changeName == $n)
@@ -337,7 +337,6 @@ cmd_find() {
   out="$(filter_issue_numbers "$name" "$OPENSPEC_ISSUES_JSON")"
   mapfile -t nums < <(printf '%s' "$out" | grep -E '^[0-9]+$' || true)
   if [[ "${#nums[@]}" -eq 0 ]]; then
-    echo "DEBUG_FIND_FAIL name='$name' JSON=$OPENSPEC_ISSUES_JSON PAGE1=$(cat "$WORKDIR/pages/p00001.json" 2>/dev/null || echo MISSING)" >&2
     die "$EX_NOT_FOUND" "no OpenSpec issue found for change '$name'"
   elif [[ "${#nums[@]}" -gt 1 ]]; then
     die "$EX_DUPLICATE" "duplicate OpenSpec issues for change '$name': ${nums[*]}"
@@ -356,7 +355,7 @@ cmd_list() {
   load_openspec_issues
   assert_issues_wellformed "$OPENSPEC_ISSUES_JSON"
   jq -r --arg state "$state" '
-    def meta: (capture("<!-- openspec:metadata\\r?\\n(?<m>[\\s\\S]*?)\\r?\\nopenspec:metadata-end -->"; "m")?.m // "{}") | (fromjson? // {});
+    def meta: (capture("<!-- openspec:metadata\\r?\\n(?<m>[\\s\\S]*?)\\r?\\nopenspec:metadata-end -->")?.m // "{}") | (fromjson? // {});
     def tasks($b): [ ($b | [scan("(?m)^[[:space:]]*- \\[[xX]\\]")] | length),
                      ($b | [scan("(?m)^[[:space:]]*- \\[( |x|X)\\]")] | length) ];
     [ .[]
