@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:brandyfly/models/ui_config.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
+import 'package:brandyfly/widgets/flight/altitude_sparkline_chart.dart';
 import 'package:brandyfly/widgets/flight/numeric_text_widget.dart';
 import 'package:brandyfly/widgets/flight/vario_lift_sink_bar.dart';
 import 'package:brandyfly/widgets/flight/wind_direction_widget.dart';
@@ -29,6 +30,44 @@ void main() {
         );
         expect(find.textContaining('1850'), findsOneWidget);
       }
+    });
+
+    testWidgets('AltitudeSparklineChart renders all visual styles', (tester) async {
+      for (final style in AltitudeChartStyle.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AltitudeSparklineChart(
+                history: const [1000.0, 1020.0, 1050.0, 1040.0],
+                style: style,
+              ),
+            ),
+          ),
+        );
+        expect(find.byType(AltitudeSparklineChart), findsOneWidget);
+        if (style == AltitudeChartStyle.minimalSparkline) {
+          expect(find.text('ALTITUDE HISTORY (SPARKLINE)'), findsOneWidget);
+        } else if (style == AltitudeChartStyle.filledAreaGraph) {
+          expect(find.text('ALTITUDE PROFILE (AREA)'), findsOneWidget);
+        } else if (style == AltitudeChartStyle.detailedGrid) {
+          expect(find.text('ALTITUDE / TIME GRID'), findsOneWidget);
+        }
+      }
+    });
+
+    testWidgets('AltitudeSparklineChart renders with empty history without crashing', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AltitudeSparklineChart(
+              history: [],
+              style: AltitudeChartStyle.minimalSparkline,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(AltitudeSparklineChart), findsOneWidget);
     });
 
     testWidgets('WindDirectionWidget renders relative arrow and compass rose', (
