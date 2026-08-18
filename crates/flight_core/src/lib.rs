@@ -197,12 +197,7 @@ impl MockFlightReplay {
 
     #[must_use]
     pub fn canonical_replay_hash(&self) -> String {
-        let hashes = self
-            .frames
-            .iter()
-            .map(|frame| frame.canonical_event_hash.as_str())
-            .collect::<Vec<_>>();
-        stable_hash(&hashes)
+        stable_hash(self.frames.iter().map(|frame| &frame.canonical_event_hash))
     }
 
     #[must_use]
@@ -243,7 +238,7 @@ fn build_frame(config: &LocalMockFlightModeConfig, spec: FrameSpec) -> MockFligh
     let degraded_str = spec.degraded.to_string();
     let occurred_at_str = occurred_at_ms.to_string();
 
-    let canonical_event_hash = stable_hash(&[
+    let canonical_event_hash = stable_hash([
         config.fixture_version,
         &seed_str,
         &clock_step_str,
@@ -286,7 +281,11 @@ fn kind_name(kind: MockFlightScenarioKind) -> &'static str {
     }
 }
 
-fn stable_hash(parts: &[&str]) -> String {
+fn stable_hash<I, S>(parts: I) -> String
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x100000001b3;
     let mut hash = OFFSET;
@@ -297,7 +296,7 @@ fn stable_hash(parts: &[&str]) -> String {
             hash = hash.wrapping_mul(PRIME);
         }
         first = false;
-        for byte in part.bytes() {
+        for byte in part.as_ref().bytes() {
             hash ^= u64::from(byte);
             hash = hash.wrapping_mul(PRIME);
         }
