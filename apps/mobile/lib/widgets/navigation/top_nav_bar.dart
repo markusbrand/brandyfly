@@ -33,10 +33,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1.2),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     widget.screenManager.addListener(_onScreenManagerChange);
   }
@@ -88,7 +85,8 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onVerticalDragUpdate: (details) {
-                  if (details.primaryDelta != null && details.primaryDelta! > 4) {
+                  if (details.primaryDelta != null &&
+                      details.primaryDelta! > 4) {
                     widget.screenManager.toggleNavBar(true);
                   }
                 },
@@ -113,13 +111,12 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                 behavior: HitTestBehavior.opaque,
                 onTap: () => widget.screenManager.toggleNavBar(false),
                 onVerticalDragUpdate: (details) {
-                  if (details.primaryDelta != null && details.primaryDelta! < -4) {
+                  if (details.primaryDelta != null &&
+                      details.primaryDelta! < -4) {
                     widget.screenManager.toggleNavBar(false);
                   }
                 },
-                child: Container(
-                  color: Colors.black.withAlpha(80),
-                ),
+                child: Container(color: Colors.black.withAlpha(80)),
               ),
             ),
 
@@ -128,7 +125,10 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             position: _slideAnimation,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Material(
                   color: Colors.transparent,
                   child: _buildNavBarContent(context, style),
@@ -215,9 +215,12 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           children: [
             IconButton(
               icon: const Icon(Icons.close, color: Colors.white70),
+              tooltip: 'Close',
               onPressed: () => widget.screenManager.toggleNavBar(false),
             ),
-            Expanded(child: Center(child: _buildScreenSelectorDropdown(context))),
+            Expanded(
+              child: Center(child: _buildScreenSelectorDropdown(context)),
+            ),
             IconButton(
               icon: const Icon(Icons.edit_note, color: Colors.cyanAccent),
               tooltip: 'Edit Mode',
@@ -244,9 +247,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           color: Colors.grey.shade900.withAlpha(240),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white24),
-          boxShadow: const [
-            BoxShadow(color: Colors.black54, blurRadius: 10),
-          ],
+          boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 10)],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -265,7 +266,11 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                 const SizedBox(width: 12),
                 InkWell(
                   onTap: () => widget.screenManager.toggleNavBar(false),
-                  child: const Icon(Icons.close, color: Colors.white70, size: 20),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
                 ),
               ],
             ),
@@ -299,6 +304,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
         ),
         IconButton(
           icon: const Icon(Icons.close, color: Colors.white70),
+          tooltip: 'Close',
           onPressed: () => widget.screenManager.toggleNavBar(false),
         ),
       ],
@@ -335,7 +341,10 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             );
           }),
           IconButton(
-            icon: const Icon(Icons.add_to_photos, color: Colors.lightBlueAccent),
+            icon: const Icon(
+              Icons.add_to_photos,
+              color: Colors.lightBlueAccent,
+            ),
             tooltip: 'Add Screen',
             onPressed: () => _promptAddScreen(context),
           ),

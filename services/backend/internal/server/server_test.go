@@ -8,6 +8,7 @@ import (
 )
 
 func TestHealthEndpoint(t *testing.T) {
+	t.Setenv("BRANDYFLY_HEALTH_TOKEN", "")
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	response := httptest.NewRecorder()
 
@@ -21,6 +22,31 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 	if body := response.Body.String(); body != "{\"status\":\"ok\"}\n" {
 		t.Fatalf("body = %q, want health response", body)
+	}
+}
+
+func TestHealthEndpointAuthorized(t *testing.T) {
+	t.Setenv("BRANDYFLY_HEALTH_TOKEN", "secret-token")
+	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	request.Header.Set("Authorization", "Bearer secret-token")
+	response := httptest.NewRecorder()
+
+	NewHandler().ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+	}
+}
+
+func TestHealthEndpointUnauthorized(t *testing.T) {
+	t.Setenv("BRANDYFLY_HEALTH_TOKEN", "secret-token")
+	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	response := httptest.NewRecorder()
+
+	NewHandler().ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
 	}
 }
 
