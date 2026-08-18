@@ -1,0 +1,10 @@
+# Adapter scratch and test state (never committed).
+.work.*
+.migration/
+test/.store.*
+test/.sec.*
+test/.body.*
+test/.meta.*
+test/.dbg/
+test/.migtest.*
+test/fixtures/

@@ -1,4 +1,6 @@
-schema: spec-driven
+schema: spec-driven-github
+githubCopilot:
+  cloudAgent: true
 
 context: |
   BrandyFly is an MIT-licensed, local-first paragliding vario app.
