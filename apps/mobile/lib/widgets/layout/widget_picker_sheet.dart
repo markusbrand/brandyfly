@@ -45,6 +45,7 @@ class WidgetPickerSheet extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.white70),
+                tooltip: 'Close',
                 onPressed: () => Navigator.pop(context),
               ),
             ],

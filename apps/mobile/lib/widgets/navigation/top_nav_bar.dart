@@ -215,6 +215,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           children: [
             IconButton(
               icon: const Icon(Icons.close, color: Colors.white70),
+              tooltip: 'Close',
               onPressed: () => widget.screenManager.toggleNavBar(false),
             ),
             Expanded(child: Center(child: _buildScreenSelectorDropdown(context))),
@@ -299,6 +300,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
         ),
         IconButton(
           icon: const Icon(Icons.close, color: Colors.white70),
+          tooltip: 'Close',
           onPressed: () => widget.screenManager.toggleNavBar(false),
         ),
       ],
