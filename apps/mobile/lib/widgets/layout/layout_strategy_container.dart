@@ -208,10 +208,13 @@ class LayoutStrategyContainer extends StatelessWidget {
                   for (final widgetModel in varioWidgets)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: _buildWidgetWrapper(
-                        context,
-                        widgetModel,
-                        isEditMode,
+                      child: SizedBox(
+                        height: 180,
+                        child: _buildWidgetWrapper(
+                          context,
+                          widgetModel,
+                          isEditMode,
+                        ),
                       ),
                     ),
                 ],
@@ -272,9 +275,11 @@ class LayoutStrategyContainer extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(6),
-            child: Opacity(opacity: 0.8, child: content),
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Opacity(opacity: 0.8, child: content),
+            ),
           ),
           Positioned(
             top: 2,
