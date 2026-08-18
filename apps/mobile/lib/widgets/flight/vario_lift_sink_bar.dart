@@ -40,9 +40,7 @@ class VarioLiftSinkBar extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            isLift
-                ? '+${climbRateMs.toStringAsFixed(1)}'
-                : climbRateMs.toStringAsFixed(1),
+            isLift ? '+${climbRateMs.toStringAsFixed(1)}' : climbRateMs.toStringAsFixed(1),
             style: TextStyle(
               color: isLift ? Colors.greenAccent : Colors.redAccent,
               fontSize: 12,
@@ -132,7 +130,9 @@ class VarioLiftSinkBar extends StatelessWidget {
         color: color.withAlpha(40),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color, width: 2),
-        boxShadow: [BoxShadow(color: color.withAlpha(100), blurRadius: 16)],
+        boxShadow: [
+          BoxShadow(color: color.withAlpha(100), blurRadius: 16),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

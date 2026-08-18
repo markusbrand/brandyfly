@@ -7,10 +7,7 @@ void main() {
     test('initializes with default config and state', () {
       final manager = ScreenManagerService();
       expect(manager.config.navBarStyle, NavBarStyle.translucentDrawer);
-      expect(
-        manager.config.layoutStrategyStyle,
-        LayoutStrategyStyle.sidebarDashboard,
-      );
+      expect(manager.config.layoutStrategyStyle, LayoutStrategyStyle.sidebarDashboard);
       expect(manager.isEditMode, false);
       expect(manager.isNavBarVisible, false);
       expect(manager.activeScreen.id, 'normal_flight');
@@ -23,10 +20,7 @@ void main() {
 
       manager.toggleEditMode(true);
       expect(manager.isEditMode, true);
-      expect(
-        manager.isNavBarVisible,
-        false,
-      ); // Nav bar hides when edit mode opens
+      expect(manager.isNavBarVisible, false); // Nav bar hides when edit mode opens
     });
 
     test('updates visual mockup style options', () {
@@ -36,16 +30,10 @@ void main() {
       expect(manager.config.navBarStyle, NavBarStyle.floatingPill);
 
       manager.setLayoutStrategyStyle(LayoutStrategyStyle.freeformHud);
-      expect(
-        manager.config.layoutStrategyStyle,
-        LayoutStrategyStyle.freeformHud,
-      );
+      expect(manager.config.layoutStrategyStyle, LayoutStrategyStyle.freeformHud);
 
       manager.setNumericWidgetStyle(NumericWidgetStyle.highContrastBox);
-      expect(
-        manager.config.numericWidgetStyle,
-        NumericWidgetStyle.highContrastBox,
-      );
+      expect(manager.config.numericWidgetStyle, NumericWidgetStyle.highContrastBox);
 
       manager.setWindWidgetStyle(WindWidgetStyle.miniCompassRose);
       expect(manager.config.windWidgetStyle, WindWidgetStyle.miniCompassRose);

@@ -6,8 +6,8 @@ class ScreenManagerService extends ChangeNotifier {
   ScreenManagerService({
     UIConfig? initialConfig,
     UIPersistenceService? persistenceService,
-  }) : _config = initialConfig ?? UIConfig.defaultConfig(),
-       _persistence = persistenceService;
+  })  : _config = initialConfig ?? UIConfig.defaultConfig(),
+        _persistence = persistenceService;
 
   UIConfig _config;
   final UIPersistenceService? _persistence;
@@ -38,8 +38,7 @@ class ScreenManagerService extends ChangeNotifier {
   void toggleEditMode([bool? enabled]) {
     _isEditMode = enabled ?? !_isEditMode;
     if (_isEditMode) {
-      _isNavBarVisible =
-          false; // Hide navbar when entering edit mode if desired
+      _isNavBarVisible = false; // Hide navbar when entering edit mode if desired
     }
     notifyListeners();
   }
@@ -124,9 +123,8 @@ class ScreenManagerService extends ChangeNotifier {
 
   void removeWidget(String widgetId) {
     final currentActive = activeScreen;
-    final updatedWidgets = currentActive.widgets
-        .where((w) => w.id != widgetId)
-        .toList();
+    final updatedWidgets =
+        currentActive.widgets.where((w) => w.id != widgetId).toList();
     _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
   }
 
@@ -138,15 +136,17 @@ class ScreenManagerService extends ChangeNotifier {
       widgets: const [],
     );
     final updatedScreens = [..._config.screens, newScreen];
-    _config = _config.copyWith(screens: updatedScreens, activeScreenId: newId);
+    _config = _config.copyWith(
+      screens: updatedScreens,
+      activeScreenId: newId,
+    );
     _saveAndNotify();
   }
 
   void removeScreen(String screenId) {
     if (_config.screens.length <= 1) return; // Keep at least one screen
-    final updatedScreens = _config.screens
-        .where((s) => s.id != screenId)
-        .toList();
+    final updatedScreens =
+        _config.screens.where((s) => s.id != screenId).toList();
     final nextActive = updatedScreens.first.id;
     _config = _config.copyWith(
       screens: updatedScreens,

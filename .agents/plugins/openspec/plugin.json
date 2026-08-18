@@ -1,9 +1,0 @@
-{
-  "name": "openspec",
-  "version": "1.0.0",
-  "description": "OpenSpec specification-driven change management plugin for Antigravity IDE",
-  "author": {
-    "name": "OpenSpec"
-  },
-  "license": "MIT"
-}

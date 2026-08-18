@@ -3,55 +3,23 @@ import '../../models/ui_config.dart';
 import '../../services/screen_manager_service.dart';
 
 class WidgetPickerSheet extends StatelessWidget {
-  const WidgetPickerSheet({super.key, required this.screenManager});
+  const WidgetPickerSheet({
+    super.key,
+    required this.screenManager,
+  });
 
   final ScreenManagerService screenManager;
 
   @override
   Widget build(BuildContext context) {
     final available = [
-      (
-        WidgetType.altitude,
-        'Altitude',
-        'Displays current MSL altitude',
-        Icons.height,
-      ),
-      (
-        WidgetType.speed,
-        'Groundspeed',
-        'Displays speed over ground',
-        Icons.speed,
-      ),
-      (
-        WidgetType.glide,
-        'Glide Ratio',
-        'Displays L/D glide ratio',
-        Icons.trending_flat,
-      ),
-      (
-        WidgetType.hag,
-        'Height Above Ground',
-        'Displays AGL height',
-        Icons.vertical_align_bottom,
-      ),
-      (
-        WidgetType.windDirection,
-        'Wind Indicator',
-        'Displays wind direction & speed',
-        Icons.air,
-      ),
-      (
-        WidgetType.varioBar,
-        'Vario Lift/Sink',
-        'Visual climb and sink indicator',
-        Icons.straighten,
-      ),
-      (
-        WidgetType.altitudeChart,
-        'Altitude Chart',
-        'Sparkline height history chart',
-        Icons.show_chart,
-      ),
+      (WidgetType.altitude, 'Altitude', 'Displays current MSL altitude', Icons.height),
+      (WidgetType.speed, 'Groundspeed', 'Displays speed over ground', Icons.speed),
+      (WidgetType.glide, 'Glide Ratio', 'Displays L/D glide ratio', Icons.trending_flat),
+      (WidgetType.hag, 'Height Above Ground', 'Displays AGL height', Icons.vertical_align_bottom),
+      (WidgetType.windDirection, 'Wind Indicator', 'Displays wind direction & speed', Icons.air),
+      (WidgetType.varioBar, 'Vario Lift/Sink', 'Visual climb and sink indicator', Icons.straighten),
+      (WidgetType.altitudeChart, 'Altitude Chart', 'Sparkline height history chart', Icons.show_chart),
     ];
 
     return Container(
@@ -77,7 +45,6 @@ class WidgetPickerSheet extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.white70),
-                tooltip: 'Close',
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -87,8 +54,7 @@ class WidgetPickerSheet extends StatelessWidget {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: available.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(color: Colors.white12),
+              separatorBuilder: (context, index) => const Divider(color: Colors.white12),
               itemBuilder: (ctx, index) {
                 final item = available[index];
                 return ListTile(
@@ -98,10 +64,7 @@ class WidgetPickerSheet extends StatelessWidget {
                   ),
                   title: Text(
                     item.$2,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
                     item.$3,

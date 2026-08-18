@@ -11,9 +11,7 @@ import 'package:brandyfly/widgets/settings/ui_settings_panel.dart';
 
 void main() {
   group('UI Components Widget Tests', () {
-    testWidgets('NumericTextWidget renders all visual mockup styles', (
-      tester,
-    ) async {
+    testWidgets('NumericTextWidget renders all visual mockup styles', (tester) async {
       for (final style in NumericWidgetStyle.values) {
         await tester.pumpWidget(
           MaterialApp(
@@ -31,9 +29,7 @@ void main() {
       }
     });
 
-    testWidgets('WindDirectionWidget renders relative arrow and compass rose', (
-      tester,
-    ) async {
+    testWidgets('WindDirectionWidget renders relative arrow and compass rose', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -48,9 +44,7 @@ void main() {
       expect(find.textContaining('15.5 km/h'), findsOneWidget);
     });
 
-    testWidgets('VarioLiftSinkBar renders vertical bar and analog dial', (
-      tester,
-    ) async {
+    testWidgets('VarioLiftSinkBar renders vertical bar and analog dial', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -64,9 +58,7 @@ void main() {
       expect(find.textContaining('+2.4'), findsOneWidget);
     });
 
-    testWidgets('TopNavBarOverlay slides down and shows controls', (
-      tester,
-    ) async {
+    testWidgets('TopNavBarOverlay slides down and shows controls', (tester) async {
       final manager = ScreenManagerService();
       manager.toggleNavBar(true);
 
@@ -85,13 +77,13 @@ void main() {
       expect(find.text('Settings'), findsOneWidget);
     });
 
-    testWidgets('UISettingsPanel allows changing visual styles', (
-      tester,
-    ) async {
+    testWidgets('UISettingsPanel allows changing visual styles', (tester) async {
       final manager = ScreenManagerService();
 
       await tester.pumpWidget(
-        MaterialApp(home: UISettingsPanel(screenManager: manager)),
+        MaterialApp(
+          home: UISettingsPanel(screenManager: manager),
+        ),
       );
 
       expect(find.text('UI Visual Mockup Settings'), findsOneWidget);
@@ -99,45 +91,39 @@ void main() {
       manager.setNumericWidgetStyle(NumericWidgetStyle.highContrastBox);
       await tester.pump();
 
-      expect(
-        manager.config.numericWidgetStyle,
-        NumericWidgetStyle.highContrastBox,
-      );
+      expect(manager.config.numericWidgetStyle, NumericWidgetStyle.highContrastBox);
     });
 
-    testWidgets(
-      'LayoutStrategyContainer renders in edit mode and across all strategies',
-      (tester) async {
-        final manager = ScreenManagerService();
-        manager.toggleEditMode(true);
+    testWidgets('LayoutStrategyContainer renders in edit mode and across all strategies', (tester) async {
+      final manager = ScreenManagerService();
+      manager.toggleEditMode(true);
 
-        for (final strategy in LayoutStrategyStyle.values) {
-          manager.setLayoutStrategyStyle(strategy);
-          await tester.pumpWidget(
-            MaterialApp(
-              home: Scaffold(
-                body: LayoutStrategyContainer(
-                  screenManager: manager,
-                  telemetryData: const {
-                    'altitude': 1450.0,
-                    'speed': 42.5,
-                    'glide': 8.4,
-                    'hag': 320.0,
-                    'climb': 1.8,
-                    'windDir': 220.0,
-                    'windSpeed': 14.0,
-                    'history': [1400.0, 1420.0, 1450.0],
-                  },
-                ),
+      for (final strategy in LayoutStrategyStyle.values) {
+        manager.setLayoutStrategyStyle(strategy);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {
+                  'altitude': 1450.0,
+                  'speed': 42.5,
+                  'glide': 8.4,
+                  'hag': 320.0,
+                  'climb': 1.8,
+                  'windDir': 220.0,
+                  'windSpeed': 14.0,
+                  'history': [1400.0, 1420.0, 1450.0],
+                },
               ),
             ),
-          );
-          await tester.pumpAndSettle();
+          ),
+        );
+        await tester.pumpAndSettle();
 
-          expect(find.text('Done Editing'), findsOneWidget);
-          expect(find.text('Add Widget'), findsOneWidget);
-        }
-      },
-    );
+        expect(find.text('Done Editing'), findsOneWidget);
+        expect(find.text('Add Widget'), findsOneWidget);
+      }
+    });
   });
 }

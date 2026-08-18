@@ -95,13 +95,13 @@ class WidgetPlacementModel {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'type': type.name,
-    'x': x,
-    'y': y,
-    'w': w,
-    'h': h,
-  };
+        'id': id,
+        'type': type.name,
+        'x': x,
+        'y': y,
+        'w': w,
+        'h': h,
+      };
 
   factory WidgetPlacementModel.fromJson(Map<String, dynamic> json) =>
       WidgetPlacementModel(
@@ -142,11 +142,11 @@ class FlightScreenModel {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'layoutStrategy': layoutStrategy.name,
-    'widgets': widgets.map((w) => w.toJson()).toList(),
-  };
+        'id': id,
+        'name': name,
+        'layoutStrategy': layoutStrategy.name,
+        'widgets': widgets.map((w) => w.toJson()).toList(),
+      };
 
   factory FlightScreenModel.fromJson(Map<String, dynamic> json) =>
       FlightScreenModel(
@@ -156,9 +156,7 @@ class FlightScreenModel {
           json['layoutStrategy'] as String? ?? 'sidebarDashboard',
         ),
         widgets: (json['widgets'] as List<dynamic>)
-            .map(
-              (w) => WidgetPlacementModel.fromJson(w as Map<String, dynamic>),
-            )
+            .map((w) => WidgetPlacementModel.fromJson(w as Map<String, dynamic>))
             .toList(),
       );
 }
@@ -309,50 +307,50 @@ class UIConfig {
   }
 
   Map<String, dynamic> toJson() => {
-    'navBarStyle': navBarStyle.name,
-    'layoutStrategyStyle': layoutStrategyStyle.name,
-    'numericWidgetStyle': numericWidgetStyle.name,
-    'windWidgetStyle': windWidgetStyle.name,
-    'liftSinkBarStyle': liftSinkBarStyle.name,
-    'altitudeChartStyle': altitudeChartStyle.name,
-    'thermalingStyle': thermalingStyle.name,
-    'settingsStyle': settingsStyle.name,
-    'activeScreenId': activeScreenId,
-    'screens': screens.map((s) => s.toJson()).toList(),
-  };
+        'navBarStyle': navBarStyle.name,
+        'layoutStrategyStyle': layoutStrategyStyle.name,
+        'numericWidgetStyle': numericWidgetStyle.name,
+        'windWidgetStyle': windWidgetStyle.name,
+        'liftSinkBarStyle': liftSinkBarStyle.name,
+        'altitudeChartStyle': altitudeChartStyle.name,
+        'thermalingStyle': thermalingStyle.name,
+        'settingsStyle': settingsStyle.name,
+        'activeScreenId': activeScreenId,
+        'screens': screens.map((s) => s.toJson()).toList(),
+      };
 
   factory UIConfig.fromJson(Map<String, dynamic> json) => UIConfig(
-    navBarStyle: NavBarStyle.values.byName(
-      json['navBarStyle'] as String? ?? 'translucentDrawer',
-    ),
-    layoutStrategyStyle: LayoutStrategyStyle.values.byName(
-      json['layoutStrategyStyle'] as String? ?? 'sidebarDashboard',
-    ),
-    numericWidgetStyle: NumericWidgetStyle.values.byName(
-      json['numericWidgetStyle'] as String? ?? 'minimalistText',
-    ),
-    windWidgetStyle: WindWidgetStyle.values.byName(
-      json['windWidgetStyle'] as String? ?? 'relativeArrow',
-    ),
-    liftSinkBarStyle: LiftSinkBarStyle.values.byName(
-      json['liftSinkBarStyle'] as String? ?? 'verticalEdgeBar',
-    ),
-    altitudeChartStyle: AltitudeChartStyle.values.byName(
-      json['altitudeChartStyle'] as String? ?? 'minimalSparkline',
-    ),
-    thermalingStyle: ThermalingStyle.values.byName(
-      json['thermalingStyle'] as String? ?? 'assistantDisplay',
-    ),
-    settingsStyle: SettingsStyle.values.byName(
-      json['settingsStyle'] as String? ?? 'categorizedList',
-    ),
-    activeScreenId: json['activeScreenId'] as String? ?? 'normal_flight',
-    screens: json['screens'] != null
-        ? (json['screens'] as List<dynamic>)
-              .map((s) => FlightScreenModel.fromJson(s as Map<String, dynamic>))
-              .toList()
-        : defaultConfig().screens,
-  );
+        navBarStyle: NavBarStyle.values.byName(
+          json['navBarStyle'] as String? ?? 'translucentDrawer',
+        ),
+        layoutStrategyStyle: LayoutStrategyStyle.values.byName(
+          json['layoutStrategyStyle'] as String? ?? 'sidebarDashboard',
+        ),
+        numericWidgetStyle: NumericWidgetStyle.values.byName(
+          json['numericWidgetStyle'] as String? ?? 'minimalistText',
+        ),
+        windWidgetStyle: WindWidgetStyle.values.byName(
+          json['windWidgetStyle'] as String? ?? 'relativeArrow',
+        ),
+        liftSinkBarStyle: LiftSinkBarStyle.values.byName(
+          json['liftSinkBarStyle'] as String? ?? 'verticalEdgeBar',
+        ),
+        altitudeChartStyle: AltitudeChartStyle.values.byName(
+          json['altitudeChartStyle'] as String? ?? 'minimalSparkline',
+        ),
+        thermalingStyle: ThermalingStyle.values.byName(
+          json['thermalingStyle'] as String? ?? 'assistantDisplay',
+        ),
+        settingsStyle: SettingsStyle.values.byName(
+          json['settingsStyle'] as String? ?? 'categorizedList',
+        ),
+        activeScreenId: json['activeScreenId'] as String? ?? 'normal_flight',
+        screens: json['screens'] != null
+            ? (json['screens'] as List<dynamic>)
+                .map((s) => FlightScreenModel.fromJson(s as Map<String, dynamic>))
+                .toList()
+            : defaultConfig().screens,
+      );
 
   String encodeJson() => jsonEncode(toJson());
 

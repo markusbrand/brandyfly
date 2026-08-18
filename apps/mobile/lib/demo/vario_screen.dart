@@ -22,9 +22,7 @@ class FlightSnapshot {
 
 /// Emits [FlightSnapshot]s for the demo UI.
 class MockFlightDataService {
-  MockFlightDataService({
-    this.tickInterval = const Duration(milliseconds: 100),
-  });
+  MockFlightDataService({this.tickInterval = const Duration(milliseconds: 100)});
 
   final Duration tickInterval;
 
@@ -75,9 +73,10 @@ class MockFlightDataService {
       _history.removeAt(0);
     }
 
-    final glide = noisyVario.abs() > 0.1 && noisyVario < 0
-        ? noisySpeed / 3.6 / noisyVario.abs()
-        : null;
+    final glide =
+        noisyVario.abs() > 0.1 && noisyVario < 0
+            ? noisySpeed / 3.6 / noisyVario.abs()
+            : null;
 
     _controller.add(
       FlightSnapshot(
@@ -113,9 +112,7 @@ class VarioScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Color(0xFF0D0D1A),
-      body: SafeArea(
-        child: Padding(padding: EdgeInsets.all(20), child: _VarioShell()),
-      ),
+      body: SafeArea(child: Padding(padding: EdgeInsets.all(20), child: _VarioShell())),
     );
   }
 }
@@ -181,11 +178,7 @@ class _VarioShellState extends State<_VarioShell> {
 }
 
 class VarioDashboard extends StatelessWidget {
-  const VarioDashboard({
-    super.key,
-    required this.snapshot,
-    this.compact = false,
-  });
+  const VarioDashboard({super.key, required this.snapshot, this.compact = false});
 
   final FlightSnapshot snapshot;
   final bool compact;
@@ -337,9 +330,8 @@ class _GaugePainter extends CustomPainter {
     const startAngle = pi * 0.75;
     const fullSweep = pi * 1.5;
     final arcSweep = fullSweep * fraction.abs() * (fraction >= 0 ? 1 : -1);
-    final arcStart = fraction >= 0
-        ? startAngle + fullSweep / 2
-        : startAngle + fullSweep / 2 + arcSweep;
+    final arcStart =
+        fraction >= 0 ? startAngle + fullSweep / 2 : startAngle + fullSweep / 2 + arcSweep;
 
     final arcPaint = Paint()
       ..color = color
@@ -367,8 +359,7 @@ class _GaugePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GaugePainter old) =>
-      old.fraction != fraction || old.color != color;
+  bool shouldRepaint(_GaugePainter old) => old.fraction != fraction || old.color != color;
 }
 
 class _BottomStats extends StatelessWidget {
@@ -466,13 +457,8 @@ class _SparklinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (values.length < 2) return;
-    double minValue = values[0];
-    double maxValue = values[0];
-    for (int i = 1; i < values.length; i++) {
-      final val = values[i];
-      if (val < minValue) minValue = val;
-      if (val > maxValue) maxValue = val;
-    }
+    final minValue = values.reduce((a, b) => a < b ? a : b);
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
     final range = (maxValue - minValue).abs().clamp(1.0, double.infinity);
 
     final paint = Paint()

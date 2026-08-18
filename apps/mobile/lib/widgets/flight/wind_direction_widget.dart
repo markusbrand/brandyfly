@@ -74,10 +74,10 @@ class WindDirectionWidget extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   // Option 2: Mini Compass Rose
   Widget _buildMiniCompassRose(BuildContext context) {
