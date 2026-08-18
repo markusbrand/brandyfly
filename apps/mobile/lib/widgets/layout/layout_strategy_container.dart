@@ -51,7 +51,8 @@ class LayoutStrategyContainer extends StatelessWidget {
                     showModalBottomSheet(
                       context: context,
                       backgroundColor: Colors.transparent,
-                      builder: (ctx) => WidgetPickerSheet(screenManager: screenManager),
+                      builder: (ctx) =>
+                          WidgetPickerSheet(screenManager: screenManager),
                     );
                   },
                 ),
@@ -106,12 +107,18 @@ class LayoutStrategyContainer extends StatelessWidget {
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.cyanAccent.withAlpha(50), width: 2),
+                      border: Border.all(
+                        color: Colors.cyanAccent.withAlpha(50),
+                        width: 2,
+                      ),
                     ),
                     child: const Center(
                       child: Text(
                         'FREEFORM HUD EDIT MODE',
-                        style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.cyanAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -180,8 +187,12 @@ class LayoutStrategyContainer extends StatelessWidget {
     FlightScreenModel screen,
     bool isEditMode,
   ) {
-    final varioWidgets = screen.widgets.where((w) => w.type == WidgetType.varioBar).toList();
-    final mainWidgets = screen.widgets.where((w) => w.type != WidgetType.varioBar).toList();
+    final varioWidgets = screen.widgets
+        .where((w) => w.type == WidgetType.varioBar)
+        .toList();
+    final mainWidgets = screen.widgets
+        .where((w) => w.type != WidgetType.varioBar)
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -197,7 +208,11 @@ class LayoutStrategyContainer extends StatelessWidget {
                   for (final widgetModel in varioWidgets)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: _buildWidgetWrapper(context, widgetModel, isEditMode),
+                      child: _buildWidgetWrapper(
+                        context,
+                        widgetModel,
+                        isEditMode,
+                      ),
                     ),
                 ],
               ),
@@ -209,7 +224,9 @@ class LayoutStrategyContainer extends StatelessWidget {
             child: Container(
               decoration: isEditMode
                   ? BoxDecoration(
-                      border: Border.all(color: Colors.yellowAccent.withAlpha(100)),
+                      border: Border.all(
+                        color: Colors.yellowAccent.withAlpha(100),
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     )
                   : null,
@@ -221,7 +238,11 @@ class LayoutStrategyContainer extends StatelessWidget {
                     SizedBox(
                       width: 160,
                       height: 100,
-                      child: _buildWidgetWrapper(context, widgetModel, isEditMode),
+                      child: _buildWidgetWrapper(
+                        context,
+                        widgetModel,
+                        isEditMode,
+                      ),
                     ),
                 ],
               ),
@@ -295,7 +316,8 @@ class LayoutStrategyContainer extends StatelessWidget {
     final climb = (telemetryData['climb'] as num?)?.toDouble() ?? 1.8;
     final windDeg = (telemetryData['windDir'] as num?)?.toDouble() ?? 220.0;
     final windSpd = (telemetryData['windSpeed'] as num?)?.toDouble() ?? 14.0;
-    final history = (telemetryData['history'] as List<dynamic>?)
+    final history =
+        (telemetryData['history'] as List<dynamic>?)
             ?.map((e) => (e as num).toDouble())
             .toList() ??
         [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];

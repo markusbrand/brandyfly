@@ -3,10 +3,7 @@ import '../../models/ui_config.dart';
 import '../../services/screen_manager_service.dart';
 
 class UISettingsPanel extends StatelessWidget {
-  const UISettingsPanel({
-    super.key,
-    required this.screenManager,
-  });
+  const UISettingsPanel({super.key, required this.screenManager});
 
   final ScreenManagerService screenManager;
 
@@ -49,7 +46,8 @@ class UISettingsPanel extends StatelessWidget {
             currentValue: cfg.navBarStyle,
             values: NavBarStyle.values,
             labels: {
-              NavBarStyle.translucentDrawer: 'Option 1: Full-Width Translucent Drawer',
+              NavBarStyle.translucentDrawer:
+                  'Option 1: Full-Width Translucent Drawer',
               NavBarStyle.floatingPill: 'Option 2: Floating Action Pill',
               NavBarStyle.cornerMenu: 'Option 3: Corner Menu Button',
             },
@@ -62,7 +60,8 @@ class UISettingsPanel extends StatelessWidget {
             labels: {
               LayoutStrategyStyle.freeformHud: 'Option 1: Freeform HUD',
               LayoutStrategyStyle.snapToGrid: 'Option 2: Snap-to-Grid',
-              LayoutStrategyStyle.sidebarDashboard: 'Option 3: Sidebar Dashboard',
+              LayoutStrategyStyle.sidebarDashboard:
+                  'Option 3: Sidebar Dashboard',
             },
             onChanged: (val) => screenManager.setLayoutStrategyStyle(val),
           ),
@@ -107,7 +106,8 @@ class UISettingsPanel extends StatelessWidget {
             currentValue: cfg.altitudeChartStyle,
             values: AltitudeChartStyle.values,
             labels: {
-              AltitudeChartStyle.minimalSparkline: 'Option 1: Minimal Sparkline',
+              AltitudeChartStyle.minimalSparkline:
+                  'Option 1: Minimal Sparkline',
               AltitudeChartStyle.filledAreaGraph: 'Option 2: Filled Area Graph',
               AltitudeChartStyle.detailedGrid: 'Option 3: Detailed Grid',
             },
@@ -132,7 +132,8 @@ class UISettingsPanel extends StatelessWidget {
             values: SettingsStyle.values,
             labels: {
               SettingsStyle.modalOverlay: 'Option 1: Modal Overlay Dialog',
-              SettingsStyle.categorizedList: 'Option 2: Full-Screen Categorized List',
+              SettingsStyle.categorizedList:
+                  'Option 2: Full-Screen Categorized List',
               SettingsStyle.cardDashboard: 'Option 3: Card-Based Dashboard',
             },
             onChanged: (val) => screenManager.setSettingsStyle(val),
@@ -157,7 +158,11 @@ class UISettingsPanel extends StatelessWidget {
               children: [
                 const Text(
                   'Quick UI Settings',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white),
@@ -175,7 +180,8 @@ class UISettingsPanel extends StatelessWidget {
                       currentValue: cfg.navBarStyle,
                       values: NavBarStyle.values,
                       labels: {
-                        NavBarStyle.translucentDrawer: 'Option 1: Translucent Drawer',
+                        NavBarStyle.translucentDrawer:
+                            'Option 1: Translucent Drawer',
                         NavBarStyle.floatingPill: 'Option 2: Floating Pill',
                         NavBarStyle.cornerMenu: 'Option 3: Corner Menu',
                       },
@@ -331,7 +337,10 @@ class UISettingsPanel extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             DropdownButton<T>(
@@ -340,7 +349,10 @@ class UISettingsPanel extends StatelessWidget {
               items: values.map((v) {
                 return DropdownMenuItem<T>(
                   value: v,
-                  child: Text(v.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  child: Text(
+                    v.name,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 );
               }).toList(),
               onChanged: (val) {
