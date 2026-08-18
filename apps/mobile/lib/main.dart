@@ -13,7 +13,9 @@ import 'widgets/settings/ui_settings_panel.dart';
 
 void main() {
   final config = MockFlightModeConfig.fromEnvironment();
-  final effectiveConfig = config.copyWith(enabled: kDebugMode || config.enabled);
+  final effectiveConfig = config.copyWith(
+    enabled: kDebugMode || config.enabled,
+  );
   effectiveConfig.validateBuildMode(isReleaseBuild: kReleaseMode);
   runApp(BrandyFlyApp(config: effectiveConfig));
 }
@@ -72,7 +74,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
           });
         });
       } else {
-        _platformVersion = await widget.native.getPlatformVersion() ??
+        _platformVersion =
+            await widget.native.getPlatformVersion() ??
             'Unknown platform version';
       }
     } on PlatformException catch (error) {
@@ -116,29 +119,28 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
           home: _startupError != null
               ? _StartupErrorView(message: _startupError!)
               : _loading
-                  ? const _LoadingView()
-                  : TopNavBarOverlay(
-                      screenManager: _screenManager,
-                      child: _screenManager.isSettingsVisible
-                          ? UISettingsPanel(screenManager: _screenManager)
-                          : widget.config.enabled
-                              ? _MockFlightView(
-                                  config: widget.config,
-                                  replay: _replay!,
-                                  screenManager: _screenManager,
-                                  onNext: () => setState(() {
-                                    _replay!.advance();
-                                  }),
-                                  onReset: () => setState(() {
-                                    _replay!.reset();
-                                  }),
-                                )
-                              : _LiveFlightView(
-                                  platformVersion:
-                                      _platformVersion ?? 'Unknown',
-                                  screenManager: _screenManager,
-                                ),
-                    ),
+              ? const _LoadingView()
+              : TopNavBarOverlay(
+                  screenManager: _screenManager,
+                  child: _screenManager.isSettingsVisible
+                      ? UISettingsPanel(screenManager: _screenManager)
+                      : widget.config.enabled
+                      ? _MockFlightView(
+                          config: widget.config,
+                          replay: _replay!,
+                          screenManager: _screenManager,
+                          onNext: () => setState(() {
+                            _replay!.advance();
+                          }),
+                          onReset: () => setState(() {
+                            _replay!.reset();
+                          }),
+                        )
+                      : _LiveFlightView(
+                          platformVersion: _platformVersion ?? 'Unknown',
+                          screenManager: _screenManager,
+                        ),
+                ),
         );
       },
     );
@@ -150,9 +152,7 @@ class _LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -168,10 +168,7 @@ class _StartupErrorView extends StatelessWidget {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(
-            message,
-            textAlign: TextAlign.center,
-          ),
+          child: Text(message, textAlign: TextAlign.center),
         ),
       ),
     );
@@ -277,7 +274,9 @@ class _MockFlightView extends StatelessWidget {
               children: [
                 Text('Fixture: ${config.fixtureVersion}'),
                 Text('Seed: ${config.seed}'),
-                Text('Clock step: ${config.logicalClockStep.inMilliseconds} ms'),
+                Text(
+                  'Clock step: ${config.logicalClockStep.inMilliseconds} ms',
+                ),
                 Text('Provenance: ${config.provenance}'),
                 Text('Session label: ${config.sessionLabel}'),
                 Text('Replay hash: ${replay.canonicalReplayHash}'),
@@ -364,10 +363,7 @@ class _SectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             child,
           ],
