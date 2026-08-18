@@ -4,6 +4,13 @@ BrandyFly is a local-first, open-source paragliding vario application for
 Android and iOS. The project is in its foundation phase and does not yet provide
 flight-ready functionality.
 
+## Documentation
+
+We maintain separate documentation tailored for different audiences to help you get the most out of BrandyFly:
+
+- **[User Guide](docs/user/README.md):** Information for pilots using the BrandyFly application, including features, safety guidelines, and setup instructions.
+- **[Technical Documentation](docs/tech/README.md):** Information for developers, including architecture, setup, and development guidelines.
+
 ## Architecture
 
 - `apps/mobile`: adaptive Flutter application
@@ -14,8 +21,8 @@ flight-ready functionality.
 - `packages/contracts`: versioned cross-module contracts
 - `openspec`: requirements and change proposals
 
-See [Architecture](docs/architecture.md) and
-[Development](docs/development.md) for details.
+See our detailed [Architecture](docs/tech/architecture.md) and
+[Development](docs/tech/development.md) documentation for more information.
 
 ## OpenSpec workflow
 
