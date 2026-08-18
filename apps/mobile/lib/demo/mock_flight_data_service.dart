@@ -31,7 +31,9 @@ class FlightSnapshot {
 /// Emits [FlightSnapshot]s at [tickInterval] by replaying a synthetic
 /// paragliding flight profile.  The profile loops so the demo runs forever.
 class MockFlightDataService {
-  MockFlightDataService({this.tickInterval = const Duration(milliseconds: 100)});
+  MockFlightDataService({
+    this.tickInterval = const Duration(milliseconds: 100),
+  });
 
   final Duration tickInterval;
 
@@ -86,10 +88,9 @@ class MockFlightDataService {
     _history.add(noisyAlt);
     if (_history.length > _historyLength) _history.removeAt(0);
 
-    final glide =
-        noisyVario.abs() > 0.1 && noisyVario < 0
-            ? noisySpeed / 3.6 / noisyVario.abs()
-            : null;
+    final glide = noisyVario.abs() > 0.1 && noisyVario < 0
+        ? noisySpeed / 3.6 / noisyVario.abs()
+        : null;
 
     _controller.add(
       FlightSnapshot(
