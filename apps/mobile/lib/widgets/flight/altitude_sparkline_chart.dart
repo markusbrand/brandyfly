@@ -68,7 +68,11 @@ class AltitudeSparklineChart extends StatelessWidget {
         children: [
           const Text(
             'ALTITUDE PROFILE (AREA)',
-            style: TextStyle(color: Colors.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.cyanAccent,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -100,7 +104,11 @@ class AltitudeSparklineChart extends StatelessWidget {
         children: [
           Text(
             'ALTITUDE / TIME GRID',
-            style: TextStyle(color: Colors.greenAccent.shade400, fontSize: 10, fontFamily: 'monospace'),
+            style: TextStyle(
+              color: Colors.greenAccent.shade400,
+              fontSize: 10,
+              fontFamily: 'monospace',
+            ),
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -148,8 +156,13 @@ class _SparklinePainter extends CustomPainter {
       }
     }
 
-    final minVal = history.reduce((a, b) => a < b ? a : b);
-    final maxVal = history.reduce((a, b) => a > b ? a : b);
+    double minVal = history[0];
+    double maxVal = history[0];
+    for (int i = 1; i < history.length; i++) {
+      final val = history[i];
+      if (val < minVal) minVal = val;
+      if (val > maxVal) maxVal = val;
+    }
     final range = (maxVal - minVal) == 0 ? 1.0 : (maxVal - minVal);
 
     final path = Path();
@@ -185,5 +198,10 @@ class _SparklinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SparklinePainter oldDelegate) => true;
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) {
+    return oldDelegate.history != history ||
+        oldDelegate.lineColor != lineColor ||
+        oldDelegate.isFilled != isFilled ||
+        oldDelegate.drawGrid != drawGrid;
+  }
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -14,7 +15,13 @@ const shutdownTimeout = 10 * time.Second
 
 func NewHandler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(response http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /healthz", func(response http.ResponseWriter, request *http.Request) {
+		if expectedToken := os.Getenv("BRANDYFLY_HEALTH_TOKEN"); expectedToken != "" {
+			if request.Header.Get("Authorization") != "Bearer "+expectedToken {
+				http.Error(response, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
 		response.Header().Set("Content-Type", "application/json")
 		response.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(response, "{\"status\":\"ok\"}\n")
@@ -62,7 +69,16 @@ func Run(ctx context.Context, logger *slog.Logger, address string) error {
 
 func CheckHealth(url string, timeout time.Duration) error {
 	client := &http.Client{Timeout: timeout}
-	response, err := client.Get(url)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("create health request: %w", err)
+	}
+
+	if token := os.Getenv("BRANDYFLY_HEALTH_TOKEN"); token != "" {
+		request.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	response, err := client.Do(request)
 	if err != nil {
 		return fmt.Errorf("request health endpoint: %w", err)
 	}
