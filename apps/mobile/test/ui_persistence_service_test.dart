@@ -1,14 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:brandyfly/services/ui_persistence_service.dart';
 import 'package:brandyfly/models/ui_config.dart';
-import 'package:flutter/services.dart';
+
+class ThrowingMockSharedPreferencesStore extends SharedPreferencesStorePlatform {
+  @override
+  Future<bool> clear() async => throw Exception('clear');
+  @override
+  Future<Map<String, Object>> getAll() async => throw Exception('getAll');
+  @override
+  Future<bool> remove(String key) async => throw Exception('remove');
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async => throw Exception('setValue');
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('UIPersistenceService', () {
-    const String _keyUIConfig = 'brandyfly_ui_config_v1';
+    const String keyUIConfig = 'brandyfly_ui_config_v1';
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
@@ -21,16 +32,28 @@ void main() {
       expect(result, isTrue);
     });
 
-    // Currently we can't easily force SharedPreferences.getInstance() to fail in Dart,
-    // so we test the null fallback behaviors directly by passing null via the constructor.
-    test('handles null SharedPreferences gracefully (fallback behavior)', () async {
-      final service = UIPersistenceService(null);
+    test('init() handles SharedPreferences initialization failure gracefully', () async {
+      final originalInstance = SharedPreferencesStorePlatform.instance;
+      SharedPreferencesStorePlatform.instance = ThrowingMockSharedPreferencesStore();
 
-      // loadConfig should return defaultConfig when _prefs is null
+      final service = await UIPersistenceService.init();
+
+      // Should fall back to null prefs and default config
       final config = service.loadConfig();
       expect(config.screens.length, equals(UIConfig.defaultConfig().screens.length));
 
-      // saveConfig should return false when _prefs is null
+      final success = await service.saveConfig(config);
+      expect(success, isFalse);
+
+      SharedPreferencesStorePlatform.instance = originalInstance;
+    });
+
+    test('handles null SharedPreferences explicitly passed', () async {
+      final service = UIPersistenceService(null);
+
+      final config = service.loadConfig();
+      expect(config.screens.length, equals(UIConfig.defaultConfig().screens.length));
+
       final success = await service.saveConfig(config);
       expect(success, isFalse);
     });
@@ -43,7 +66,7 @@ void main() {
 
     test('loadConfig() returns default config when json is invalid', () async {
       SharedPreferences.setMockInitialValues({
-        _keyUIConfig: '{ invalid json }'
+        keyUIConfig: '{ invalid json }'
       });
       final service = await UIPersistenceService.init();
       final config = service.loadConfig();
@@ -57,7 +80,7 @@ void main() {
       );
 
       SharedPreferences.setMockInitialValues({
-        _keyUIConfig: modifiedConfig.encodeJson()
+        keyUIConfig: modifiedConfig.encodeJson()
       });
 
       final service = await UIPersistenceService.init();
