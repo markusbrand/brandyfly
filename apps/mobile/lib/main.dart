@@ -191,11 +191,13 @@ class _LiveFlightView extends StatelessWidget {
         title: const Text('BrandyFly'),
         leading: IconButton(
           icon: const Icon(Icons.menu),
+          tooltip: 'Open Navigation Menu',
           onPressed: () => screenManager.toggleNavBar(true),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_note),
+            tooltip: 'Enable Edit Mode',
             onPressed: () => screenManager.toggleEditMode(true),
           ),
           const _ModeChip(label: 'LIVE', color: Colors.green),
@@ -254,11 +256,13 @@ class _MockFlightView extends StatelessWidget {
         title: const Text('BrandyFly'),
         leading: IconButton(
           icon: const Icon(Icons.menu),
+          tooltip: 'Open Navigation Menu',
           onPressed: () => screenManager.toggleNavBar(true),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_note),
+            tooltip: 'Enable Edit Mode',
             onPressed: () => screenManager.toggleEditMode(true),
           ),
           const _ModeChip(label: 'SIMULATED', color: Colors.orange),

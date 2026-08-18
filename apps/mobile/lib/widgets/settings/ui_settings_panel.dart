@@ -32,6 +32,7 @@ class UISettingsPanel extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
+            tooltip: 'Close',
             onPressed: () => screenManager.toggleSettingsPanel(false),
           ),
         ],
@@ -165,6 +166,7 @@ class UISettingsPanel extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white),
+                  tooltip: 'Close',
                   onPressed: () => screenManager.toggleSettingsPanel(false),
                 ),
               ],
@@ -216,6 +218,7 @@ class UISettingsPanel extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
+            tooltip: 'Close',
             onPressed: () => screenManager.toggleSettingsPanel(false),
           ),
         ],

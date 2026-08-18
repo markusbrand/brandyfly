@@ -285,6 +285,7 @@ class LayoutStrategyContainer extends StatelessWidget {
               child: IconButton(
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.delete, size: 14, color: Colors.white),
+                tooltip: 'Delete Widget',
                 onPressed: () => screenManager.removeWidget(model.id),
               ),
             ),
