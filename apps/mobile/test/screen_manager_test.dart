@@ -78,6 +78,42 @@ void main() {
       expect(manager.activeScreen.widgets.length, initialWidgetCount);
     });
 
+    test('repositions and resizes widgets with bounds clamping', () {
+      final manager = ScreenManagerService();
+      final widgetId = manager.activeScreen.widgets.first.id;
+
+      // Update position
+      manager.updateWidgetPosition(widgetId, 1, 2);
+      var w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.x, 1);
+      expect(w.y, 2);
+
+      // Move widget
+      manager.moveWidget(widgetId, 1, -1);
+      w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.x, 2);
+      expect(w.y, 1);
+
+      // Resize widget
+      manager.updateWidgetSize(widgetId, 2, 2);
+      w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.w, 2);
+      expect(w.h, 2);
+
+      manager.resizeWidget(widgetId, -1, 1);
+      w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.w, 1);
+      expect(w.h, 3);
+
+      // Clamping checks: width cannot exceed grid columns (4), x clamped so x+w <= 4
+      manager.updateWidgetPlacement(w.copyWith(x: 3, w: 3, y: -5, h: 10));
+      w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.w, 3);
+      expect(w.x, 1); // clamped to 4 - 3 = 1
+      expect(w.y, 0); // clamped to min 0
+      expect(w.h, 6); // clamped to max 6
+    });
+
     test('serializes and deserializes UIConfig correctly', () {
       final config = UIConfig.defaultConfig().copyWith(
         navBarStyle: NavBarStyle.cornerMenu,

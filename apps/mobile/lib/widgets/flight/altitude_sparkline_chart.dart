@@ -26,19 +26,20 @@ class AltitudeSparklineChart extends StatelessWidget {
   // Option 1: Minimal Sparkline
   Widget _buildMinimalSparkline(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.black45,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
             'ALTITUDE HISTORY (SPARKLINE)',
-            style: TextStyle(color: Colors.white54, fontSize: 10),
+            style: TextStyle(color: Colors.white54, fontSize: 9),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Expanded(
             child: CustomPaint(
               painter: _SparklinePainter(
@@ -57,7 +58,7 @@ class AltitudeSparklineChart extends StatelessWidget {
   // Option 2: Filled Area Graph
   Widget _buildFilledAreaGraph(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.blueGrey.shade900,
         borderRadius: BorderRadius.circular(10),
@@ -65,16 +66,17 @@ class AltitudeSparklineChart extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
             'ALTITUDE PROFILE (AREA)',
             style: TextStyle(
               color: Colors.cyanAccent,
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Expanded(
             child: CustomPaint(
               painter: _SparklinePainter(
@@ -93,7 +95,7 @@ class AltitudeSparklineChart extends StatelessWidget {
   // Option 3: Detailed Grid
   Widget _buildDetailedGrid(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.circular(10),
@@ -101,16 +103,17 @@ class AltitudeSparklineChart extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'ALTITUDE / TIME GRID',
             style: TextStyle(
               color: Colors.greenAccent.shade400,
-              fontSize: 10,
+              fontSize: 9,
               fontFamily: 'monospace',
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Expanded(
             child: CustomPaint(
               painter: _SparklinePainter(

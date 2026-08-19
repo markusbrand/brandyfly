@@ -171,11 +171,60 @@ void main() {
               ),
             ),
           );
-          await tester.pumpAndSettle();
-
           expect(find.text('Done Editing'), findsOneWidget);
           expect(find.text('Add Widget'), findsOneWidget);
         }
+      },
+    );
+
+    testWidgets(
+      'LayoutStrategyContainer allows interactive repositioning and resizing of widgets',
+      (tester) async {
+        final manager = ScreenManagerService();
+        manager.toggleEditMode(true);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {'altitude': 1450.0, 'speed': 42.5},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final firstWidget = manager.activeScreen.widgets.first;
+        final id = firstWidget.id;
+
+        // Test position nudge right button
+        final initialX = firstWidget.x;
+        await tester.tap(find.byKey(Key('btn_move_right_$id')));
+        await tester.pumpAndSettle();
+        expect(
+          manager.activeScreen.widgets.firstWhere((w) => w.id == id).x,
+          initialX + 1,
+        );
+
+        // Test width decrease and increase buttons
+        final currentW = manager.activeScreen.widgets.firstWhere((w) => w.id == id).w;
+        await tester.tap(find.byKey(Key('btn_dec_width_$id')));
+        await tester.pumpAndSettle();
+        expect(
+          manager.activeScreen.widgets.firstWhere((w) => w.id == id).w,
+          currentW - 1,
+        );
+
+        // Test config dialog
+        await tester.tap(find.byKey(Key('btn_config_$id')));
+        await tester.pumpAndSettle();
+        expect(find.text('Configure ${firstWidget.type.name.toUpperCase()}'), findsOneWidget);
+
+        // Tap Apply in config dialog
+        await tester.tap(find.text('Apply'));
+        await tester.pumpAndSettle();
+        expect(find.text('Configure ${firstWidget.type.name.toUpperCase()}'), findsNothing);
       },
     );
   });

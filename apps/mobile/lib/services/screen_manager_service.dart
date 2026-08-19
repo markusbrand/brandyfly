@@ -100,11 +100,65 @@ class ScreenManagerService extends ChangeNotifier {
 
   void updateWidgetPlacement(WidgetPlacementModel placement) {
     final currentActive = activeScreen;
+    final clampedW = placement.w.clamp(1, 4);
+    final clampedH = placement.h.clamp(1, 6);
+    final clampedX = placement.x.clamp(0, (4 - clampedW).clamp(0, 3));
+    final clampedY = placement.y.clamp(0, 10);
+
+    final sanitized = placement.copyWith(
+      x: clampedX,
+      y: clampedY,
+      w: clampedW,
+      h: clampedH,
+    );
+
     final updatedWidgets = currentActive.widgets.map((w) {
-      return w.id == placement.id ? placement : w;
+      return w.id == sanitized.id ? sanitized : w;
     }).toList();
 
     _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
+  }
+
+  void updateWidgetPosition(String widgetId, int x, int y) {
+    final currentActive = activeScreen;
+    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
+    if (index == -1) return;
+    final current = currentActive.widgets[index];
+    updateWidgetPlacement(current.copyWith(x: x, y: y));
+  }
+
+  void updateWidgetSize(String widgetId, int w, int h) {
+    final currentActive = activeScreen;
+    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
+    if (index == -1) return;
+    final current = currentActive.widgets[index];
+    updateWidgetPlacement(current.copyWith(w: w, h: h));
+  }
+
+  void moveWidget(String widgetId, int dx, int dy) {
+    final currentActive = activeScreen;
+    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
+    if (index == -1) return;
+    final current = currentActive.widgets[index];
+    updateWidgetPlacement(
+      current.copyWith(
+        x: current.x + dx,
+        y: current.y + dy,
+      ),
+    );
+  }
+
+  void resizeWidget(String widgetId, int dw, int dh) {
+    final currentActive = activeScreen;
+    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
+    if (index == -1) return;
+    final current = currentActive.widgets[index];
+    updateWidgetPlacement(
+      current.copyWith(
+        w: current.w + dw,
+        h: current.h + dh,
+      ),
+    );
   }
 
   void addWidget(WidgetType type) {
