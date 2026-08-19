@@ -264,13 +264,16 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                   ),
                 ),
                 const SizedBox(width: 12),
-                InkWell(
-                  onTap: () => widget.screenManager.toggleNavBar(false),
-                  child: const Icon(
+                IconButton(
+                  icon: const Icon(
                     Icons.close,
                     color: Colors.white70,
                     size: 20,
                   ),
+                  tooltip: 'Close',
+                  onPressed: () => widget.screenManager.toggleNavBar(false),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
