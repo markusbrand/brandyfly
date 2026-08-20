@@ -412,12 +412,25 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
 
   void _promptAddScreen(BuildContext context) {
     final controller = TextEditingController();
+
+    void submit(BuildContext ctx) {
+      final name = controller.text.trim();
+      if (name.isNotEmpty) {
+        widget.screenManager.addScreen(name);
+      }
+      Navigator.pop(ctx);
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Add New Screen'),
         content: TextField(
           controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(ctx),
           decoration: const InputDecoration(
             hintText: 'Screen Name (e.g. Thermaling, Navigation)',
           ),
@@ -428,13 +441,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                widget.screenManager.addScreen(name);
-              }
-              Navigator.pop(ctx);
-            },
+            onPressed: () => submit(ctx),
             child: const Text('Add'),
           ),
         ],
