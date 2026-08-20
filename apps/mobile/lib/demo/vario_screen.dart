@@ -316,10 +316,26 @@ class _VarioGauge extends StatelessWidget {
 }
 
 class _GaugePainter extends CustomPainter {
-  _GaugePainter({required this.fraction, required this.color});
+  _GaugePainter({required this.fraction, required this.color})
+      : _bgPaint = Paint()
+          ..color = const Color(0xFF1A1A2E)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 16,
+        _arcPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 16
+          ..strokeCap = StrokeCap.round,
+        _tickPaint = Paint()
+          ..color = const Color(0xFF3A3A5C)
+          ..strokeWidth = 1.5;
 
   final double fraction;
   final Color color;
+
+  // Cached Paint objects for performance (Bolt optimization)
+  final Paint _bgPaint;
+  final Paint _arcPaint;
+  final Paint _tickPaint;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -328,10 +344,7 @@ class _GaugePainter extends CustomPainter {
     canvas.drawCircle(
       center,
       radius,
-      Paint()
-        ..color = const Color(0xFF1A1A2E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 16,
+      _bgPaint,
     );
 
     const startAngle = pi * 0.75;
@@ -341,28 +354,21 @@ class _GaugePainter extends CustomPainter {
         ? startAngle + fullSweep / 2
         : startAngle + fullSweep / 2 + arcSweep;
 
-    final arcPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 16
-      ..strokeCap = StrokeCap.round;
+    _arcPaint.color = color;
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       arcStart,
       arcSweep.abs(),
       false,
-      arcPaint,
+      _arcPaint,
     );
 
-    final tickPaint = Paint()
-      ..color = const Color(0xFF3A3A5C)
-      ..strokeWidth = 1.5;
     for (int i = 0; i <= 10; i++) {
       final angle = startAngle + fullSweep * i / 10;
       final inner = center + Offset(cos(angle), sin(angle)) * (radius - 12);
       final outer = center + Offset(cos(angle), sin(angle)) * (radius + 2);
-      canvas.drawLine(inner, outer, tickPaint);
+      canvas.drawLine(inner, outer, _tickPaint);
     }
   }
 
@@ -459,9 +465,16 @@ class _AltitudeSparkline extends StatelessWidget {
 }
 
 class _SparklinePainter extends CustomPainter {
-  _SparklinePainter(this.values);
+  _SparklinePainter(this.values)
+      : _linePaint = Paint()
+          ..color = const Color(0xFF7B8CDE)
+          ..strokeWidth = 1.5
+          ..style = PaintingStyle.stroke;
 
   final List<double> values;
+
+  // Cached Paint object for performance (Bolt optimization)
+  final Paint _linePaint;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -475,11 +488,6 @@ class _SparklinePainter extends CustomPainter {
     }
     final range = (maxValue - minValue).abs().clamp(1.0, double.infinity);
 
-    final paint = Paint()
-      ..color = const Color(0xFF7B8CDE)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
     final path = Path();
     for (int i = 0; i < values.length; i++) {
       final x = size.width * i / (values.length - 1);
@@ -490,7 +498,7 @@ class _SparklinePainter extends CustomPainter {
         path.lineTo(x, y);
       }
     }
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, _linePaint);
   }
 
   @override
