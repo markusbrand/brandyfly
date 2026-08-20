@@ -133,28 +133,40 @@ class _SparklinePainter extends CustomPainter {
     required this.lineColor,
     required this.isFilled,
     required this.drawGrid,
-  });
+  })  : _gridPaint = Paint()
+          ..color = Colors.white.withAlpha(25)
+          ..strokeWidth = 1,
+        _fillPaint = Paint()
+          ..style = PaintingStyle.fill,
+        _linePaint = Paint()
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke;
 
   final List<double> history;
   final Color lineColor;
   final bool isFilled;
   final bool drawGrid;
 
+  // Cached Paint objects to avoid allocations per frame (Bolt optimization)
+  final Paint _gridPaint;
+  final Paint _fillPaint;
+  final Paint _linePaint;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (history.isEmpty) return;
 
     if (drawGrid) {
-      final gridPaint = Paint()
-        ..color = Colors.white.withAlpha(25)
-        ..strokeWidth = 1;
       for (double x = 0; x < size.width; x += size.width / 5) {
-        canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+        canvas.drawLine(Offset(x, 0), Offset(x, size.height), _gridPaint);
       }
       for (double y = 0; y < size.height; y += size.height / 3) {
-        canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), _gridPaint);
       }
     }
+
+    _fillPaint.color = lineColor.withAlpha(60);
+    _linePaint.color = lineColor;
 
     double minVal = history[0];
     double maxVal = history[0];
@@ -184,17 +196,10 @@ class _SparklinePainter extends CustomPainter {
         ..lineTo(size.width, size.height)
         ..lineTo(0, size.height)
         ..close();
-      final fillPaint = Paint()
-        ..color = lineColor.withAlpha(60)
-        ..style = PaintingStyle.fill;
-      canvas.drawPath(fillPath, fillPaint);
+      canvas.drawPath(fillPath, _fillPaint);
     }
 
-    final linePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, linePaint);
+    canvas.drawPath(path, _linePaint);
   }
 
   @override
