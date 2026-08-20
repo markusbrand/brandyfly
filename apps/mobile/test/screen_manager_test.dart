@@ -49,6 +49,36 @@ void main() {
 
       manager.setWindWidgetStyle(WindWidgetStyle.miniCompassRose);
       expect(manager.config.windWidgetStyle, WindWidgetStyle.miniCompassRose);
+
+      manager.setMapWidgetStyle(MapWidgetStyle.satelliteTerrain);
+      expect(manager.config.mapWidgetStyle, MapWidgetStyle.satelliteTerrain);
+
+      manager.setMapOrientation(MapOrientation.northUp);
+      expect(manager.config.mapOrientation, MapOrientation.northUp);
+
+      manager.toggleMapAirspace(false);
+      expect(manager.config.mapShowAirspace, false);
+
+      manager.toggleMapThermals(false);
+      expect(manager.config.mapShowThermals, false);
+
+      manager.toggleMapTrack(false);
+      expect(manager.config.mapShowTrack, false);
+
+      manager.toggleMapContours(false);
+      expect(manager.config.mapShowContours, false);
+    });
+
+    test('adds map widget with full-screen initial dimensions', () {
+      final manager = ScreenManagerService();
+      manager.addWidget(WidgetType.map);
+
+      final added = manager.activeScreen.widgets.last;
+      expect(added.type, WidgetType.map);
+      expect(added.x, 0);
+      expect(added.y, 0);
+      expect(added.w, 4);
+      expect(added.h, 4);
     });
 
     test('adds, switches, and removes flight screens', () {
@@ -118,6 +148,9 @@ void main() {
       final config = UIConfig.defaultConfig().copyWith(
         navBarStyle: NavBarStyle.cornerMenu,
         numericWidgetStyle: NumericWidgetStyle.retroDigital,
+        mapWidgetStyle: MapWidgetStyle.thermalHeatmap,
+        mapOrientation: MapOrientation.headingUp,
+        mapShowAirspace: false,
       );
 
       final encoded = config.encodeJson();
@@ -125,6 +158,9 @@ void main() {
 
       expect(decoded.navBarStyle, NavBarStyle.cornerMenu);
       expect(decoded.numericWidgetStyle, NumericWidgetStyle.retroDigital);
+      expect(decoded.mapWidgetStyle, MapWidgetStyle.thermalHeatmap);
+      expect(decoded.mapOrientation, MapOrientation.headingUp);
+      expect(decoded.mapShowAirspace, false);
     });
   });
 }

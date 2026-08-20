@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/ui_config.dart';
 import '../../services/screen_manager_service.dart';
 import '../flight/altitude_sparkline_chart.dart';
+import '../flight/map_widget.dart';
 import '../flight/numeric_text_widget.dart';
 import '../flight/vario_lift_sink_bar.dart';
 import '../flight/wind_direction_widget.dart';
@@ -179,7 +180,7 @@ class LayoutStrategyContainer extends StatelessWidget {
                 ),
                 ..._buildGridGuides(totalWidth, contentHeight, cellWidth, cellHeight),
               ],
-              ...screen.widgets.map((widgetModel) {
+              ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
                 final left = widgetModel.x * cellWidth;
                 final top = widgetModel.y * cellHeight;
                 final width = widgetModel.w * cellWidth;
@@ -237,7 +238,7 @@ class LayoutStrategyContainer extends StatelessWidget {
                 ),
                 ..._buildGridGuides(totalWidth, contentHeight, cellWidth, cellHeight),
               ],
-              ...screen.widgets.map((widgetModel) {
+              ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
                 final left = widgetModel.x * cellWidth;
                 final top = widgetModel.y * cellHeight;
                 final width = widgetModel.w * cellWidth;
@@ -327,7 +328,7 @@ class LayoutStrategyContainer extends StatelessWidget {
                 ..._buildGridGuides(totalWidth, contentHeight, cellWidth, cellHeight),
               ],
 
-              ...screen.widgets.map((widgetModel) {
+              ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
                 final left = widgetModel.x * cellWidth;
                 final top = widgetModel.y * cellHeight;
                 final width = widgetModel.w * cellWidth;
@@ -354,6 +355,16 @@ class LayoutStrategyContainer extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<WidgetPlacementModel> _getOrderedWidgets(List<WidgetPlacementModel> widgets) {
+    final list = List<WidgetPlacementModel>.from(widgets);
+    list.sort((a, b) {
+      final aIsMap = a.type == WidgetType.map ? 0 : 1;
+      final bIsMap = b.type == WidgetType.map ? 0 : 1;
+      return aIsMap.compareTo(bIsMap);
+    });
+    return list;
   }
 
   List<Widget> _buildGridGuides(
@@ -459,6 +470,20 @@ class LayoutStrategyContainer extends StatelessWidget {
           history: history,
           style: cfg.altitudeChartStyle,
         );
+      case WidgetType.map:
+        return MapWidget(
+          style: cfg.mapWidgetStyle,
+          orientation: cfg.mapOrientation,
+          showAirspace: cfg.mapShowAirspace,
+          showThermals: cfg.mapShowThermals,
+          showTrack: cfg.mapShowTrack,
+          showContours: cfg.mapShowContours,
+          altitudeM: alt,
+          speedKmh: speed,
+          climbRateMs: climb,
+          headingDeg: windDeg,
+          altitudeHistory: history,
+        );
     }
   }
 }
@@ -496,7 +521,9 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     if (!widget.isEditMode) {
       return Padding(
         padding: const EdgeInsets.all(4.0),
-        child: widget.child,
+        child: SizedBox.expand(
+          child: widget.child,
+        ),
       );
     }
 
@@ -522,16 +549,18 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
         ),
         child: Stack(
           children: [
-            // Widget Content
+            // Widget Content (Scales to fill allotted frame space)
             Positioned.fill(
-              top: 24,
-              bottom: 24,
+              top: 26,
+              bottom: 26,
               left: 4,
               right: 4,
               child: ClipRect(
                 child: Opacity(
-                  opacity: 0.85,
-                  child: widget.child,
+                  opacity: 0.9,
+                  child: SizedBox.expand(
+                    child: widget.child,
+                  ),
                 ),
               ),
             ),
@@ -574,46 +603,49 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                     widget.screenManager.moveWidget(id, dx, dy);
                   }
                 },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.cyan.shade900.withAlpha(220),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.drag_indicator, size: 14, color: Colors.cyanAccent),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          '$typeName [${model.x},${model.y} ${model.w}x${model.h}]',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.move,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.cyan.shade900.withAlpha(220),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.drag_indicator, size: 14, color: Colors.cyanAccent),
+                        const SizedBox(width: 2),
+                        Expanded(
+                          child: Text(
+                            '$typeName [${model.x},${model.y} ${model.w}x${model.h}]',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      // Configure Dialog Button
-                      InkWell(
-                        key: Key('btn_config_$id'),
-                        onTap: () => _showConfigDialog(context),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 2),
-                          child: Icon(Icons.tune, size: 14, color: Colors.white70),
+                        // Configure Dialog Button
+                        InkWell(
+                          key: Key('btn_config_$id'),
+                          onTap: () => _showConfigDialog(context),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 2),
+                            child: Icon(Icons.tune, size: 14, color: Colors.white70),
+                          ),
                         ),
-                      ),
-                      // Delete Button
-                      InkWell(
-                        key: Key('btn_delete_$id'),
-                        onTap: () => widget.screenManager.removeWidget(id),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 2),
-                          child: Icon(Icons.close, size: 14, color: Colors.redAccent),
+                        // Delete Button
+                        InkWell(
+                          key: Key('btn_delete_$id'),
+                          onTap: () => widget.screenManager.removeWidget(id),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 2),
+                            child: Icon(Icons.close, size: 14, color: Colors.redAccent),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -623,141 +655,167 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
             Positioned(
               bottom: 0,
               left: 0,
-              right: 0,
+              right: 26,
               height: 24,
               child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(200),
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                decoration: const BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                  ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.center,
+                  alignment: Alignment.centerLeft,
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                    // Position nudge arrows
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _miniButton(
-                          key: Key('btn_move_left_$id'),
-                          icon: Icons.chevron_left,
-                          tooltip: 'Move Left',
-                          enabled: model.x > 0,
-                          onPressed: () => widget.screenManager.moveWidget(id, -1, 0),
-                        ),
-                        _miniButton(
-                          key: Key('btn_move_right_$id'),
-                          icon: Icons.chevron_right,
-                          tooltip: 'Move Right',
-                          enabled: model.x + model.w < 4,
-                          onPressed: () => widget.screenManager.moveWidget(id, 1, 0),
-                        ),
-                        _miniButton(
-                          key: Key('btn_move_up_$id'),
-                          icon: Icons.expand_less,
-                          tooltip: 'Move Up',
-                          enabled: model.y > 0,
-                          onPressed: () => widget.screenManager.moveWidget(id, 0, -1),
-                        ),
-                        _miniButton(
-                          key: Key('btn_move_down_$id'),
-                          icon: Icons.expand_more,
-                          tooltip: 'Move Down',
-                          enabled: true,
-                          onPressed: () => widget.screenManager.moveWidget(id, 0, 1),
-                        ),
-                      ],
-                    ),
-
-                    // Size steppers (Width +/- and Height +/-)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Width dec/inc
-                        _textMiniButton(
-                          key: Key('btn_dec_width_$id'),
-                          label: 'W-',
-                          tooltip: 'Decrease Width',
-                          enabled: model.w > 1,
-                          onPressed: () => widget.screenManager.resizeWidget(id, -1, 0),
-                        ),
-                        _textMiniButton(
-                          key: Key('btn_inc_width_$id'),
-                          label: 'W+',
-                          tooltip: 'Increase Width',
-                          enabled: model.x + model.w < 4,
-                          onPressed: () => widget.screenManager.resizeWidget(id, 1, 0),
-                        ),
-                        const SizedBox(width: 2),
-                        // Height dec/inc
-                        _textMiniButton(
-                          key: Key('btn_dec_height_$id'),
-                          label: 'H-',
-                          tooltip: 'Decrease Height',
-                          enabled: model.h > 1,
-                          onPressed: () => widget.screenManager.resizeWidget(id, 0, -1),
-                        ),
-                        _textMiniButton(
-                          key: Key('btn_inc_height_$id'),
-                          label: 'H+',
-                          tooltip: 'Increase Height',
-                          enabled: model.h < 6,
-                          onPressed: () => widget.screenManager.resizeWidget(id, 0, 1),
-                        ),
-                        const SizedBox(width: 2),
-                        // Corner Drag Resize Handle
-                        GestureDetector(
-                          key: Key('resize_handle_$id'),
-                          behavior: HitTestBehavior.opaque,
-                          onPanStart: (_) {
-                            _resizeAccumX = 0;
-                            _resizeAccumY = 0;
-                          },
-                          onPanUpdate: (details) {
-                            _resizeAccumX += details.delta.dx;
-                            _resizeAccumY += details.delta.dy;
-
-                            int dw = 0;
-                            int dh = 0;
-                            if (_resizeAccumX > widget.cellWidth * 0.4) {
-                              dw = 1;
-                              _resizeAccumX = 0;
-                            } else if (_resizeAccumX < -widget.cellWidth * 0.4) {
-                              dw = -1;
-                              _resizeAccumX = 0;
-                            }
-
-                            if (_resizeAccumY > widget.cellHeight * 0.4) {
-                              dh = 1;
-                              _resizeAccumY = 0;
-                            } else if (_resizeAccumY < -widget.cellHeight * 0.4) {
-                              dh = -1;
-                              _resizeAccumY = 0;
-                            }
-
-                            if (dw != 0 || dh != 0) {
-                              widget.screenManager.resizeWidget(id, dw, dh);
-                            }
-                          },
-                          child: const Tooltip(
-                            message: 'Resize Handle',
-                            child: Icon(
-                              Icons.open_in_full,
-                              size: 13,
-                              color: Colors.amberAccent,
-                            ),
+                      // Position nudge arrows
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _miniButton(
+                            key: Key('btn_move_left_$id'),
+                            icon: Icons.chevron_left,
+                            tooltip: 'Move Left',
+                            enabled: model.x > 0,
+                            onPressed: () => widget.screenManager.moveWidget(id, -1, 0),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          _miniButton(
+                            key: Key('btn_move_right_$id'),
+                            icon: Icons.chevron_right,
+                            tooltip: 'Move Right',
+                            enabled: model.x + model.w < 4,
+                            onPressed: () => widget.screenManager.moveWidget(id, 1, 0),
+                          ),
+                          _miniButton(
+                            key: Key('btn_move_up_$id'),
+                            icon: Icons.expand_less,
+                            tooltip: 'Move Up',
+                            enabled: model.y > 0,
+                            onPressed: () => widget.screenManager.moveWidget(id, 0, -1),
+                          ),
+                          _miniButton(
+                            key: Key('btn_move_down_$id'),
+                            icon: Icons.expand_more,
+                            tooltip: 'Move Down',
+                            enabled: true,
+                            onPressed: () => widget.screenManager.moveWidget(id, 0, 1),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 2),
+                      // Size steppers (Width +/- and Height +/-)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Width dec/inc
+                          _textMiniButton(
+                            key: Key('btn_dec_width_$id'),
+                            label: 'W-',
+                            tooltip: 'Decrease Width',
+                            enabled: model.w > 1,
+                            onPressed: () => widget.screenManager.resizeWidget(id, -1, 0),
+                          ),
+                          _textMiniButton(
+                            key: Key('btn_inc_width_$id'),
+                            label: 'W+',
+                            tooltip: 'Increase Width',
+                            enabled: model.x + model.w < 4,
+                            onPressed: () => widget.screenManager.resizeWidget(id, 1, 0),
+                          ),
+                          const SizedBox(width: 2),
+                          // Height dec/inc
+                          _textMiniButton(
+                            key: Key('btn_dec_height_$id'),
+                            label: 'H-',
+                            tooltip: 'Decrease Height',
+                            enabled: model.h > 1,
+                            onPressed: () => widget.screenManager.resizeWidget(id, 0, -1),
+                          ),
+                          _textMiniButton(
+                            key: Key('btn_inc_height_$id'),
+                            label: 'H+',
+                            tooltip: 'Increase Height',
+                            enabled: model.h < 6,
+                            onPressed: () => widget.screenManager.resizeWidget(id, 0, 1),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+
+            // OS-Style Corner Drag & Drop Resize Handle
+            Positioned(
+              bottom: 0,
+              right: 0,
+              width: 26,
+              height: 24,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeDownRight,
+                child: GestureDetector(
+                  key: Key('resize_handle_$id'),
+                  behavior: HitTestBehavior.opaque,
+                  onPanStart: (_) {
+                    _resizeAccumX = 0;
+                    _resizeAccumY = 0;
+                  },
+                  onPanUpdate: (details) {
+                    _resizeAccumX += details.delta.dx;
+                    _resizeAccumY += details.delta.dy;
+
+                    int dw = 0;
+                    int dh = 0;
+                    if (_resizeAccumX > widget.cellWidth * 0.3) {
+                      dw = 1;
+                      _resizeAccumX = 0;
+                    } else if (_resizeAccumX < -widget.cellWidth * 0.3) {
+                      dw = -1;
+                      _resizeAccumX = 0;
+                    }
+
+                    if (_resizeAccumY > widget.cellHeight * 0.3) {
+                      dh = 1;
+                      _resizeAccumY = 0;
+                    } else if (_resizeAccumY < -widget.cellHeight * 0.3) {
+                      dh = -1;
+                      _resizeAccumY = 0;
+                    }
+
+                    if (dw != 0 || dh != 0) {
+                      widget.screenManager.resizeWidget(id, dw, dh);
+                    }
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.cyan.shade900.withAlpha(220),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(6),
+                        bottomRight: Radius.circular(8),
+                      ),
+                      border: Border.all(
+                        color: Colors.cyanAccent.withAlpha(160),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Tooltip(
+                      message: 'Drag corner to resize',
+                      child: Center(
+                        child: Icon(
+                          Icons.south_east,
+                          size: 14,
+                          color: Colors.cyanAccent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

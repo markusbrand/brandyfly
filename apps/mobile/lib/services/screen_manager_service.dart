@@ -14,11 +14,15 @@ class ScreenManagerService extends ChangeNotifier {
   bool _isEditMode = false;
   bool _isNavBarVisible = false;
   bool _isSettingsVisible = false;
+  bool _isFlightsScreenVisible = false;
+  bool _isReplayActive = false;
 
   UIConfig get config => _config;
   bool get isEditMode => _isEditMode;
   bool get isNavBarVisible => _isNavBarVisible;
   bool get isSettingsVisible => _isSettingsVisible;
+  bool get isFlightsScreenVisible => _isFlightsScreenVisible;
+  bool get isReplayActive => _isReplayActive;
 
   FlightScreenModel get activeScreen {
     final found = _config.screens.firstWhere(
@@ -48,6 +52,24 @@ class ScreenManagerService extends ChangeNotifier {
     _isSettingsVisible = visible ?? !_isSettingsVisible;
     if (_isSettingsVisible) {
       _isNavBarVisible = false;
+      _isFlightsScreenVisible = false;
+    }
+    notifyListeners();
+  }
+
+  void toggleFlightsScreen([bool? visible]) {
+    _isFlightsScreenVisible = visible ?? !_isFlightsScreenVisible;
+    if (_isFlightsScreenVisible) {
+      _isNavBarVisible = false;
+      _isSettingsVisible = false;
+    }
+    notifyListeners();
+  }
+
+  void toggleReplayMode([bool? active]) {
+    _isReplayActive = active ?? !_isReplayActive;
+    if (_isReplayActive) {
+      _isFlightsScreenVisible = false;
     }
     notifyListeners();
   }
@@ -85,6 +107,44 @@ class ScreenManagerService extends ChangeNotifier {
 
   void setAltitudeChartStyle(AltitudeChartStyle style) {
     _config = _config.copyWith(altitudeChartStyle: style);
+    _saveAndNotify();
+  }
+
+  void setMapWidgetStyle(MapWidgetStyle style) {
+    _config = _config.copyWith(mapWidgetStyle: style);
+    _saveAndNotify();
+  }
+
+  void setMapOrientation(MapOrientation orientation) {
+    _config = _config.copyWith(mapOrientation: orientation);
+    _saveAndNotify();
+  }
+
+  void toggleMapAirspace([bool? show]) {
+    _config = _config.copyWith(
+      mapShowAirspace: show ?? !_config.mapShowAirspace,
+    );
+    _saveAndNotify();
+  }
+
+  void toggleMapThermals([bool? show]) {
+    _config = _config.copyWith(
+      mapShowThermals: show ?? !_config.mapShowThermals,
+    );
+    _saveAndNotify();
+  }
+
+  void toggleMapTrack([bool? show]) {
+    _config = _config.copyWith(
+      mapShowTrack: show ?? !_config.mapShowTrack,
+    );
+    _saveAndNotify();
+  }
+
+  void toggleMapContours([bool? show]) {
+    _config = _config.copyWith(
+      mapShowContours: show ?? !_config.mapShowContours,
+    );
     _saveAndNotify();
   }
 
@@ -164,13 +224,14 @@ class ScreenManagerService extends ChangeNotifier {
   void addWidget(WidgetType type) {
     final currentActive = activeScreen;
     final newId = 'w_${DateTime.now().millisecondsSinceEpoch}';
+    final isMap = type == WidgetType.map;
     final newPlacement = WidgetPlacementModel(
       id: newId,
       type: type,
       x: 0,
       y: 0,
-      w: 2,
-      h: 1,
+      w: isMap ? 4 : 2,
+      h: isMap ? 4 : 1,
     );
     final updatedWidgets = [...currentActive.widgets, newPlacement];
     _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));

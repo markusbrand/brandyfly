@@ -25,106 +25,120 @@ class AltitudeSparklineChart extends StatelessWidget {
 
   // Option 1: Minimal Sparkline
   Widget _buildMinimalSparkline(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black45,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'ALTITUDE HISTORY (SPARKLINE)',
-            style: TextStyle(color: Colors.white54, fontSize: 9),
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: CustomPaint(
-              painter: _SparklinePainter(
-                history: history,
-                lineColor: Colors.cyanAccent,
-                isFilled: false,
-                drawGrid: false,
+    return SizedBox.expand(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black45,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'ALTITUDE HISTORY (SPARKLINE)',
+                style: TextStyle(color: Colors.white54, fontSize: 9),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Expanded(
+              child: CustomPaint(
+                painter: _SparklinePainter(
+                  history: history,
+                  lineColor: Colors.cyanAccent,
+                  isFilled: false,
+                  drawGrid: false,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // Option 2: Filled Area Graph
   Widget _buildFilledAreaGraph(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.blueGrey.shade900,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.cyan.withAlpha(80)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'ALTITUDE PROFILE (AREA)',
-            style: TextStyle(
-              color: Colors.cyanAccent,
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: CustomPaint(
-              painter: _SparklinePainter(
-                history: history,
-                lineColor: Colors.blueAccent,
-                isFilled: true,
-                drawGrid: false,
+    return SizedBox.expand(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey.shade900,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.cyan.withAlpha(80)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'ALTITUDE PROFILE (AREA)',
+                style: TextStyle(
+                  color: Colors.cyanAccent,
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Expanded(
+              child: CustomPaint(
+                painter: _SparklinePainter(
+                  history: history,
+                  lineColor: Colors.blueAccent,
+                  isFilled: true,
+                  drawGrid: false,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // Option 3: Detailed Grid
   Widget _buildDetailedGrid(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.greenAccent.shade400),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'ALTITUDE / TIME GRID',
-            style: TextStyle(
-              color: Colors.greenAccent.shade400,
-              fontSize: 9,
-              fontFamily: 'monospace',
-            ),
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: CustomPaint(
-              painter: _SparklinePainter(
-                history: history,
-                lineColor: Colors.greenAccent,
-                isFilled: false,
-                drawGrid: true,
+    return SizedBox.expand(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.greenAccent.shade400),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'ALTITUDE / TIME GRID',
+              style: TextStyle(
+                color: Colors.greenAccent.shade400,
+                fontSize: 9,
+                fontFamily: 'monospace',
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Expanded(
+              child: CustomPaint(
+                painter: _SparklinePainter(
+                  history: history,
+                  lineColor: Colors.greenAccent,
+                  isFilled: false,
+                  drawGrid: true,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,15 +1,49 @@
 import 'package:flutter/material.dart';
+import '../../models/flight_settings.dart';
 import '../../models/ui_config.dart';
+import '../../services/flight_tracking_service.dart';
 import '../../services/screen_manager_service.dart';
+import '../../services/xcontest_upload_service.dart';
 
-class UISettingsPanel extends StatelessWidget {
-  const UISettingsPanel({super.key, required this.screenManager});
+class UISettingsPanel extends StatefulWidget {
+  const UISettingsPanel({
+    super.key,
+    required this.screenManager,
+    this.trackingService,
+    this.uploadService,
+  });
 
   final ScreenManagerService screenManager;
+  final FlightTrackingService? trackingService;
+  final XContestUploadService? uploadService;
+
+  @override
+  State<UISettingsPanel> createState() => _UISettingsPanelState();
+}
+
+class _UISettingsPanelState extends State<UISettingsPanel> {
+  ScreenManagerService get screenManager => widget.screenManager;
+  late TextEditingController _userController;
+  late TextEditingController _passController;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = widget.trackingService?.settings ?? const FlightSettings();
+    _userController = TextEditingController(text: settings.xcontestUsername);
+    _passController = TextEditingController(text: settings.xcontestPassword);
+  }
+
+  @override
+  void dispose() {
+    _userController.dispose();
+    _passController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cfg = screenManager.config;
+    final cfg = widget.screenManager.config;
     final style = cfg.settingsStyle;
 
     switch (style) {
@@ -33,7 +67,7 @@ class UISettingsPanel extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.close),
             tooltip: 'Close',
-            onPressed: () => screenManager.toggleSettingsPanel(false),
+            onPressed: () => widget.screenManager.toggleSettingsPanel(false),
           ),
         ],
       ),
@@ -45,6 +79,10 @@ class UISettingsPanel extends StatelessWidget {
           ..._buildFlightInstrumentsSection(cfg),
           const Divider(color: Colors.white24, height: 32),
           ..._buildScreenModesSection(cfg),
+          const Divider(color: Colors.white24, height: 32),
+          ..._buildFlightTrackingSection(),
+          const Divider(color: Colors.white24, height: 32),
+          ..._buildXContestSection(),
         ],
       ),
     );
@@ -128,6 +166,77 @@ class UISettingsPanel extends StatelessWidget {
           AltitudeChartStyle.detailedGrid: 'Option 3: Detailed Grid',
         },
         onChanged: (val) => screenManager.setAltitudeChartStyle(val),
+      ),
+      _buildEnumSelector<MapWidgetStyle>(
+        title: 'Offline Map & Terrain Style (REQ-MAP-001)',
+        currentValue: cfg.mapWidgetStyle,
+        values: MapWidgetStyle.values,
+        labels: {
+          MapWidgetStyle.topoContours: 'Option 1: Alpine Topo & Contours',
+          MapWidgetStyle.minimalVector: 'Option 2: High-Contrast Vector HUD',
+          MapWidgetStyle.thermalHeatmap: 'Option 3: Thermal Updraft Radar',
+          MapWidgetStyle.satelliteTerrain: 'Option 4: Shaded Relief Terrain',
+        },
+        onChanged: (val) => screenManager.setMapWidgetStyle(val),
+      ),
+      _buildEnumSelector<MapOrientation>(
+        title: 'Map Heading & Orientation',
+        currentValue: cfg.mapOrientation,
+        values: MapOrientation.values,
+        labels: {
+          MapOrientation.northUp: 'Option 1: North Up (Fixed)',
+          MapOrientation.trackUp: 'Option 2: Track Up (Rotating)',
+          MapOrientation.headingUp: 'Option 3: Glider Heading Up',
+        },
+        onChanged: (val) => screenManager.setMapOrientation(val),
+      ),
+      Card(
+        color: Colors.grey.shade900,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Offline Map Layer Overlays',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Airspace Polygons (CTR / TMA)', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                value: cfg.mapShowAirspace,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) => screenManager.toggleMapAirspace(val),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Thermal Updraft Hotspots', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                value: cfg.mapShowThermals,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) => screenManager.toggleMapThermals(val),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Flight Trail / Breadcrumbs', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                value: cfg.mapShowTrack,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) => screenManager.toggleMapTrack(val),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Topographic Elevation Contours', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                value: cfg.mapShowContours,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) => screenManager.toggleMapContours(val),
+              ),
+            ],
+          ),
+        ),
       ),
     ];
   }
@@ -271,6 +380,12 @@ class UISettingsPanel extends StatelessWidget {
             WindWidgetStyle.values,
             (v) => screenManager.setWindWidgetStyle(v),
           ),
+          _buildCardItem<MapWidgetStyle>(
+            'Map Style',
+            cfg.mapWidgetStyle,
+            MapWidgetStyle.values,
+            (v) => screenManager.setMapWidgetStyle(v),
+          ),
         ],
       ),
     );
@@ -381,5 +496,143 @@ class UISettingsPanel extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildFlightTrackingSection() {
+    final settings = widget.trackingService?.settings ?? const FlightSettings();
+    return [
+      _buildCategoryHeader('Flight Tracking & Sensor Fusion'),
+      Card(
+        color: Colors.blueGrey.shade900,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Takeoff Speed Threshold (km/h)',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                value: settings.takeoffSpeedThresholdKmh,
+                min: 5.0,
+                max: 25.0,
+                divisions: 20,
+                label: '${settings.takeoffSpeedThresholdKmh.toStringAsFixed(1)} km/h',
+                onChanged: (val) {
+                  widget.trackingService?.updateSettings(
+                    settings.copyWith(takeoffSpeedThresholdKmh: val),
+                  );
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Takeoff Vario Trigger (|m/s|)',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                value: settings.takeoffVarioThresholdMs,
+                min: 0.2,
+                max: 2.0,
+                divisions: 18,
+                label: '${settings.takeoffVarioThresholdMs.toStringAsFixed(1)} m/s',
+                onChanged: (val) {
+                  widget.trackingService?.updateSettings(
+                    settings.copyWith(takeoffVarioThresholdMs: val),
+                  );
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Landing Settling Duration (seconds)',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                value: settings.landingSettlingDurationSeconds.toDouble(),
+                min: 5.0,
+                max: 60.0,
+                divisions: 11,
+                label: '${settings.landingSettlingDurationSeconds}s',
+                onChanged: (val) {
+                  widget.trackingService?.updateSettings(
+                    settings.copyWith(landingSettlingDurationSeconds: val.round()),
+                  );
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildXContestSection() {
+    final settings = widget.trackingService?.settings ?? const FlightSettings();
+    return [
+      _buildCategoryHeader('XContest.org Integration'),
+      Card(
+        color: Colors.blueGrey.shade900,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SwitchListTile(
+                title: const Text(
+                  'Auto-upload on landing',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  'Automatically upload finalized flights to XContest.org upon landing detection',
+                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                ),
+                value: settings.autoUploadToXContest,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) {
+                  final newSettings = settings.copyWith(autoUploadToXContest: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.uploadService?.updateSettings(newSettings);
+                  setState(() {});
+                },
+              ),
+              const Divider(color: Colors.white12),
+              TextField(
+                controller: _userController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'XContest Username',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  prefixIcon: Icon(Icons.person, color: Colors.white60),
+                ),
+                onChanged: (val) {
+                  final newSettings = settings.copyWith(xcontestUsername: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.uploadService?.updateSettings(newSettings);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _passController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'XContest Password / API Key',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  prefixIcon: Icon(Icons.lock, color: Colors.white60),
+                ),
+                onChanged: (val) {
+                  final newSettings = settings.copyWith(xcontestPassword: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.uploadService?.updateSettings(newSettings);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
   }
 }

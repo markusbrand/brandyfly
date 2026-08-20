@@ -222,6 +222,11 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
               child: Center(child: _buildScreenSelectorDropdown(context)),
             ),
             IconButton(
+              icon: const Icon(Icons.flight, color: Colors.lightGreenAccent),
+              tooltip: 'Flights',
+              onPressed: () => widget.screenManager.toggleFlightsScreen(true),
+            ),
+            IconButton(
               icon: const Icon(Icons.edit_note, color: Colors.cyanAccent),
               tooltip: 'Edit Mode',
               onPressed: () => widget.screenManager.toggleEditMode(true),
@@ -378,9 +383,22 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Wrap(
+      alignment: WrapAlignment.spaceEvenly,
+      spacing: 8,
+      runSpacing: 8,
       children: [
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.teal.shade700,
+            foregroundColor: Colors.white,
+          ),
+          icon: const Icon(Icons.flight),
+          label: const Text('Flights'),
+          onPressed: () {
+            widget.screenManager.toggleFlightsScreen(true);
+          },
+        ),
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.cyan.shade700,

@@ -37,6 +37,19 @@ enum AltitudeChartStyle {
   detailedGrid, // Option 3
 }
 
+enum MapWidgetStyle {
+  topoContours, // Option 1 (Default)
+  minimalVector, // Option 2
+  thermalHeatmap, // Option 3
+  satelliteTerrain, // Option 4
+}
+
+enum MapOrientation {
+  northUp, // Option 1
+  trackUp, // Option 2 (Default)
+  headingUp, // Option 3
+}
+
 enum ThermalingStyle {
   zoomedRadar, // Option 1
   focusMode, // Option 2
@@ -57,6 +70,7 @@ enum WidgetType {
   windDirection,
   varioBar,
   altitudeChart,
+  map,
 }
 
 class WidgetPlacementModel {
@@ -171,6 +185,12 @@ class UIConfig {
     this.windWidgetStyle = WindWidgetStyle.relativeArrow,
     this.liftSinkBarStyle = LiftSinkBarStyle.verticalEdgeBar,
     this.altitudeChartStyle = AltitudeChartStyle.minimalSparkline,
+    this.mapWidgetStyle = MapWidgetStyle.topoContours,
+    this.mapOrientation = MapOrientation.trackUp,
+    this.mapShowAirspace = true,
+    this.mapShowThermals = true,
+    this.mapShowTrack = true,
+    this.mapShowContours = true,
     this.thermalingStyle = ThermalingStyle.assistantDisplay,
     this.settingsStyle = SettingsStyle.categorizedList,
     this.screens = const [],
@@ -183,6 +203,12 @@ class UIConfig {
   final WindWidgetStyle windWidgetStyle;
   final LiftSinkBarStyle liftSinkBarStyle;
   final AltitudeChartStyle altitudeChartStyle;
+  final MapWidgetStyle mapWidgetStyle;
+  final MapOrientation mapOrientation;
+  final bool mapShowAirspace;
+  final bool mapShowThermals;
+  final bool mapShowTrack;
+  final bool mapShowContours;
   final ThermalingStyle thermalingStyle;
   final SettingsStyle settingsStyle;
   final List<FlightScreenModel> screens;
@@ -196,6 +222,12 @@ class UIConfig {
       windWidgetStyle: WindWidgetStyle.relativeArrow,
       liftSinkBarStyle: LiftSinkBarStyle.verticalEdgeBar,
       altitudeChartStyle: AltitudeChartStyle.minimalSparkline,
+      mapWidgetStyle: MapWidgetStyle.topoContours,
+      mapOrientation: MapOrientation.trackUp,
+      mapShowAirspace: true,
+      mapShowThermals: true,
+      mapShowTrack: true,
+      mapShowContours: true,
       thermalingStyle: ThermalingStyle.assistantDisplay,
       settingsStyle: SettingsStyle.categorizedList,
       activeScreenId: 'normal_flight',
@@ -289,6 +321,12 @@ class UIConfig {
     WindWidgetStyle? windWidgetStyle,
     LiftSinkBarStyle? liftSinkBarStyle,
     AltitudeChartStyle? altitudeChartStyle,
+    MapWidgetStyle? mapWidgetStyle,
+    MapOrientation? mapOrientation,
+    bool? mapShowAirspace,
+    bool? mapShowThermals,
+    bool? mapShowTrack,
+    bool? mapShowContours,
     ThermalingStyle? thermalingStyle,
     SettingsStyle? settingsStyle,
     List<FlightScreenModel>? screens,
@@ -301,6 +339,12 @@ class UIConfig {
       windWidgetStyle: windWidgetStyle ?? this.windWidgetStyle,
       liftSinkBarStyle: liftSinkBarStyle ?? this.liftSinkBarStyle,
       altitudeChartStyle: altitudeChartStyle ?? this.altitudeChartStyle,
+      mapWidgetStyle: mapWidgetStyle ?? this.mapWidgetStyle,
+      mapOrientation: mapOrientation ?? this.mapOrientation,
+      mapShowAirspace: mapShowAirspace ?? this.mapShowAirspace,
+      mapShowThermals: mapShowThermals ?? this.mapShowThermals,
+      mapShowTrack: mapShowTrack ?? this.mapShowTrack,
+      mapShowContours: mapShowContours ?? this.mapShowContours,
       thermalingStyle: thermalingStyle ?? this.thermalingStyle,
       settingsStyle: settingsStyle ?? this.settingsStyle,
       screens: screens ?? this.screens,
@@ -315,6 +359,12 @@ class UIConfig {
     'windWidgetStyle': windWidgetStyle.name,
     'liftSinkBarStyle': liftSinkBarStyle.name,
     'altitudeChartStyle': altitudeChartStyle.name,
+    'mapWidgetStyle': mapWidgetStyle.name,
+    'mapOrientation': mapOrientation.name,
+    'mapShowAirspace': mapShowAirspace,
+    'mapShowThermals': mapShowThermals,
+    'mapShowTrack': mapShowTrack,
+    'mapShowContours': mapShowContours,
     'thermalingStyle': thermalingStyle.name,
     'settingsStyle': settingsStyle.name,
     'activeScreenId': activeScreenId,
@@ -340,6 +390,16 @@ class UIConfig {
     altitudeChartStyle: AltitudeChartStyle.values.byName(
       json['altitudeChartStyle'] as String? ?? 'minimalSparkline',
     ),
+    mapWidgetStyle: MapWidgetStyle.values.byName(
+      json['mapWidgetStyle'] as String? ?? 'topoContours',
+    ),
+    mapOrientation: MapOrientation.values.byName(
+      json['mapOrientation'] as String? ?? 'trackUp',
+    ),
+    mapShowAirspace: json['mapShowAirspace'] as bool? ?? true,
+    mapShowThermals: json['mapShowThermals'] as bool? ?? true,
+    mapShowTrack: json['mapShowTrack'] as bool? ?? true,
+    mapShowContours: json['mapShowContours'] as bool? ?? true,
     thermalingStyle: ThermalingStyle.values.byName(
       json['thermalingStyle'] as String? ?? 'assistantDisplay',
     ),
