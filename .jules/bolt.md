@@ -5,3 +5,6 @@
 ## 2024-08-19 - Lazily parse layout variables to prevent O(N * W) scaling
 **Learning:** In Flutter's layout strategies, eagerly parsing arrays (like using `.map(...).toList()` on `history`) for every widget placement causes redundant list allocations and closure creation. Because these widgets build repeatedly based on state updates, this turns an O(N) array allocation per screen into an O(N * W) cost (where N is list size, W is number of widgets).
 **Action:** Always parse expensive data (like lists) or read specific keys locally within the specific switch/case or builder where that data is actually used.
+## 2024-08-21 - Hoisting Paint objects in CustomPainter
+**Learning:** In Flutter, allocating `Paint` objects inside the `paint()` method of a `CustomPainter` forces the system to allocate new native objects on every rendering frame (up to 120Hz). This creates significant garbage collection overhead and potential stutter in hot rendering paths like live data graphs.
+**Action:** Always extract `Paint` object instantiation into final class properties, and dynamically update only the necessary properties (e.g., `_paint.color = newColor`) inside the `paint()` method just before drawing.
