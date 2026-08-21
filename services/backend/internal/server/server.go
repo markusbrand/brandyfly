@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"fmt"
@@ -20,7 +21,13 @@ func NewHandler() http.Handler {
 		if expectedToken := os.Getenv("BRANDYFLY_HEALTH_TOKEN"); expectedToken != "" {
 			expectedAuth := "Bearer " + expectedToken
 			actualAuth := request.Header.Get("Authorization")
-			if subtle.ConstantTimeCompare([]byte(actualAuth), []byte(expectedAuth)) != 1 {
+
+			// Hash strings before comparison so they are always the same length, preventing
+			// ConstantTimeCompare from leaking the length of the expected auth token.
+			expectedHash := sha256.Sum256([]byte(expectedAuth))
+			actualHash := sha256.Sum256([]byte(actualAuth))
+
+			if subtle.ConstantTimeCompare(actualHash[:], expectedHash[:]) != 1 {
 				http.Error(response, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
