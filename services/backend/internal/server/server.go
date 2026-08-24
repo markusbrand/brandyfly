@@ -21,8 +21,11 @@ func NewHandler() http.Handler {
 		if expectedToken := os.Getenv("BRANDYFLY_HEALTH_TOKEN"); expectedToken != "" {
 			expectedAuth := "Bearer " + expectedToken
 			actualAuth := request.Header.Get("Authorization")
+
+			// Hash tokens before comparison to prevent length leakage during ConstantTimeCompare
 			expectedHash := sha256.Sum256([]byte(expectedAuth))
 			actualHash := sha256.Sum256([]byte(actualAuth))
+
 			if subtle.ConstantTimeCompare(actualHash[:], expectedHash[:]) != 1 {
 				http.Error(response, "Unauthorized", http.StatusUnauthorized)
 				return
