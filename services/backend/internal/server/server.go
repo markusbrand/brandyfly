@@ -22,10 +22,11 @@ func NewHandler() http.Handler {
 			expectedAuth := "Bearer " + expectedToken
 			actualAuth := request.Header.Get("Authorization")
 
-			expectedAuthHash := sha256.Sum256([]byte(expectedAuth))
-			actualAuthHash := sha256.Sum256([]byte(actualAuth))
+			// Hash tokens before comparison to prevent length leakage during ConstantTimeCompare
+			expectedHash := sha256.Sum256([]byte(expectedAuth))
+			actualHash := sha256.Sum256([]byte(actualAuth))
 
-			if subtle.ConstantTimeCompare(actualAuthHash[:], expectedAuthHash[:]) != 1 {
+			if subtle.ConstantTimeCompare(actualHash[:], expectedHash[:]) != 1 {
 				http.Error(response, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
