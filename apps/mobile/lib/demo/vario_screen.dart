@@ -316,36 +316,31 @@ class _VarioGauge extends StatelessWidget {
 }
 
 class _GaugePainter extends CustomPainter {
-  _GaugePainter({required this.fraction, required this.color})
-      : _bgPaint = Paint()
-          ..color = const Color(0xFF1A1A2E)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 16,
-        _arcPaint = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 16
-          ..strokeCap = StrokeCap.round,
-        _tickPaint = Paint()
-          ..color = const Color(0xFF3A3A5C)
-          ..strokeWidth = 1.5;
+  _GaugePainter({required this.fraction, required this.color});
 
   final double fraction;
   final Color color;
 
-  // Cached Paint objects for performance (Bolt optimization)
-  final Paint _bgPaint;
-  final Paint _arcPaint;
-  final Paint _tickPaint;
+  // ⚡ Bolt: Cache Paint objects to avoid per-frame GC allocations
+  final Paint _circlePaint = Paint()
+    ..color = const Color(0xFF1A1A2E)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 16;
+
+  final Paint _arcPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 16
+    ..strokeCap = StrokeCap.round;
+
+  final Paint _tickPaint = Paint()
+    ..color = const Color(0xFF3A3A5C)
+    ..strokeWidth = 1.5;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 8;
-    canvas.drawCircle(
-      center,
-      radius,
-      _bgPaint,
-    );
+    canvas.drawCircle(center, radius, _circlePaint);
 
     const startAngle = pi * 0.75;
     const fullSweep = pi * 1.5;
@@ -465,16 +460,15 @@ class _AltitudeSparkline extends StatelessWidget {
 }
 
 class _SparklinePainter extends CustomPainter {
-  _SparklinePainter(this.values)
-      : _linePaint = Paint()
-          ..color = const Color(0xFF7B8CDE)
-          ..strokeWidth = 1.5
-          ..style = PaintingStyle.stroke;
+  _SparklinePainter(this.values);
 
   final List<double> values;
 
-  // Cached Paint object for performance (Bolt optimization)
-  final Paint _linePaint;
+  // ⚡ Bolt: Cache Paint objects to avoid per-frame GC allocations
+  final Paint _linePaint = Paint()
+    ..color = const Color(0xFF7B8CDE)
+    ..strokeWidth = 1.5
+    ..style = PaintingStyle.stroke;
 
   @override
   void paint(Canvas canvas, Size size) {

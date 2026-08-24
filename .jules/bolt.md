@@ -6,6 +6,7 @@
 **Learning:** In Flutter's layout strategies, eagerly parsing arrays (like using `.map(...).toList()` on `history`) for every widget placement causes redundant list allocations and closure creation. Because these widgets build repeatedly based on state updates, this turns an O(N) array allocation per screen into an O(N * W) cost (where N is list size, W is number of widgets).
 **Action:** Always parse expensive data (like lists) or read specific keys locally within the specific switch/case or builder where that data is actually used.
 
-## 2024-08-20 - Cache Paint objects in CustomPainter
-**Learning:** In Flutter `CustomPainter` implementations, avoid instantiating `Paint` objects inside the `paint()` method, as this creates unnecessary garbage collection overhead on the hot-path (e.g., 60fps rendering). Also, remember that in Dart, initializing formals (like `this.color`) cannot be accessed in the constructor's initializer list to configure these cached `Paint` objects.
-**Action:** Always instantiate `Paint` objects once as `final` class properties or in the constructor. If a `Paint` property depends on a constructor parameter, update the `Paint` object inside the `paint()` method just before drawing (e.g., `_paint.color = color;`).
+## 2026-08-23 - Optimize Paint object allocations in CustomPainter
+**Learning:** In Flutter, `CustomPainter.paint()` can be called up to 60-120 times per second. Eagerly allocating `Paint` objects directly inside the `paint()` method causes unnecessary object creation on the hot-path, leading to increased Garbage Collection overhead and potential frame drops (jank).
+**Action:** Always instantiate `Paint` objects as `final` properties of the `CustomPainter` class. If properties of the `Paint` (like color) depend on dynamic constructor arguments, initialize the `Paint` object outside, and just update its properties (e.g., `_paint.color = newColor`) inside the `paint()` method.
+
