@@ -140,6 +140,7 @@ class _SparklinePainter extends CustomPainter {
   final bool isFilled;
   final bool drawGrid;
 
+  // ⚡ Bolt: Cache Paint objects to avoid per-frame GC allocations
   final Paint _gridPaint = Paint()..strokeWidth = 1;
   final Paint _fillPaint = Paint()..style = PaintingStyle.fill;
   final Paint _linePaint = Paint()
