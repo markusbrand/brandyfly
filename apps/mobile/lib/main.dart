@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:brandyfly_native/brandyfly_native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import 'services/screen_manager_service.dart';
@@ -12,6 +13,7 @@ import 'widgets/navigation/top_nav_bar.dart';
 import 'widgets/settings/ui_settings_panel.dart';
 
 void main() {
+  SemanticsBinding.instance.ensureSemantics();
   final config = MockFlightModeConfig.fromEnvironment();
   final effectiveConfig = config.copyWith(
     enabled: kDebugMode || config.enabled,
