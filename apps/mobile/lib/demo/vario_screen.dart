@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// A single snapshot of flight instrument readings.
 class FlightSnapshot {
@@ -496,5 +497,5 @@ class _SparklinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_SparklinePainter old) => old.values != values;
+  bool shouldRepaint(_SparklinePainter old) => !listEquals(old.values, values);
 }

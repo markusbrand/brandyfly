@@ -369,11 +369,17 @@ class LayoutStrategyContainer extends StatelessWidget {
           style: cfg.liftSinkBarStyle,
         );
       case WidgetType.altitudeChart:
-        final history =
-            (telemetryData['history'] as List<dynamic>?)
-                ?.map((e) => (e as num).toDouble())
-                .toList() ??
-            [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
+        // ⚡ Bolt: Use a const fallback and avoid re-allocating a new list on every render
+        // to prevent unnecessary GC pressure and unconditional CustomPainter repaints.
+        final rawHistory = telemetryData['history'];
+        final List<double> history;
+        if (rawHistory is List<double>) {
+          history = rawHistory;
+        } else if (rawHistory is List) {
+          history = rawHistory.map((e) => (e as num).toDouble()).toList();
+        } else {
+          history = const [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
+        }
         return AltitudeSparklineChart(
           history: history,
           style: cfg.altitudeChartStyle,
