@@ -140,19 +140,24 @@ class _SparklinePainter extends CustomPainter {
   final bool isFilled;
   final bool drawGrid;
 
+  // Cache Paint objects to avoid garbage collection overhead in hot loops
+  final Paint _gridPaint = Paint()..strokeWidth = 1;
+  final Paint _fillPaint = Paint()..style = PaintingStyle.fill;
+  final Paint _linePaint = Paint()
+    ..strokeWidth = 2
+    ..style = PaintingStyle.stroke;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (history.isEmpty) return;
 
     if (drawGrid) {
-      final gridPaint = Paint()
-        ..color = Colors.white.withAlpha(25)
-        ..strokeWidth = 1;
+      _gridPaint.color = Colors.white.withAlpha(25);
       for (double x = 0; x < size.width; x += size.width / 5) {
-        canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+        canvas.drawLine(Offset(x, 0), Offset(x, size.height), _gridPaint);
       }
       for (double y = 0; y < size.height; y += size.height / 3) {
-        canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+        canvas.drawLine(Offset(0, y), Offset(size.width, y), _gridPaint);
       }
     }
 
@@ -184,17 +189,12 @@ class _SparklinePainter extends CustomPainter {
         ..lineTo(size.width, size.height)
         ..lineTo(0, size.height)
         ..close();
-      final fillPaint = Paint()
-        ..color = lineColor.withAlpha(60)
-        ..style = PaintingStyle.fill;
-      canvas.drawPath(fillPath, fillPaint);
+      _fillPaint.color = lineColor.withAlpha(60);
+      canvas.drawPath(fillPath, _fillPaint);
     }
 
-    final linePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, linePaint);
+    _linePaint.color = lineColor;
+    canvas.drawPath(path, _linePaint);
   }
 
   @override
