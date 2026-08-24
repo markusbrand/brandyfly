@@ -327,12 +327,10 @@ class _GaugePainter extends CustomPainter {
     ..color = const Color(0xFF1A1A2E)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 16;
-
   final Paint _arcPaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 16
     ..strokeCap = StrokeCap.round;
-
   final Paint _tickPaint = Paint()
     ..color = const Color(0xFF3A3A5C)
     ..strokeWidth = 1.5;
