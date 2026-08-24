@@ -321,18 +321,26 @@ class _GaugePainter extends CustomPainter {
   final double fraction;
   final Color color;
 
+  // ⚡ Bolt: Cache Paint objects to avoid per-frame GC allocations
+  final Paint _circlePaint = Paint()
+    ..color = const Color(0xFF1A1A2E)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 16;
+
+  final Paint _arcPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 16
+    ..strokeCap = StrokeCap.round;
+
+  final Paint _tickPaint = Paint()
+    ..color = const Color(0xFF3A3A5C)
+    ..strokeWidth = 1.5;
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 8;
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..color = const Color(0xFF1A1A2E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 16,
-    );
+    canvas.drawCircle(center, radius, _circlePaint);
 
     const startAngle = pi * 0.75;
     const fullSweep = pi * 1.5;
@@ -341,28 +349,21 @@ class _GaugePainter extends CustomPainter {
         ? startAngle + fullSweep / 2
         : startAngle + fullSweep / 2 + arcSweep;
 
-    final arcPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 16
-      ..strokeCap = StrokeCap.round;
+    _arcPaint.color = color;
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       arcStart,
       arcSweep.abs(),
       false,
-      arcPaint,
+      _arcPaint,
     );
 
-    final tickPaint = Paint()
-      ..color = const Color(0xFF3A3A5C)
-      ..strokeWidth = 1.5;
     for (int i = 0; i <= 10; i++) {
       final angle = startAngle + fullSweep * i / 10;
       final inner = center + Offset(cos(angle), sin(angle)) * (radius - 12);
       final outer = center + Offset(cos(angle), sin(angle)) * (radius + 2);
-      canvas.drawLine(inner, outer, tickPaint);
+      canvas.drawLine(inner, outer, _tickPaint);
     }
   }
 
@@ -463,6 +464,12 @@ class _SparklinePainter extends CustomPainter {
 
   final List<double> values;
 
+  // ⚡ Bolt: Cache Paint objects to avoid per-frame GC allocations
+  final Paint _linePaint = Paint()
+    ..color = const Color(0xFF7B8CDE)
+    ..strokeWidth = 1.5
+    ..style = PaintingStyle.stroke;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (values.length < 2) return;
@@ -475,11 +482,6 @@ class _SparklinePainter extends CustomPainter {
     }
     final range = (maxValue - minValue).abs().clamp(1.0, double.infinity);
 
-    final paint = Paint()
-      ..color = const Color(0xFF7B8CDE)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
     final path = Path();
     for (int i = 0; i < values.length; i++) {
       final x = size.width * i / (values.length - 1);
@@ -490,7 +492,7 @@ class _SparklinePainter extends CustomPainter {
         path.lineTo(x, y);
       }
     }
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, _linePaint);
   }
 
   @override
