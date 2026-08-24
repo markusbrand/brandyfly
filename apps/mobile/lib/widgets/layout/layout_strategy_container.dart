@@ -47,6 +47,7 @@ class LayoutStrategyContainer extends StatelessWidget {
                   backgroundColor: Colors.blueAccent,
                   icon: const Icon(Icons.add),
                   label: const Text('Add Widget'),
+                  tooltip: 'Add new widget to layout',
                   onPressed: () {
                     showModalBottomSheet(
                       context: context,
@@ -61,6 +62,7 @@ class LayoutStrategyContainer extends StatelessWidget {
                   backgroundColor: Colors.green,
                   icon: const Icon(Icons.check),
                   label: const Text('Done Editing'),
+                  tooltip: 'Save layout and exit edit mode',
                   onPressed: () {
                     screenManager.toggleEditMode(false);
                   },
@@ -208,13 +210,10 @@ class LayoutStrategyContainer extends StatelessWidget {
                   for (final widgetModel in varioWidgets)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: SizedBox(
-                        height: 180,
-                        child: _buildWidgetWrapper(
-                          context,
-                          widgetModel,
-                          isEditMode,
-                        ),
+                      child: _buildWidgetWrapper(
+                        context,
+                        widgetModel,
+                        isEditMode,
                       ),
                     ),
                 ],
@@ -275,11 +274,9 @@ class LayoutStrategyContainer extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Opacity(opacity: 0.8, child: content),
-            ),
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: Opacity(opacity: 0.8, child: content),
           ),
           Positioned(
             top: 2,
@@ -318,10 +315,21 @@ class LayoutStrategyContainer extends StatelessWidget {
 
   Widget _renderWidgetContent(WidgetPlacementModel model) {
     final cfg = screenManager.config;
+    final alt = _parseTelemetryDouble('altitude', 1450.0);
+    final speed = _parseTelemetryDouble('speed', 42.5);
+    final glide = _parseTelemetryDouble('glide', 8.4);
+    final hag = _parseTelemetryDouble('hag', 320.0);
+    final climb = _parseTelemetryDouble('climb', 1.8);
+    final windDeg = _parseTelemetryDouble('windDir', 220.0);
+    final windSpd = _parseTelemetryDouble('windSpeed', 14.0);
+    final history =
+        (telemetryData['history'] as List<dynamic>?)
+            ?.map((e) => (e as num).toDouble())
+            .toList() ??
+        [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
 
     switch (model.type) {
       case WidgetType.altitude:
-        final alt = _parseTelemetryDouble('altitude', 1450.0);
         return NumericTextWidget(
           label: 'Altitude',
           value: alt.toStringAsFixed(0),
@@ -329,7 +337,6 @@ class LayoutStrategyContainer extends StatelessWidget {
           style: cfg.numericWidgetStyle,
         );
       case WidgetType.speed:
-        final speed = _parseTelemetryDouble('speed', 42.5);
         return NumericTextWidget(
           label: 'Speed',
           value: speed.toStringAsFixed(1),
@@ -337,7 +344,6 @@ class LayoutStrategyContainer extends StatelessWidget {
           style: cfg.numericWidgetStyle,
         );
       case WidgetType.glide:
-        final glide = _parseTelemetryDouble('glide', 8.4);
         return NumericTextWidget(
           label: 'Glide',
           value: glide.toStringAsFixed(1),
@@ -345,7 +351,6 @@ class LayoutStrategyContainer extends StatelessWidget {
           style: cfg.numericWidgetStyle,
         );
       case WidgetType.hag:
-        final hag = _parseTelemetryDouble('hag', 320.0);
         return NumericTextWidget(
           label: 'HAG',
           value: hag.toStringAsFixed(0),
@@ -353,25 +358,17 @@ class LayoutStrategyContainer extends StatelessWidget {
           style: cfg.numericWidgetStyle,
         );
       case WidgetType.windDirection:
-        final windDeg = _parseTelemetryDouble('windDir', 220.0);
-        final windSpd = _parseTelemetryDouble('windSpeed', 14.0);
         return WindDirectionWidget(
           directionDegrees: windDeg,
           speedKmH: windSpd,
           style: cfg.windWidgetStyle,
         );
       case WidgetType.varioBar:
-        final climb = _parseTelemetryDouble('climb', 1.8);
         return VarioLiftSinkBar(
           climbRateMs: climb,
           style: cfg.liftSinkBarStyle,
         );
       case WidgetType.altitudeChart:
-        final history =
-            (telemetryData['history'] as List<dynamic>?)
-                ?.map((e) => (e as num).toDouble())
-                .toList() ??
-            [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
         return AltitudeSparklineChart(
           history: history,
           style: cfg.altitudeChartStyle,

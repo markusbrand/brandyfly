@@ -321,8 +321,8 @@ class _GaugePainter extends CustomPainter {
   final double fraction;
   final Color color;
 
-  // Cache Paint objects to avoid garbage collection overhead in hot loops
-  final Paint _bgPaint = Paint()
+  // ⚡ Bolt: Cache Paint objects to avoid per-frame GC allocations
+  final Paint _circlePaint = Paint()
     ..color = const Color(0xFF1A1A2E)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 16;
@@ -338,7 +338,7 @@ class _GaugePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 8;
-    canvas.drawCircle(center, radius, _bgPaint);
+    canvas.drawCircle(center, radius, _circlePaint);
 
     const startAngle = pi * 0.75;
     const fullSweep = pi * 1.5;
@@ -462,7 +462,7 @@ class _SparklinePainter extends CustomPainter {
 
   final List<double> values;
 
-  // Cache Paint object to avoid GC overhead
+  // ⚡ Bolt: Cache Paint objects to avoid per-frame GC allocations
   final Paint _linePaint = Paint()
     ..color = const Color(0xFF7B8CDE)
     ..strokeWidth = 1.5

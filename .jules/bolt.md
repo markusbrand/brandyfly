@@ -6,6 +6,7 @@
 **Learning:** In Flutter's layout strategies, eagerly parsing arrays (like using `.map(...).toList()` on `history`) for every widget placement causes redundant list allocations and closure creation. Because these widgets build repeatedly based on state updates, this turns an O(N) array allocation per screen into an O(N * W) cost (where N is list size, W is number of widgets).
 **Action:** Always parse expensive data (like lists) or read specific keys locally within the specific switch/case or builder where that data is actually used.
 
-## 2024-08-22 - Cache CustomPainter Paint objects
-**Learning:** In Flutter, allocating `Paint` objects inside the `CustomPainter.paint` method creates unnecessary garbage collection overhead on the rendering hot-path.
-**Action:** Always move `Paint` instantiations out of `paint()` and define them as `final` class properties. Update dynamic properties (like `color`) on these cached objects directly inside `paint()` before drawing.
+## 2026-08-23 - Optimize Paint object allocations in CustomPainter
+**Learning:** In Flutter, `CustomPainter.paint()` can be called up to 60-120 times per second. Eagerly allocating `Paint` objects directly inside the `paint()` method causes unnecessary object creation on the hot-path, leading to increased Garbage Collection overhead and potential frame drops (jank).
+**Action:** Always instantiate `Paint` objects as `final` properties of the `CustomPainter` class. If properties of the `Paint` (like color) depend on dynamic constructor arguments, initialize the `Paint` object outside, and just update its properties (e.g., `_paint.color = newColor`) inside the `paint()` method.
+
