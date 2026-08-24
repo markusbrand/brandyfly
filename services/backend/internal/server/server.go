@@ -22,7 +22,7 @@ func NewHandler() http.Handler {
 			expectedAuth := "Bearer " + expectedToken
 			actualAuth := request.Header.Get("Authorization")
 
-			// Hash tokens before comparison to prevent length leakage timing attacks
+			// Hash tokens before comparison to prevent length leakage during ConstantTimeCompare
 			expectedHash := sha256.Sum256([]byte(expectedAuth))
 			actualHash := sha256.Sum256([]byte(actualAuth))
 
