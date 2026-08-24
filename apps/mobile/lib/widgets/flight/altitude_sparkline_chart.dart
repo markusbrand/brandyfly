@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/ui_config.dart';
 
 class AltitudeSparklineChart extends StatelessWidget {
@@ -199,7 +200,7 @@ class _SparklinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SparklinePainter oldDelegate) {
-    return oldDelegate.history != history ||
+    return !listEquals(oldDelegate.history, history) ||
         oldDelegate.lineColor != lineColor ||
         oldDelegate.isFilled != isFilled ||
         oldDelegate.drawGrid != drawGrid;

@@ -10,3 +10,6 @@
 **Learning:** In Flutter, `CustomPainter.paint()` can be called up to 60-120 times per second. Eagerly allocating `Paint` objects directly inside the `paint()` method causes unnecessary object creation on the hot-path, leading to increased Garbage Collection overhead and potential frame drops (jank).
 **Action:** Always instantiate `Paint` objects as `final` properties of the `CustomPainter` class. If properties of the `Paint` (like color) depend on dynamic constructor arguments, initialize the `Paint` object outside, and just update its properties (e.g., `_paint.color = newColor`) inside the `paint()` method.
 
+## 2024-08-24 - Prevent Unconditional Repaints in CustomPainter
+**Learning:** In Flutter, `CustomPainter.shouldRepaint` checks that rely on reference equality (`oldDelegate.property != property`) for lists will cause unconditional repaints on every layout frame if the parent widget is reallocating the list during `build` (such as `.toList()` from dynamic JSON arrays).
+**Action:** Always use `listEquals(oldDelegate.list, list)` from `package:flutter/foundation.dart` for deep equality comparison of list properties in `shouldRepaint` methods to avoid expensive, unnecessary canvas redraws.
