@@ -47,6 +47,7 @@ class LayoutStrategyContainer extends StatelessWidget {
                   backgroundColor: Colors.blueAccent,
                   icon: const Icon(Icons.add),
                   label: const Text('Add Widget'),
+                  tooltip: 'Add new widget to layout',
                   onPressed: () {
                     showModalBottomSheet(
                       context: context,
@@ -61,6 +62,7 @@ class LayoutStrategyContainer extends StatelessWidget {
                   backgroundColor: Colors.green,
                   icon: const Icon(Icons.check),
                   label: const Text('Done Editing'),
+                  tooltip: 'Save layout and exit edit mode',
                   onPressed: () {
                     screenManager.toggleEditMode(false);
                   },

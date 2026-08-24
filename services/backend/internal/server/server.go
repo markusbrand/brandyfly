@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -17,7 +19,14 @@ func NewHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(response http.ResponseWriter, request *http.Request) {
 		if expectedToken := os.Getenv("BRANDYFLY_HEALTH_TOKEN"); expectedToken != "" {
-			if request.Header.Get("Authorization") != "Bearer "+expectedToken {
+			expectedAuth := "Bearer " + expectedToken
+			actualAuth := request.Header.Get("Authorization")
+
+			// Hash tokens before comparison to prevent length leakage during ConstantTimeCompare
+			expectedHash := sha256.Sum256([]byte(expectedAuth))
+			actualHash := sha256.Sum256([]byte(actualAuth))
+
+			if subtle.ConstantTimeCompare(actualHash[:], expectedHash[:]) != 1 {
 				http.Error(response, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
