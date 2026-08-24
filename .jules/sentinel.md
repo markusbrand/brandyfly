@@ -3,7 +3,7 @@
 **Learning:** String comparison operators (`==`, `!=`) in Go evaluate character-by-character and can leak information about the expected token length and contents via timing measurements. This is especially dangerous for authentication checks.
 **Prevention:** Always use `crypto/subtle.ConstantTimeCompare` when comparing secrets or authentication tokens to ensure comparison takes a constant amount of time regardless of the input.
 
-## 2024-05-18 - Additional Timing Attack Vulnerability in Authentication Token Check
-**Vulnerability:** The fix to use `subtle.ConstantTimeCompare` introduced a subtle vulnerability where the function returns immediately if input lengths differ, leaking length information of the secret via timing.
-**Learning:** `subtle.ConstantTimeCompare` does not compare strings of different lengths in constant time. It early returns if lengths do not match, which can be exploited by an attacker to deduce the expected token length.
-**Prevention:** Always hash the input strings (e.g., using `crypto/sha256.Sum256`) *before* applying `subtle.ConstantTimeCompare`. This guarantees both inputs are exactly the same length (32 bytes for SHA256) regardless of the original string lengths, ensuring a true constant-time comparison.
+## 2026-08-24 - Timing Attack Length Leakage in ConstantTimeCompare
+**Vulnerability:** Comparing authentication tokens directly with `crypto/subtle.ConstantTimeCompare` leaks the length of the expected token because the function returns immediately if the lengths of the two inputs differ.
+**Learning:** While `ConstantTimeCompare` protects against timing attacks during the actual byte comparison, it is not constant time when the lengths differ. This leaks information about the expected string's length, which is a vulnerability for secrets.
+**Prevention:** Before using `crypto/subtle.ConstantTimeCompare`, hash both the expected and actual tokens (e.g., using `crypto/sha256.Sum256`). This ensures both inputs to `ConstantTimeCompare` are always exactly the same length, preventing length leakage.
