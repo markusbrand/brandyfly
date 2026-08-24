@@ -464,11 +464,7 @@ class _SparklinePainter extends CustomPainter {
 
   final List<double> values;
 
-<<<<<<< HEAD
-  // Cache Paint object to avoid GC overhead
-=======
   // ⚡ Bolt: Cache Paint objects to avoid per-frame GC allocations
->>>>>>> origin/main
   final Paint _linePaint = Paint()
     ..color = const Color(0xFF7B8CDE)
     ..strokeWidth = 1.5
