@@ -8,3 +8,7 @@
 ## 2026-08-21 - [Missing Semantics for Floating Action Buttons]
 **Learning:** Found interactive `FloatingActionButton.extended` elements without any semantic `tooltip` properties, which negatively impacts accessibility for screen readers and lacks helpful context for users on hover or long-press.
 **Action:** When using `FloatingActionButton.extended` widgets in Flutter, always include the `tooltip` property to ensure accessibility for screen readers and provide helpful context.
+
+## 2026-08-25 - [Preserving Layout While Improving Accessibility with IconButton]
+**Learning:** Replacing `InkWell` or `GestureDetector` with `IconButton` for accessibility often bloats the layout because `IconButton` enforces a default 48x48 tap target minimum padding.
+**Action:** When replacing `InkWell` with `IconButton` to improve accessibility while preserving existing tight layouts, apply `padding: EdgeInsets.zero` and `constraints: const BoxConstraints()` to the `IconButton` to prevent the default touch target padding from altering the UI.
