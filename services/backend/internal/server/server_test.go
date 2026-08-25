@@ -17,6 +17,9 @@ func TestHealthEndpoint(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
 	}
+	if nosniff := response.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q, want nosniff", nosniff)
+	}
 	if contentType := response.Header().Get("Content-Type"); contentType != "application/json" {
 		t.Fatalf("content type = %q, want application/json", contentType)
 	}
