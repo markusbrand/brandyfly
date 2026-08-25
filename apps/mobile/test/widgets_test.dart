@@ -5,6 +5,7 @@ import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/widgets/flight/altitude_sparkline_chart.dart';
 import 'package:brandyfly/widgets/flight/map_widget.dart';
 import 'package:brandyfly/widgets/flight/numeric_text_widget.dart';
+import 'package:brandyfly/widgets/flight/thermal_map_widget.dart';
 import 'package:brandyfly/widgets/flight/vario_lift_sink_bar.dart';
 import 'package:brandyfly/widgets/flight/wind_direction_widget.dart';
 import 'package:brandyfly/widgets/layout/layout_strategy_container.dart';
@@ -72,37 +73,41 @@ void main() {
       expect(find.byType(AltitudeSparklineChart), findsOneWidget);
     });
 
-    testWidgets('WindDirectionWidget renders relative arrow and compass rose', (
+    testWidgets('WindDirectionWidget renders relative arrow, compass rose, and windsock', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: WindDirectionWidget(
-              directionDegrees: 210,
-              speedKmH: 15.5,
-              style: WindWidgetStyle.relativeArrow,
+      for (final style in WindWidgetStyle.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: WindDirectionWidget(
+                directionDegrees: 210,
+                speedKmH: 20.0,
+                style: style,
+              ),
             ),
           ),
-        ),
-      );
-      expect(find.textContaining('15.5 km/h'), findsOneWidget);
+        );
+        expect(find.textContaining('20'), findsOneWidget);
+      }
     });
 
-    testWidgets('VarioLiftSinkBar renders vertical bar and analog dial', (
+    testWidgets('VarioLiftSinkBar renders all vario styles', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: VarioLiftSinkBar(
-              climbRateMs: 2.4,
-              style: LiftSinkBarStyle.verticalEdgeBar,
+      for (final style in LiftSinkBarStyle.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: VarioLiftSinkBar(
+                climbRateMs: 2.4,
+                style: style,
+              ),
             ),
           ),
-        ),
-      );
-      expect(find.textContaining('+2.4'), findsOneWidget);
+        );
+        expect(find.textContaining('2.4'), findsOneWidget);
+      }
     });
 
     testWidgets('TopNavBarOverlay slides down and shows controls', (
@@ -126,34 +131,49 @@ void main() {
       expect(find.text('Settings'), findsOneWidget);
     });
 
-    testWidgets('UISettingsPanel allows changing visual styles', (
+    testWidgets('UISettingsPanel allows changing shell preferences and screen layout strategy', (
       tester,
     ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       final manager = ScreenManagerService();
 
       await tester.pumpWidget(
         MaterialApp(home: UISettingsPanel(screenManager: manager)),
       );
+      await tester.pumpAndSettle();
 
-      expect(find.text('UI Visual Mockup Settings'), findsOneWidget);
+      expect(find.text('Application Settings'), findsOneWidget);
+      expect(find.text('SHELL & NAVIGATION PREFERENCES'), findsOneWidget);
 
-      manager.setNumericWidgetStyle(NumericWidgetStyle.highContrastBox);
+      final screenMgmtFinder = find.text('FLIGHT SCREEN MANAGEMENT');
+      await tester.scrollUntilVisible(screenMgmtFinder, 100);
+      expect(screenMgmtFinder, findsOneWidget);
+
+      manager.setNavBarStyle(NavBarStyle.floatingPill);
+      manager.setScreenLayoutStrategy('normal_flight', LayoutStrategyStyle.freeformHud);
       await tester.pump();
 
       expect(
-        manager.config.numericWidgetStyle,
-        NumericWidgetStyle.highContrastBox,
+        manager.config.navBarStyle,
+        NavBarStyle.floatingPill,
+      );
+      expect(
+        manager.activeScreen.layoutStrategy,
+        LayoutStrategyStyle.freeformHud,
       );
     });
 
     testWidgets(
-      'LayoutStrategyContainer renders in edit mode and across all strategies',
+      'LayoutStrategyContainer renders based on activeScreen.layoutStrategy',
       (tester) async {
         final manager = ScreenManagerService();
         manager.toggleEditMode(true);
 
         for (final strategy in LayoutStrategyStyle.values) {
-          manager.setLayoutStrategyStyle(strategy);
+          manager.setScreenLayoutStrategy('normal_flight', strategy);
           await tester.pumpWidget(
             MaterialApp(
               home: Scaffold(
@@ -180,8 +200,12 @@ void main() {
     );
 
     testWidgets(
-      'LayoutStrategyContainer allows interactive repositioning and resizing of widgets',
+      'LayoutStrategyContainer allows interactive repositioning, resizing, and in-place style tuning',
       (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
         final manager = ScreenManagerService();
         manager.toggleEditMode(true);
 
@@ -197,11 +221,11 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final firstWidget = manager.activeScreen.widgets.first;
-        final id = firstWidget.id;
+        final targetWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.altitude);
+        final id = targetWidget.id;
 
         // Test position nudge right button
-        final initialX = firstWidget.x;
+        final initialX = targetWidget.x;
         await tester.tap(find.byKey(Key('btn_move_right_$id')));
         await tester.pumpAndSettle();
         expect(
@@ -209,24 +233,34 @@ void main() {
           initialX + 1,
         );
 
-        // Test width decrease and increase buttons
+        // Test width increase button
         final currentW = manager.activeScreen.widgets.firstWhere((w) => w.id == id).w;
-        await tester.tap(find.byKey(Key('btn_dec_width_$id')));
+        await tester.tap(find.byKey(Key('btn_inc_width_$id')));
         await tester.pumpAndSettle();
         expect(
           manager.activeScreen.widgets.firstWhere((w) => w.id == id).w,
-          currentW - 1,
+          currentW + 1,
         );
 
-        // Test config dialog
+        // Test in-place config dialog / sheet
         await tester.tap(find.byKey(Key('btn_config_$id')));
         await tester.pumpAndSettle();
-        expect(find.text('Configure ${firstWidget.type.name.toUpperCase()}'), findsOneWidget);
+        expect(find.text('Configure ${targetWidget.type.name.toUpperCase()}'), findsOneWidget);
+        expect(find.text('POSITION & SIZE'), findsOneWidget);
+        expect(find.text('NUMERIC DISPLAY STYLE'), findsOneWidget);
+
+        // Select 'Retro Digital' style chip
+        await tester.tap(find.text('Retro Digital'));
+        await tester.pumpAndSettle();
 
         // Tap Apply in config dialog
         await tester.tap(find.text('Apply'));
         await tester.pumpAndSettle();
-        expect(find.text('Configure ${firstWidget.type.name.toUpperCase()}'), findsNothing);
+        expect(find.text('Configure ${targetWidget.type.name.toUpperCase()}'), findsNothing);
+
+        // Verify style was updated on the widget
+        final updatedPlacement = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
+        expect(updatedPlacement.numericStyle, NumericWidgetStyle.retroDigital);
 
         // Test Corner Drag Resize handle
         final resizeHandleFinder = find.byKey(Key('resize_handle_$id'));
@@ -244,6 +278,86 @@ void main() {
         expect(afterDrag.h >= beforeDragH, true);
       },
     );
+
+    testWidgets('Map Widget in Edit Mode allows configuring Map style and layer toggles in-place', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final manager = ScreenManagerService();
+      manager.addScreen('Map Screen');
+      manager.addWidget(WidgetType.map);
+      manager.toggleEditMode(true);
+
+      final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+      final id = mapWidget.id;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LayoutStrategyContainer(
+              screenManager: manager,
+              telemetryData: const {'altitude': 1450.0, 'speed': 42.5},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open tune dialog for map widget
+      await tester.tap(find.byKey(Key('btn_config_$id')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Configure MAP'), findsOneWidget);
+      expect(find.text('MAP STYLE'), findsOneWidget);
+      expect(find.text('MAP LAYER OVERLAYS'), findsOneWidget);
+
+      // Select Thermal Radar
+      await tester.tap(find.text('Thermal Radar'));
+      await tester.pumpAndSettle();
+
+      // Select North Up
+      await tester.tap(find.text('North Up'));
+      await tester.pumpAndSettle();
+
+      // Apply
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      final updatedMap = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
+      expect(updatedMap.mapStyle, MapWidgetStyle.thermalHeatmap);
+      expect(updatedMap.mapOrientation, MapOrientation.northUp);
+    });
+
+    testWidgets('Widgets on same or different screens maintain independent styling', (
+      tester,
+    ) async {
+      final manager = ScreenManagerService();
+      // Configure screen 1 widget with Retro Digital
+      final w1 = manager.activeScreen.widgets.firstWhere((w) => w.id == 'w1');
+      manager.updateWidgetPlacement(w1.copyWith(numericStyle: NumericWidgetStyle.retroDigital));
+
+      // Add screen 2 and configure a widget with High Contrast Box
+      manager.addScreen('Screen 2');
+      manager.addWidget(WidgetType.altitude);
+      final screen2Widget = manager.activeScreen.widgets.last;
+      manager.updateWidgetPlacement(
+        screen2Widget.copyWith(numericStyle: NumericWidgetStyle.highContrastBox),
+      );
+
+      // Verify screen 2 widget is highContrastBox
+      expect(
+        manager.activeScreen.widgets.first.effectiveNumericStyle,
+        NumericWidgetStyle.highContrastBox,
+      );
+
+      // Switch back to screen 1 and verify w1 is still retroDigital
+      manager.setActiveScreen('normal_flight');
+      final w1Restored = manager.activeScreen.widgets.firstWhere((w) => w.id == 'w1');
+      expect(w1Restored.effectiveNumericStyle, NumericWidgetStyle.retroDigital);
+    });
 
     testWidgets('Flight widgets scale smoothly within various parent constraints', (
       tester,
@@ -395,35 +509,121 @@ void main() {
       expect(lastWidget.h, 4); // Full screen height
     });
 
-    testWidgets('UISettingsPanel toggles MapWidgetStyle and map layers', (
+    testWidgets('ThermalMapWidget renders Option 1 (XCtrack), Option 2 (Burnair Core), and Option 3 (Navigator Ribbon)', (
       tester,
     ) async {
-      tester.view.physicalSize = const Size(800, 1600);
+      for (final style in ThermalMapStyle.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: ThermalMapWidget(
+                  style: style,
+                  showCore: true,
+                  climbRateMs: 2.5,
+                  altitudeM: 1600.0,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.byType(ThermalMapWidget), findsOneWidget);
+
+        if (style == ThermalMapStyle.xctrackBubbles) {
+          expect(find.text('XCtrack Bubbles'), findsOneWidget);
+        } else if (style == ThermalMapStyle.burnairCore) {
+          expect(find.text('Burnair Core Assist'), findsOneWidget);
+        } else if (style == ThermalMapStyle.navigatorRibbon) {
+          expect(find.text('Navigator Ribbon'), findsOneWidget);
+        }
+      }
+    });
+
+    testWidgets('ThermalMapWidget zoom and recenter buttons respond to user interaction', (
+      tester,
+    ) async {
+      int zoomInCount = 0;
+      int zoomOutCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: 400,
+              child: ThermalMapWidget(
+                onZoomIn: () => zoomInCount++,
+                onZoomOut: () => zoomOutCount++,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Tap zoom in
+      await tester.tap(find.byKey(const Key('btn_thermal_zoom_in')));
+      await tester.pump();
+      expect(zoomInCount, 1);
+
+      // Tap zoom out
+      await tester.tap(find.byKey(const Key('btn_thermal_zoom_out')));
+      await tester.pump();
+      expect(zoomOutCount, 1);
+    });
+
+    testWidgets('WidgetPickerSheet shows Thermal Assistant Map and adds it with full screen initial size', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
       final manager = ScreenManagerService();
 
       await tester.pumpWidget(
-        MaterialApp(home: UISettingsPanel(screenManager: manager)),
+        MaterialApp(
+          home: Scaffold(
+            body: WidgetPickerSheet(screenManager: manager),
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
-      final mapSectionFinder = find.text('Offline Map & Terrain Style (REQ-MAP-001)');
-      await tester.scrollUntilVisible(mapSectionFinder, 100);
-      expect(mapSectionFinder, findsOneWidget);
+      final thermalItemFinder = find.widgetWithText(ListTile, 'Thermal Assistant Map');
+      await tester.scrollUntilVisible(thermalItemFinder, 100);
+      expect(thermalItemFinder, findsOneWidget);
 
-      manager.setMapWidgetStyle(MapWidgetStyle.thermalHeatmap);
-      await tester.pump();
-      expect(manager.config.mapWidgetStyle, MapWidgetStyle.thermalHeatmap);
+      final addButtonFinder = find.descendant(
+        of: thermalItemFinder,
+        matching: find.widgetWithText(ElevatedButton, 'Add'),
+      );
+      await tester.tap(addButtonFinder);
+      await tester.pumpAndSettle();
 
-      manager.setMapOrientation(MapOrientation.northUp);
-      await tester.pump();
-      expect(manager.config.mapOrientation, MapOrientation.northUp);
+      final lastWidget = manager.activeScreen.widgets.last;
+      expect(lastWidget.type, WidgetType.thermalMap);
+      expect(lastWidget.w, 4); // Full screen width by default
+      expect(lastWidget.h, 4); // Full screen height by default
+      expect(lastWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
+    });
 
-      manager.toggleMapAirspace(false);
-      await tester.pump();
-      expect(manager.config.mapShowAirspace, false);
+    testWidgets('Default thermaling screen contains thermalMap in widgets list', (
+      tester,
+    ) async {
+      final config = UIConfig.defaultConfig();
+      final thermalingScreen = config.screens.firstWhere((s) => s.id == 'thermaling');
+
+      final hasThermalMap = thermalingScreen.widgets.any((w) => w.type == WidgetType.thermalMap);
+      expect(hasThermalMap, isTrue);
+
+      final thermalWidget = thermalingScreen.widgets.firstWhere((w) => w.type == WidgetType.thermalMap);
+      expect(thermalWidget.w, 4);
+      expect(thermalWidget.h, 4);
+      expect(thermalWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
     });
   });
 }

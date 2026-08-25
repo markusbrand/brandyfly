@@ -326,16 +326,39 @@ class _FlightsScreenState extends State<FlightsScreen>
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
-                    if (flight.uploadStatus == UploadStatus.queued ||
-                        flight.uploadStatus == UploadStatus.failed)
-                      const PopupMenuItem(
-                        value: 'retry_upload',
-                        child: ListTile(
-                          leading: Icon(Icons.refresh),
-                          title: Text('Retry Upload'),
-                          contentPadding: EdgeInsets.zero,
+                    PopupMenuItem(
+                      value: flight.uploadStatus == UploadStatus.uploaded
+                          ? 'reupload'
+                          : flight.uploadStatus == UploadStatus.queued ||
+                                  flight.uploadStatus == UploadStatus.failed
+                              ? 'retry_upload'
+                              : 'upload',
+                      child: ListTile(
+                        leading: Icon(
+                          flight.uploadStatus == UploadStatus.uploaded
+                              ? Icons.cloud_done
+                              : flight.uploadStatus == UploadStatus.queued ||
+                                      flight.uploadStatus == UploadStatus.failed
+                                  ? Icons.refresh
+                                  : Icons.cloud_upload,
+                          color: flight.uploadStatus == UploadStatus.uploaded
+                              ? Colors.greenAccent
+                              : flight.uploadStatus == UploadStatus.queued ||
+                                      flight.uploadStatus == UploadStatus.failed
+                                  ? Colors.orangeAccent
+                                  : Colors.cyanAccent,
                         ),
+                        title: Text(
+                          flight.uploadStatus == UploadStatus.uploaded
+                              ? 'Re-upload to XContest'
+                              : flight.uploadStatus == UploadStatus.queued ||
+                                      flight.uploadStatus == UploadStatus.failed
+                                  ? 'Retry Upload to XContest'
+                                  : 'Upload to XContest',
+                        ),
+                        contentPadding: EdgeInsets.zero,
                       ),
+                    ),
                     const PopupMenuItem(
                       value: 'delete',
                       child: ListTile(
@@ -448,11 +471,11 @@ class _FlightsScreenState extends State<FlightsScreen>
     );
   }
 
-  void _handleCardAction(
+  Future<void> _handleCardAction(
     BuildContext context,
     FlightModel flight,
     String action,
-  ) {
+  ) async {
     switch (action) {
       case 'details':
         _showDetailsDialog(context, flight);
@@ -463,8 +486,24 @@ class _FlightsScreenState extends State<FlightsScreen>
       case 'export':
         _showExportDialog(context, flight);
         break;
+      case 'upload':
+      case 'reupload':
       case 'retry_upload':
-        widget.uploadService.retryUpload(flight);
+        final success = await widget.uploadService.uploadFlight(flight);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                success
+                    ? 'Flight "${flight.title}" successfully uploaded to XContest.org!'
+                    : !widget.uploadService.isOnline
+                        ? 'Offline: Flight queued for upload.'
+                        : 'Upload failed: Please check XContest username in Settings.',
+              ),
+              backgroundColor: success ? Colors.green.shade800 : Colors.blueGrey.shade800,
+            ),
+          );
+        }
         break;
       case 'delete':
         _showDeleteConfirmation(context, flight);
@@ -501,6 +540,18 @@ class _FlightsScreenState extends State<FlightsScreen>
           ),
         ),
         actions: [
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueAccent,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.cloud_upload, size: 18),
+            label: const Text('Upload to XContest'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleCardAction(context, flight, 'upload');
+            },
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close'),

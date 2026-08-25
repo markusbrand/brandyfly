@@ -162,6 +162,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   void _startReplay(FlightModel flight) {
     _replayService.loadFlight(flight);
     _replayService.play();
+    _screenManager.toggleFlightsScreen(false);
     _screenManager.toggleReplayMode(true);
   }
 
@@ -351,7 +352,7 @@ class _LiveFlightView extends StatelessWidget {
   }
 }
 
-class _MockFlightView extends StatelessWidget {
+class _MockFlightView extends StatefulWidget {
   const _MockFlightView({
     required this.config,
     required this.replay,
@@ -369,11 +370,18 @@ class _MockFlightView extends StatelessWidget {
   final VoidCallback onReset;
 
   @override
+  State<_MockFlightView> createState() => _MockFlightViewState();
+}
+
+class _MockFlightViewState extends State<_MockFlightView> {
+  bool _isSessionMinimized = false;
+
+  @override
   Widget build(BuildContext context) {
-    final frame = replay.currentFrame;
-    final isReplaying = screenManager.isReplayActive;
+    final frame = widget.replay.currentFrame;
+    final isReplaying = widget.screenManager.isReplayActive;
     final telemetry = isReplaying
-        ? replayService.currentTelemetry
+        ? widget.replayService.currentTelemetry
         : const <String, dynamic>{
             'altitude': 1450.0,
             'speed': 42.5,
@@ -391,13 +399,13 @@ class _MockFlightView extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.menu),
           tooltip: 'Open Navigation Menu',
-          onPressed: () => screenManager.toggleNavBar(true),
+          onPressed: () => widget.screenManager.toggleNavBar(true),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_note),
             tooltip: 'Enable Edit Mode',
-            onPressed: () => screenManager.toggleEditMode(true),
+            onPressed: () => widget.screenManager.toggleEditMode(true),
           ),
           _ModeChip(
             label: isReplaying ? 'REPLAY' : 'SIMULATED',
@@ -414,42 +422,87 @@ class _MockFlightView extends StatelessWidget {
         ),
         children: [
           if (!isReplaying) ...[
-            _SectionCard(
-              title: 'Mock flight session',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Fixture: ${config.fixtureVersion}'),
-                  Text('Seed: ${config.seed}'),
-                  Text(
-                    'Clock step: ${config.logicalClockStep.inMilliseconds} ms',
+            if (_isSessionMinimized)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.flight_takeoff, size: 18, color: Colors.orangeAccent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Mock flight session (${widget.config.sessionLabel})',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.skip_next, size: 18),
+                        tooltip: 'Advance scenario',
+                        onPressed: widget.onNext,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.restart_alt, size: 18),
+                        tooltip: 'Reset replay',
+                        onPressed: widget.onReset,
+                      ),
+                      IconButton(
+                        key: const Key('btn_expand_mock_session'),
+                        icon: const Icon(Icons.expand_more),
+                        tooltip: 'Expand mock flight session',
+                        onPressed: () => setState(() => _isSessionMinimized = false),
+                      ),
+                    ],
                   ),
-                  Text('Provenance: ${config.provenance}'),
-                  Text('Session label: ${config.sessionLabel}'),
-                  Text('Replay hash: ${replay.canonicalReplayHash}'),
-                  Text('Marker: ${frame.sessionMarker}'),
+                ),
+              )
+            else ...[
+              _SectionCard(
+                title: 'Mock flight session',
+                trailing: IconButton(
+                  key: const Key('btn_minimize_mock_session'),
+                  icon: const Icon(Icons.expand_less),
+                  tooltip: 'Minimize mock flight session',
+                  onPressed: () => setState(() => _isSessionMinimized = true),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Fixture: ${widget.config.fixtureVersion}'),
+                    Text('Seed: ${widget.config.seed}'),
+                    Text(
+                      'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
+                    ),
+                    Text('Provenance: ${widget.config.provenance}'),
+                    Text('Session label: ${widget.config.sessionLabel}'),
+                    Text('Replay hash: ${widget.replay.canonicalReplayHash}'),
+                    Text('Marker: ${frame.sessionMarker}'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: widget.onNext,
+                    child: const Text('Advance scenario'),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton(
+                    onPressed: widget.onReset,
+                    child: const Text('Reset replay'),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: onNext,
-                  child: const Text('Advance scenario'),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton(
-                  onPressed: onReset,
-                  child: const Text('Reset replay'),
-                ),
-              ],
-            ),
+            ],
             const SizedBox(height: 16),
           ],
           _SectionCard(
             title: isReplaying
-                ? 'Replaying: ${replayService.flight?.title ?? "Flight"}'
+                ? 'Replaying: ${widget.replayService.flight?.title ?? "Flight"}'
                 : frame.title,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,9 +515,9 @@ class _MockFlightView extends StatelessWidget {
                   const SizedBox(height: 16),
                 ],
                 SizedBox(
-                  height: 380,
+                  height: _isSessionMinimized ? 520 : 380,
                   child: LayoutStrategyContainer(
-                    screenManager: screenManager,
+                    screenManager: widget.screenManager,
                     telemetryData: telemetry,
                   ),
                 ),
@@ -496,10 +549,15 @@ class _ModeChip extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child});
+  const _SectionCard({
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
 
   final String title;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -509,7 +567,15 @@ class _SectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+                ),
+                ?trailing,
+              ],
+            ),
             const SizedBox(height: 12),
             child,
           ],

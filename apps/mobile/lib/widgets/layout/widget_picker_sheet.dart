@@ -58,6 +58,12 @@ class WidgetPickerSheet extends StatelessWidget {
         'Alpine map with contours, airspace, thermals & track',
         Icons.map,
       ),
+      (
+        WidgetType.thermalMap,
+        'Thermal Assistant Map',
+        'Lift (green) & sink (red) trail with core tracking & ribbon modes',
+        Icons.radar,
+      ),
     ];
 
     return Container(

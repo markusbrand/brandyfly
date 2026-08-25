@@ -42,8 +42,7 @@ class ScreenManagerService extends ChangeNotifier {
   void toggleEditMode([bool? enabled]) {
     _isEditMode = enabled ?? !_isEditMode;
     if (_isEditMode) {
-      _isNavBarVisible =
-          false; // Hide navbar when entering edit mode if desired
+      _isNavBarVisible = false;
     }
     notifyListeners();
   }
@@ -85,69 +84,6 @@ class ScreenManagerService extends ChangeNotifier {
     _saveAndNotify();
   }
 
-  void setLayoutStrategyStyle(LayoutStrategyStyle style) {
-    _config = _config.copyWith(layoutStrategyStyle: style);
-    _saveAndNotify();
-  }
-
-  void setNumericWidgetStyle(NumericWidgetStyle style) {
-    _config = _config.copyWith(numericWidgetStyle: style);
-    _saveAndNotify();
-  }
-
-  void setWindWidgetStyle(WindWidgetStyle style) {
-    _config = _config.copyWith(windWidgetStyle: style);
-    _saveAndNotify();
-  }
-
-  void setLiftSinkBarStyle(LiftSinkBarStyle style) {
-    _config = _config.copyWith(liftSinkBarStyle: style);
-    _saveAndNotify();
-  }
-
-  void setAltitudeChartStyle(AltitudeChartStyle style) {
-    _config = _config.copyWith(altitudeChartStyle: style);
-    _saveAndNotify();
-  }
-
-  void setMapWidgetStyle(MapWidgetStyle style) {
-    _config = _config.copyWith(mapWidgetStyle: style);
-    _saveAndNotify();
-  }
-
-  void setMapOrientation(MapOrientation orientation) {
-    _config = _config.copyWith(mapOrientation: orientation);
-    _saveAndNotify();
-  }
-
-  void toggleMapAirspace([bool? show]) {
-    _config = _config.copyWith(
-      mapShowAirspace: show ?? !_config.mapShowAirspace,
-    );
-    _saveAndNotify();
-  }
-
-  void toggleMapThermals([bool? show]) {
-    _config = _config.copyWith(
-      mapShowThermals: show ?? !_config.mapShowThermals,
-    );
-    _saveAndNotify();
-  }
-
-  void toggleMapTrack([bool? show]) {
-    _config = _config.copyWith(
-      mapShowTrack: show ?? !_config.mapShowTrack,
-    );
-    _saveAndNotify();
-  }
-
-  void toggleMapContours([bool? show]) {
-    _config = _config.copyWith(
-      mapShowContours: show ?? !_config.mapShowContours,
-    );
-    _saveAndNotify();
-  }
-
   void setThermalingStyle(ThermalingStyle style) {
     _config = _config.copyWith(thermalingStyle: style);
     _saveAndNotify();
@@ -155,6 +91,69 @@ class ScreenManagerService extends ChangeNotifier {
 
   void setSettingsStyle(SettingsStyle style) {
     _config = _config.copyWith(settingsStyle: style);
+    _saveAndNotify();
+  }
+
+  void addScreen(
+    String name, {
+    LayoutStrategyStyle layoutStrategy = LayoutStrategyStyle.sidebarDashboard,
+    ScreenAutoSwitchTrigger autoSwitchTrigger = ScreenAutoSwitchTrigger.manualOnly,
+  }) {
+    final newId = 'screen_${DateTime.now().millisecondsSinceEpoch}';
+    final newScreen = FlightScreenModel(
+      id: newId,
+      name: name,
+      layoutStrategy: layoutStrategy,
+      autoSwitchTrigger: autoSwitchTrigger,
+      widgets: const [],
+    );
+    final updatedScreens = [..._config.screens, newScreen];
+    _config = _config.copyWith(screens: updatedScreens, activeScreenId: newId);
+    _saveAndNotify();
+  }
+
+  void removeScreen(String screenId) {
+    if (_config.screens.length <= 1) return; // Keep at least one screen
+    final updatedScreens = _config.screens
+        .where((s) => s.id != screenId)
+        .toList();
+    final nextActive = updatedScreens.first.id;
+    _config = _config.copyWith(
+      screens: updatedScreens,
+      activeScreenId: nextActive,
+    );
+    _saveAndNotify();
+  }
+
+  void renameScreen(String screenId, String newName) {
+    final updatedScreens = _config.screens.map((s) {
+      return s.id == screenId ? s.copyWith(name: newName) : s;
+    }).toList();
+    _config = _config.copyWith(screens: updatedScreens);
+    _saveAndNotify();
+  }
+
+  void setScreenLayoutStrategy(String screenId, LayoutStrategyStyle strategy) {
+    final updatedScreens = _config.screens.map((s) {
+      return s.id == screenId ? s.copyWith(layoutStrategy: strategy) : s;
+    }).toList();
+    _config = _config.copyWith(screens: updatedScreens);
+    _saveAndNotify();
+  }
+
+  void setScreenAutoSwitchTrigger(String screenId, ScreenAutoSwitchTrigger trigger) {
+    final updatedScreens = _config.screens.map((s) {
+      return s.id == screenId ? s.copyWith(autoSwitchTrigger: trigger) : s;
+    }).toList();
+    _config = _config.copyWith(screens: updatedScreens);
+    _saveAndNotify();
+  }
+
+  void updateScreen(FlightScreenModel updated) {
+    final updatedScreens = _config.screens.map((s) {
+      return s.id == updated.id ? updated : s;
+    }).toList();
+    _config = _config.copyWith(screens: updatedScreens);
     _saveAndNotify();
   }
 
@@ -224,14 +223,27 @@ class ScreenManagerService extends ChangeNotifier {
   void addWidget(WidgetType type) {
     final currentActive = activeScreen;
     final newId = 'w_${DateTime.now().millisecondsSinceEpoch}';
-    final isMap = type == WidgetType.map;
+    final isMapLike = type == WidgetType.map || type == WidgetType.thermalMap;
     final newPlacement = WidgetPlacementModel(
       id: newId,
       type: type,
       x: 0,
       y: 0,
-      w: isMap ? 4 : 2,
-      h: isMap ? 4 : 1,
+      w: isMapLike ? 4 : 2,
+      h: isMapLike ? 4 : 1,
+      numericStyle: NumericWidgetStyle.minimalistText,
+      windStyle: WindWidgetStyle.relativeArrow,
+      varioStyle: LiftSinkBarStyle.verticalEdgeBar,
+      altitudeChartStyle: AltitudeChartStyle.minimalSparkline,
+      mapStyle: MapWidgetStyle.topoContours,
+      mapOrientation: MapOrientation.trackUp,
+      mapShowAirspace: true,
+      mapShowThermals: true,
+      mapShowTrack: true,
+      mapShowContours: true,
+      thermalMapStyle: ThermalMapStyle.xctrackBubbles,
+      thermalMapShowCore: true,
+      thermalMapHistorySeconds: 90,
     );
     final updatedWidgets = [...currentActive.widgets, newPlacement];
     _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
@@ -243,31 +255,6 @@ class ScreenManagerService extends ChangeNotifier {
         .where((w) => w.id != widgetId)
         .toList();
     _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
-  }
-
-  void addScreen(String name) {
-    final newId = 'screen_${DateTime.now().millisecondsSinceEpoch}';
-    final newScreen = FlightScreenModel(
-      id: newId,
-      name: name,
-      widgets: const [],
-    );
-    final updatedScreens = [..._config.screens, newScreen];
-    _config = _config.copyWith(screens: updatedScreens, activeScreenId: newId);
-    _saveAndNotify();
-  }
-
-  void removeScreen(String screenId) {
-    if (_config.screens.length <= 1) return; // Keep at least one screen
-    final updatedScreens = _config.screens
-        .where((s) => s.id != screenId)
-        .toList();
-    final nextActive = updatedScreens.first.id;
-    _config = _config.copyWith(
-      screens: updatedScreens,
-      activeScreenId: nextActive,
-    );
-    _saveAndNotify();
   }
 
   void _updateActiveScreen(FlightScreenModel updated) {

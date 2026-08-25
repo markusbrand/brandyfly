@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import '../models/flight_model.dart';
 
 class FlightReplayService extends ChangeNotifier {
@@ -65,9 +66,16 @@ class FlightReplayService extends ChangeNotifier {
         'latitude': 47.5246,
         'longitude': 13.6917,
         'heading': 0.0,
+        'trackPoints': const <LatLng>[],
         'history': <double>[1250.0],
       };
     }
+
+    final track = _flight?.points
+            .take(_currentIndex + 1)
+            .map((p) => LatLng(p.latitude, p.longitude))
+            .toList() ??
+        <LatLng>[];
 
     return {
       'altitude': pt.altitude,
@@ -80,6 +88,7 @@ class FlightReplayService extends ChangeNotifier {
       'latitude': pt.latitude,
       'longitude': pt.longitude,
       'heading': pt.heading,
+      'trackPoints': track,
       'history': List<double>.from(_altitudeHistory),
     };
   }
@@ -156,6 +165,8 @@ class FlightReplayService extends ChangeNotifier {
     if (_currentIndex + steps >= _flight!.points.length) {
       _currentIndex = _flight!.points.length - 1;
       pause();
+    } else if (_currentIndex + steps < 0) {
+      _currentIndex = 0;
     } else {
       _currentIndex += steps;
     }

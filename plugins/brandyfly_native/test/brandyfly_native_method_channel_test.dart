@@ -54,4 +54,46 @@ void main() {
 
     await platform.configureLocalMockFlightMode(config);
   });
+
+  test('startSkyDrop1Transport', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          expect(methodCall.method, 'startSkyDrop1Transport');
+          final arguments = methodCall.arguments as Map<dynamic, dynamic>;
+          expect(arguments['developerModeOnly'], true);
+          expect(arguments['deviceAddress'], '00:11:22:33:44:55');
+          return true;
+        });
+
+    final started = await platform.startSkyDrop1Transport(
+      developerModeOnly: true,
+      deviceAddress: '00:11:22:33:44:55',
+    );
+    expect(started, true);
+  });
+
+  test('stopSkyDrop1Transport', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          expect(methodCall.method, 'stopSkyDrop1Transport');
+          return null;
+        });
+
+    await platform.stopSkyDrop1Transport();
+  });
+
+  test('runSkyDrop1HardwareBenchmark', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          expect(methodCall.method, 'runSkyDrop1HardwareBenchmark');
+          return {
+            'platform': 'android',
+            'allGatesPassed': true,
+          };
+        });
+
+    final res = await platform.runSkyDrop1HardwareBenchmark();
+    expect(res?['platform'], 'android');
+    expect(res?['allGatesPassed'], true);
+  });
 }

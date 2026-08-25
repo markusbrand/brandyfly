@@ -5,7 +5,13 @@ import { chromium } from 'playwright';
 
 const PORT = 8088;
 const WEB_DIR = path.resolve('/home/markus/Projects/brandyfly/apps/mobile/build/web');
-const SCREENSHOT_DIR = path.resolve('/home/markus/.gemini/antigravity-ide/brain/e12857ef-e90a-45e2-b854-723a8a2db1f4');
+const SCREENSHOT_DIR = process.env.SCREENSHOT_DIR
+  ? path.resolve(process.env.SCREENSHOT_DIR)
+  : path.resolve('/home/markus/.gemini/antigravity/brain/6a3f3994-108c-494e-9ee9-958b3d01597b');
+
+if (!fs.existsSync(SCREENSHOT_DIR)) {
+  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+}
 
 function startServer() {
   const mimeTypes = {

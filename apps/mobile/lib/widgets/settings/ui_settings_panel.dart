@@ -61,7 +61,7 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
     return Scaffold(
       backgroundColor: Colors.grey.shade900,
       appBar: AppBar(
-        title: const Text('UI Visual Mockup Settings'),
+        title: const Text('Application Settings'),
         backgroundColor: Colors.grey.shade900,
         actions: [
           IconButton(
@@ -74,11 +74,9 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          ..._buildNavigationAndLayoutSection(cfg),
+          ..._buildShellAndNavSection(cfg),
           const Divider(color: Colors.white24, height: 32),
-          ..._buildFlightInstrumentsSection(cfg),
-          const Divider(color: Colors.white24, height: 32),
-          ..._buildScreenModesSection(cfg),
+          ..._buildScreenManagementSection(cfg),
           const Divider(color: Colors.white24, height: 32),
           ..._buildFlightTrackingSection(),
           const Divider(color: Colors.white24, height: 32),
@@ -88,9 +86,9 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
     );
   }
 
-  List<Widget> _buildNavigationAndLayoutSection(UIConfig cfg) {
+  List<Widget> _buildShellAndNavSection(UIConfig cfg) {
     return [
-      _buildCategoryHeader('Navigation & Layout'),
+      _buildCategoryHeader('Shell & Navigation Preferences'),
       _buildEnumSelector<NavBarStyle>(
         title: 'Navigation Bar Style (REQ-UI-003)',
         currentValue: cfg.navBarStyle,
@@ -103,158 +101,6 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
         },
         onChanged: (val) => screenManager.setNavBarStyle(val),
       ),
-      _buildEnumSelector<LayoutStrategyStyle>(
-        title: 'Flight Screen Layout Strategy (REQ-UI-004)',
-        currentValue: cfg.layoutStrategyStyle,
-        values: LayoutStrategyStyle.values,
-        labels: {
-          LayoutStrategyStyle.freeformHud: 'Option 1: Freeform HUD',
-          LayoutStrategyStyle.snapToGrid: 'Option 2: Snap-to-Grid',
-          LayoutStrategyStyle.sidebarDashboard:
-              'Option 3: Sidebar Dashboard',
-        },
-        onChanged: (val) => screenManager.setLayoutStrategyStyle(val),
-      ),
-    ];
-  }
-
-  List<Widget> _buildFlightInstrumentsSection(UIConfig cfg) {
-    return [
-      _buildCategoryHeader('Flight Instruments & Widgets'),
-      _buildEnumSelector<NumericWidgetStyle>(
-        title: 'Numeric / Text Widgets',
-        currentValue: cfg.numericWidgetStyle,
-        values: NumericWidgetStyle.values,
-        labels: {
-          NumericWidgetStyle.minimalistText: 'Option 1: Minimalist Text',
-          NumericWidgetStyle.highContrastBox: 'Option 2: High-Contrast Box',
-          NumericWidgetStyle.circularGauge: 'Option 3: Circular Gauge',
-          NumericWidgetStyle.retroDigital: 'Option 4: Retro Digital',
-        },
-        onChanged: (val) => screenManager.setNumericWidgetStyle(val),
-      ),
-      _buildEnumSelector<WindWidgetStyle>(
-        title: 'Wind Direction Widget',
-        currentValue: cfg.windWidgetStyle,
-        values: WindWidgetStyle.values,
-        labels: {
-          WindWidgetStyle.relativeArrow: 'Option 1: Relative Arrow',
-          WindWidgetStyle.miniCompassRose: 'Option 2: Mini Compass Rose',
-          WindWidgetStyle.windsockIndicator: 'Option 3: Windsock Indicator',
-        },
-        onChanged: (val) => screenManager.setWindWidgetStyle(val),
-      ),
-      _buildEnumSelector<LiftSinkBarStyle>(
-        title: 'Visual Lift / Sink Bar',
-        currentValue: cfg.liftSinkBarStyle,
-        values: LiftSinkBarStyle.values,
-        labels: {
-          LiftSinkBarStyle.verticalEdgeBar: 'Option 1: Vertical Edge Bar',
-          LiftSinkBarStyle.analogDial: 'Option 2: Analog Dial',
-          LiftSinkBarStyle.screenEdgeGlow: 'Option 3: Screen Edge Glow',
-        },
-        onChanged: (val) => screenManager.setLiftSinkBarStyle(val),
-      ),
-      _buildEnumSelector<AltitudeChartStyle>(
-        title: 'Altitude Sparkline Chart',
-        currentValue: cfg.altitudeChartStyle,
-        values: AltitudeChartStyle.values,
-        labels: {
-          AltitudeChartStyle.minimalSparkline:
-              'Option 1: Minimal Sparkline',
-          AltitudeChartStyle.filledAreaGraph: 'Option 2: Filled Area Graph',
-          AltitudeChartStyle.detailedGrid: 'Option 3: Detailed Grid',
-        },
-        onChanged: (val) => screenManager.setAltitudeChartStyle(val),
-      ),
-      _buildEnumSelector<MapWidgetStyle>(
-        title: 'Offline Map & Terrain Style (REQ-MAP-001)',
-        currentValue: cfg.mapWidgetStyle,
-        values: MapWidgetStyle.values,
-        labels: {
-          MapWidgetStyle.topoContours: 'Option 1: Alpine Topo & Contours',
-          MapWidgetStyle.minimalVector: 'Option 2: High-Contrast Vector HUD',
-          MapWidgetStyle.thermalHeatmap: 'Option 3: Thermal Updraft Radar',
-          MapWidgetStyle.satelliteTerrain: 'Option 4: Shaded Relief Terrain',
-        },
-        onChanged: (val) => screenManager.setMapWidgetStyle(val),
-      ),
-      _buildEnumSelector<MapOrientation>(
-        title: 'Map Heading & Orientation',
-        currentValue: cfg.mapOrientation,
-        values: MapOrientation.values,
-        labels: {
-          MapOrientation.northUp: 'Option 1: North Up (Fixed)',
-          MapOrientation.trackUp: 'Option 2: Track Up (Rotating)',
-          MapOrientation.headingUp: 'Option 3: Glider Heading Up',
-        },
-        onChanged: (val) => screenManager.setMapOrientation(val),
-      ),
-      Card(
-        color: Colors.grey.shade900,
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Offline Map Layer Overlays',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Airspace Polygons (CTR / TMA)', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                value: cfg.mapShowAirspace,
-                activeThumbColor: Colors.cyanAccent,
-                onChanged: (val) => screenManager.toggleMapAirspace(val),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Thermal Updraft Hotspots', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                value: cfg.mapShowThermals,
-                activeThumbColor: Colors.cyanAccent,
-                onChanged: (val) => screenManager.toggleMapThermals(val),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Flight Trail / Breadcrumbs', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                value: cfg.mapShowTrack,
-                activeThumbColor: Colors.cyanAccent,
-                onChanged: (val) => screenManager.toggleMapTrack(val),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Topographic Elevation Contours', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                value: cfg.mapShowContours,
-                activeThumbColor: Colors.cyanAccent,
-                onChanged: (val) => screenManager.toggleMapContours(val),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ];
-  }
-
-  List<Widget> _buildScreenModesSection(UIConfig cfg) {
-    return [
-      _buildCategoryHeader('Screen Modes & Overlays'),
-      _buildEnumSelector<ThermalingStyle>(
-        title: 'Thermaling Screen Style',
-        currentValue: cfg.thermalingStyle,
-        values: ThermalingStyle.values,
-        labels: {
-          ThermalingStyle.zoomedRadar: 'Option 1: Zoomed Radar',
-          ThermalingStyle.focusMode: 'Option 2: Focus Mode',
-          ThermalingStyle.assistantDisplay: 'Option 3: Assistant Display',
-        },
-        onChanged: (val) => screenManager.setThermalingStyle(val),
-      ),
       _buildEnumSelector<SettingsStyle>(
         title: 'Settings Screen Layout',
         currentValue: cfg.settingsStyle,
@@ -266,6 +112,100 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
           SettingsStyle.cardDashboard: 'Option 3: Card-Based Dashboard',
         },
         onChanged: (val) => screenManager.setSettingsStyle(val),
+      ),
+      _buildEnumSelector<ThermalingStyle>(
+        title: 'Thermaling Mode Display',
+        currentValue: cfg.thermalingStyle,
+        values: ThermalingStyle.values,
+        labels: {
+          ThermalingStyle.zoomedRadar: 'Option 1: Zoomed Radar',
+          ThermalingStyle.focusMode: 'Option 2: Focus Mode',
+          ThermalingStyle.assistantDisplay: 'Option 3: Assistant Display',
+        },
+        onChanged: (val) => screenManager.setThermalingStyle(val),
+      ),
+    ];
+  }
+
+  List<Widget> _buildScreenManagementSection(UIConfig cfg) {
+    final activeScreen = screenManager.activeScreen;
+
+    return [
+      _buildCategoryHeader('Flight Screen Management'),
+      Card(
+        color: Colors.grey.shade900,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Active Screen & Layout Strategy',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Active Screen:', style: TextStyle(color: Colors.white70)),
+                  DropdownButton<String>(
+                    value: activeScreen.id,
+                    dropdownColor: Colors.blueGrey.shade900,
+                    underline: const SizedBox(),
+                    style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                    items: cfg.screens.map((s) {
+                      return DropdownMenuItem<String>(
+                        value: s.id,
+                        child: Text(s.name),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        screenManager.setActiveScreen(val);
+                        setState(() {});
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white12),
+              _buildEnumSelector<LayoutStrategyStyle>(
+                title: 'Screen Layout Strategy (${activeScreen.name})',
+                currentValue: activeScreen.layoutStrategy,
+                values: LayoutStrategyStyle.values,
+                labels: {
+                  LayoutStrategyStyle.freeformHud: 'Option 1: Freeform HUD',
+                  LayoutStrategyStyle.snapToGrid: 'Option 2: Snap-to-Grid',
+                  LayoutStrategyStyle.sidebarDashboard: 'Option 3: Sidebar Dashboard',
+                },
+                onChanged: (val) {
+                  screenManager.setScreenLayoutStrategy(activeScreen.id, val);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 4),
+              _buildEnumSelector<ScreenAutoSwitchTrigger>(
+                title: 'Automatic Screen Switch Trigger',
+                currentValue: activeScreen.autoSwitchTrigger,
+                values: ScreenAutoSwitchTrigger.values,
+                labels: {
+                  ScreenAutoSwitchTrigger.manualOnly: 'Manual Switch Only',
+                  ScreenAutoSwitchTrigger.onThermalCircling: 'Auto: When Circling in Thermal',
+                  ScreenAutoSwitchTrigger.onGlideStraight: 'Auto: When Gliding Straight',
+                },
+                onChanged: (val) {
+                  screenManager.setScreenAutoSwitchTrigger(activeScreen.id, val);
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     ];
   }
@@ -284,7 +224,7 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Quick UI Settings',
+                  'Quick Global Settings',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -337,10 +277,12 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
 
   // Option 3: Card-Based Dashboard
   Widget _buildCardDashboard(BuildContext context, UIConfig cfg) {
+    final activeScreen = screenManager.activeScreen;
+
     return Scaffold(
       backgroundColor: Colors.blueGrey.shade900,
       appBar: AppBar(
-        title: const Text('UI Options Dashboard'),
+        title: const Text('Settings Dashboard'),
         backgroundColor: Colors.blueGrey.shade900,
         actions: [
           IconButton(
@@ -362,29 +304,23 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
             NavBarStyle.values,
             (v) => screenManager.setNavBarStyle(v),
           ),
+          _buildCardItem<SettingsStyle>(
+            'Settings Style',
+            cfg.settingsStyle,
+            SettingsStyle.values,
+            (v) => screenManager.setSettingsStyle(v),
+          ),
           _buildCardItem<LayoutStrategyStyle>(
             'Layout Strategy',
-            cfg.layoutStrategyStyle,
+            activeScreen.layoutStrategy,
             LayoutStrategyStyle.values,
-            (v) => screenManager.setLayoutStrategyStyle(v),
+            (v) => screenManager.setScreenLayoutStrategy(activeScreen.id, v),
           ),
-          _buildCardItem<NumericWidgetStyle>(
-            'Numeric Widgets',
-            cfg.numericWidgetStyle,
-            NumericWidgetStyle.values,
-            (v) => screenManager.setNumericWidgetStyle(v),
-          ),
-          _buildCardItem<WindWidgetStyle>(
-            'Wind Widget',
-            cfg.windWidgetStyle,
-            WindWidgetStyle.values,
-            (v) => screenManager.setWindWidgetStyle(v),
-          ),
-          _buildCardItem<MapWidgetStyle>(
-            'Map Style',
-            cfg.mapWidgetStyle,
-            MapWidgetStyle.values,
-            (v) => screenManager.setMapWidgetStyle(v),
+          _buildCardItem<ScreenAutoSwitchTrigger>(
+            'Auto-Switch Trigger',
+            activeScreen.autoSwitchTrigger,
+            ScreenAutoSwitchTrigger.values,
+            (v) => screenManager.setScreenAutoSwitchTrigger(activeScreen.id, v),
           ),
         ],
       ),

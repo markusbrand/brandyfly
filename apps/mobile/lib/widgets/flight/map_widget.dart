@@ -1,9 +1,13 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../models/ui_config.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 
-/// Paragliding Map Widget with offline Alpine topo contours,
-/// airspace polygons, thermal overlays, breadcrumb tracks, and pilot position.
+import '../../models/ui_config.dart';
+import '../../services/map_tile_service.dart';
+
+/// Paragliding Map Widget with OpenStreetMap & OpenTopoMap tile rendering,
+/// offline tile caching, airspace polygons, thermal overlays, breadcrumb tracks, and pilot position.
 class MapWidget extends StatefulWidget {
   const MapWidget({
     super.key,
@@ -18,8 +22,12 @@ class MapWidget extends StatefulWidget {
     this.climbRateMs = 1.8,
     this.headingDeg = 220.0,
     this.altitudeHistory = const [],
+    this.initialZoom = 13.5,
+    this.pilotPosition,
+    this.trackPoints,
     this.onZoomIn,
     this.onZoomOut,
+    this.onZoomChanged,
   });
 
   final MapWidgetStyle style;
@@ -33,22 +41,98 @@ class MapWidget extends StatefulWidget {
   final double climbRateMs;
   final double headingDeg;
   final List<double> altitudeHistory;
+  final double initialZoom;
+  final LatLng? pilotPosition;
+  final List<LatLng>? trackPoints;
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
+  final ValueChanged<double>? onZoomChanged;
 
   @override
   State<MapWidget> createState() => _MapWidgetState();
 }
 
 class _MapWidgetState extends State<MapWidget> {
-  double _zoomLevel = 1.0;
-  Offset _panOffset = Offset.zero;
+  late final MapController _mapController;
+  late double _currentZoom;
   bool _centerOnPilot = true;
 
+  // Default Alpine launch reference coordinates (Dachstein / Krippenstein)
+  static const LatLng _defaultPilotPosition = LatLng(47.525, 13.685);
+
+  LatLng get _effectivePilotPosition =>
+      widget.pilotPosition ?? _defaultPilotPosition;
+
+  List<LatLng> get _effectiveTrackPoints {
+    if (widget.trackPoints != null && widget.trackPoints!.isNotEmpty) {
+      return widget.trackPoints!;
+    }
+    final p = _effectivePilotPosition;
+    return [
+      LatLng(p.latitude - 0.015, p.longitude - 0.018),
+      LatLng(p.latitude - 0.010, p.longitude - 0.012),
+      LatLng(p.latitude - 0.006, p.longitude - 0.008),
+      LatLng(p.latitude - 0.003, p.longitude - 0.003),
+      LatLng(p.latitude - 0.001, p.longitude - 0.001),
+      p,
+    ];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+    _currentZoom = widget.initialZoom;
+  }
+
+  @override
+  void didUpdateWidget(MapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialZoom != oldWidget.initialZoom) {
+      _currentZoom = widget.initialZoom;
+      try {
+        final targetCenter = _centerOnPilot
+            ? _effectivePilotPosition
+            : _mapController.camera.center;
+        _mapController.move(targetCenter, _currentZoom);
+      } catch (_) {}
+    }
+
+    final oldPilot = oldWidget.pilotPosition ?? _defaultPilotPosition;
+    final newPilot = _effectivePilotPosition;
+    if (_centerOnPilot && oldPilot != newPilot) {
+      try {
+        _mapController.move(newPilot, _mapController.camera.zoom);
+      } catch (_) {}
+    }
+
+    if (widget.orientation != oldWidget.orientation ||
+        (widget.orientation == MapOrientation.trackUp &&
+            widget.headingDeg != oldWidget.headingDeg)) {
+      try {
+        if (widget.orientation == MapOrientation.trackUp) {
+          _mapController.rotate(-widget.headingDeg);
+        } else if (widget.orientation == MapOrientation.northUp) {
+          _mapController.rotate(0.0);
+        }
+      } catch (_) {}
+    }
+  }
+
   void _handleZoom(double delta) {
+    final newZoom = (_currentZoom + delta).clamp(1.0, 22.0);
     setState(() {
-      _zoomLevel = (_zoomLevel + delta).clamp(0.5, 3.0);
+      _currentZoom = newZoom;
     });
+
+    try {
+      final center = _centerOnPilot
+          ? _effectivePilotPosition
+          : _mapController.camera.center;
+      _mapController.move(center, newZoom);
+    } catch (_) {}
+
+    widget.onZoomChanged?.call(newZoom);
     if (delta > 0) {
       widget.onZoomIn?.call();
     } else {
@@ -58,47 +142,122 @@ class _MapWidgetState extends State<MapWidget> {
 
   void _recenter() {
     setState(() {
-      _panOffset = Offset.zero;
       _centerOnPilot = true;
     });
+    try {
+      _mapController.move(_effectivePilotPosition, _mapController.camera.zoom);
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
+    final tileConfig = MapTileStyleConfig.forStyle(
+      widget.style,
+      showContours: widget.showContours,
+    );
+    final pilotPos = _effectivePilotPosition;
+    final initialRotation = widget.orientation == MapOrientation.trackUp
+        ? -widget.headingDeg
+        : 0.0;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Stack(
         children: [
-          // Interactive Pan & Zoom Custom Paint Canvas
+          // 1. FlutterMap Tile Layer & Paragliding Vector Overlays
           Positioned.fill(
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                setState(() {
-                  _panOffset += details.delta;
-                  _centerOnPilot = false;
-                });
-              },
-              child: CustomPaint(
-                painter: _MapTerrainPainter(
-                  style: widget.style,
-                  orientation: widget.orientation,
-                  zoomLevel: _zoomLevel,
-                  panOffset: _panOffset,
-                  showAirspace: widget.showAirspace,
-                  showThermals: widget.showThermals,
-                  showTrack: widget.showTrack,
-                  showContours: widget.showContours,
-                  altitudeM: widget.altitudeM,
-                  speedKmh: widget.speedKmh,
-                  climbRateMs: widget.climbRateMs,
-                  headingDeg: widget.headingDeg,
-                  altitudeHistory: widget.altitudeHistory,
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: pilotPos,
+                initialZoom: _currentZoom,
+                minZoom: 1.0,
+                maxZoom: 22.0,
+                initialRotation: initialRotation,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.all,
                 ),
+                onPositionChanged: (camera, hasGesture) {
+                  if (hasGesture && _centerOnPilot) {
+                    setState(() {
+                      _centerOnPilot = false;
+                    });
+                  }
+                  if (camera.zoom != _currentZoom) {
+                    _currentZoom = camera.zoom;
+                  }
+                },
               ),
+              children: [
+                // Base OSM / OpenTopoMap Tile Layer
+                TileLayer(
+                  key: ValueKey(
+                    'tile_layer_${widget.style.name}_${widget.showContours}_${tileConfig.urlTemplate}',
+                  ),
+                  urlTemplate: tileConfig.urlTemplate,
+                  fallbackUrl: tileConfig.fallbackUrl,
+                  subdomains: tileConfig.subdomains,
+                  tileProvider: BrandyFlyTileProvider(
+                    userAgent: 'BrandyFly/0.1.0 (rocks.brandstaetter.brandyfly)',
+                  ),
+                  userAgentPackageName: 'rocks.brandstaetter.brandyfly',
+                  maxNativeZoom: tileConfig.maxZoom.toInt(),
+                  minNativeZoom: tileConfig.minZoom.toInt(),
+                  maxZoom: 22.0,
+                  minZoom: 1.0,
+                  panBuffer: 2,
+                  keepBuffer: 6,
+                  tileDisplay: const TileDisplay.fadeIn(
+                    duration: Duration(milliseconds: 100),
+                  ),
+                  errorTileCallback: (tile, error, stackTrace) {
+                    debugPrint('[MapTile Error] ${tile.coordinates}: $error');
+                  },
+                ),
+
+                // Airspace Polygons (CTR / TMA)
+                if (widget.showAirspace)
+                  PolygonLayer(
+                    polygons: _buildAirspaces(pilotPos),
+                  ),
+
+                // GPS Breadcrumb Flight Track
+                if (widget.showTrack)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: _effectiveTrackPoints,
+                        color: _getTrackColor(widget.climbRateMs),
+                        strokeWidth: 3.5,
+                        borderColor: Colors.black87,
+                        borderStrokeWidth: 1.5,
+                      ),
+                    ],
+                  ),
+
+                // Thermal Updraft Markers
+                if (widget.showThermals)
+                  MarkerLayer(
+                    markers: _buildThermalMarkers(pilotPos),
+                  ),
+
+                // Pilot Position Marker with Heading Rotation
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: pilotPos,
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      child: _buildPilotMarker(),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
-          // Map Header Badge
+          // 2. Map Header Badge
           Positioned(
             top: 8,
             left: 8,
@@ -107,12 +266,19 @@ class _MapWidgetState extends State<MapWidget> {
               decoration: BoxDecoration(
                 color: Colors.black.withAlpha(180),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.cyanAccent.withAlpha(100), width: 1),
+                border: Border.all(
+                  color: Colors.cyanAccent.withAlpha(100),
+                  width: 1,
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.map_outlined, size: 12, color: Colors.cyanAccent),
+                  const Icon(
+                    Icons.map_outlined,
+                    size: 12,
+                    color: Colors.cyanAccent,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     _getStyleTitle(widget.style),
@@ -128,14 +294,14 @@ class _MapWidgetState extends State<MapWidget> {
             ),
           ),
 
-          // North / Orientation Compass Widget
+          // 3. North / Orientation Compass Widget
           Positioned(
             top: 8,
             right: 8,
             child: _buildCompassIndicator(),
           ),
 
-          // Quick Action Layer & Zoom Controls Toolbar
+          // 4. In-flight Zoom Steppers & Recenter Toolbar
           Positioned(
             bottom: 8,
             right: 8,
@@ -154,20 +320,20 @@ class _MapWidgetState extends State<MapWidget> {
                   key: const Key('btn_map_zoom_in'),
                   icon: Icons.add,
                   tooltip: 'Zoom In',
-                  onPressed: () => _handleZoom(0.25),
+                  onPressed: () => _handleZoom(0.5),
                 ),
                 const SizedBox(height: 4),
                 _mapActionButton(
                   key: const Key('btn_map_zoom_out'),
                   icon: Icons.remove,
                   tooltip: 'Zoom Out',
-                  onPressed: () => _handleZoom(-0.25),
+                  onPressed: () => _handleZoom(-0.5),
                 ),
               ],
             ),
           ),
 
-          // Map Scale Bar & Altitude Legend
+          // 5. Dynamic Scale Bar & Altitude / Speed HUD
           Positioned(
             bottom: 8,
             left: 8,
@@ -189,6 +355,110 @@ class _MapWidgetState extends State<MapWidget> {
       case MapWidgetStyle.satelliteTerrain:
         return 'RELIEF SHADED (OFFLINE)';
     }
+  }
+
+  Color _getTrackColor(double climbRate) {
+    if (climbRate >= 0.2) {
+      return const Color(0xFF22C55E); // Green (Lift)
+    } else if (climbRate <= -0.2) {
+      return const Color(0xFFEF4444); // Red (Sink)
+    }
+    return const Color(0xFFEAB308); // Yellow (Glide)
+  }
+
+  List<Polygon> _buildAirspaces(LatLng center) {
+    return [
+      Polygon(
+        points: [
+          LatLng(center.latitude + 0.025, center.longitude - 0.035),
+          LatLng(center.latitude + 0.035, center.longitude + 0.025),
+          LatLng(center.latitude + 0.010, center.longitude + 0.040),
+          LatLng(center.latitude - 0.015, center.longitude - 0.010),
+        ],
+        color: const Color(0xFFEF4444).withAlpha(35),
+        borderColor: const Color(0xFFEF4444).withAlpha(180),
+        borderStrokeWidth: 1.5,
+        label: 'CTR INNSBRUCK [D] GND-FL120',
+        labelStyle: const TextStyle(
+          color: Color(0xFFFCA5A5),
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+    ];
+  }
+
+  List<Marker> _buildThermalMarkers(LatLng center) {
+    final hotspots = [
+      (LatLng(center.latitude + 0.008, center.longitude + 0.012), '+2.8 m/s'),
+      (LatLng(center.latitude - 0.006, center.longitude + 0.018), '+3.4 m/s'),
+      (LatLng(center.latitude - 0.012, center.longitude - 0.009), '+1.9 m/s'),
+    ];
+
+    return hotspots.map((th) {
+      return Marker(
+        point: th.$1,
+        width: 60,
+        height: 40,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFF97316).withAlpha(200),
+                border: Border.all(color: const Color(0xFFFACC15), width: 1.5),
+              ),
+              child: const Center(
+                child: Icon(Icons.north, size: 8, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(190),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                th.$2,
+                style: const TextStyle(
+                  color: Color(0xFFFDBA74),
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  Widget _buildPilotMarker() {
+    return Transform.rotate(
+      angle: widget.headingDeg * math.pi / 180,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.cyanAccent.withAlpha(45),
+            ),
+          ),
+          CustomPaint(
+            size: const Size(26, 26),
+            painter: _PilotArrowPainter(),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCompassIndicator() {
@@ -227,7 +497,7 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   Widget _buildScaleAndLegend() {
-    final scaleKm = (1.0 / _zoomLevel).clamp(0.2, 5.0);
+    final scaleKm = (40000.0 / math.pow(2, _currentZoom)).clamp(0.2, 50.0);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
@@ -301,378 +571,29 @@ class _MapWidgetState extends State<MapWidget> {
   }
 }
 
-class _MapTerrainPainter extends CustomPainter {
-  _MapTerrainPainter({
-    required this.style,
-    required this.orientation,
-    required this.zoomLevel,
-    required this.panOffset,
-    required this.showAirspace,
-    required this.showThermals,
-    required this.showTrack,
-    required this.showContours,
-    required this.altitudeM,
-    required this.speedKmh,
-    required this.climbRateMs,
-    required this.headingDeg,
-    required this.altitudeHistory,
-  });
-
-  final MapWidgetStyle style;
-  final MapOrientation orientation;
-  final double zoomLevel;
-  final Offset panOffset;
-  final bool showAirspace;
-  final bool showThermals;
-  final bool showTrack;
-  final bool showContours;
-  final double altitudeM;
-  final double speedKmh;
-  final double climbRateMs;
-  final double headingDeg;
-  final List<double> altitudeHistory;
-
+class _PilotArrowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
+    final path = Path();
+    path.moveTo(center.dx, center.dy - 11);
+    path.lineTo(center.dx - 8, center.dy + 8);
+    path.lineTo(center.dx, center.dy + 3);
+    path.lineTo(center.dx + 8, center.dy + 8);
+    path.close();
 
-    canvas.save();
-    canvas.clipRect(Offset.zero & size);
-
-    canvas.translate(center.dx + panOffset.dx, center.dy + panOffset.dy);
-    canvas.scale(zoomLevel);
-    if (orientation == MapOrientation.trackUp) {
-      canvas.rotate(-headingDeg * math.pi / 180);
-    }
-    canvas.translate(-center.dx, -center.dy);
-
-    // 1. Base terrain background
-    _drawTerrainBackground(canvas, size, center);
-
-    // 2. Topographic contour lines & elevation heights
-    if (showContours) {
-      _drawContourLines(canvas, size, center);
-    }
-
-    // 3. Mountain peaks & waypoints
-    _drawPeaksAndWaypoints(canvas, size, center);
-
-    // 4. Airspace polygons
-    if (showAirspace) {
-      _drawAirspaces(canvas, size, center);
-    }
-
-    // 5. Thermal updraft hotspots
-    if (showThermals) {
-      _drawThermals(canvas, size, center);
-    }
-
-    // 6. Flight Trail / Track polyline
-    if (showTrack) {
-      _drawFlightTrack(canvas, size, center);
-    }
-
-    // 7. Paraglider Pilot Marker
-    _drawPilotMarker(canvas, size, center);
-
-    canvas.restore();
-  }
-
-  void _drawTerrainBackground(Canvas canvas, Size size, Offset center) {
-    final bgPaint = Paint();
-
-    switch (style) {
-      case MapWidgetStyle.topoContours:
-        bgPaint.shader = RadialGradient(
-          center: Alignment.center,
-          radius: 1.2,
-          colors: [
-            const Color(0xFF1E293B),
-            const Color(0xFF0F172A),
-            const Color(0xFF020617),
-          ],
-        ).createShader(Offset.zero & size);
-        break;
-      case MapWidgetStyle.minimalVector:
-        bgPaint.color = const Color(0xFF0A0F1D);
-        break;
-      case MapWidgetStyle.thermalHeatmap:
-        bgPaint.color = const Color(0xFF0D1117);
-        break;
-      case MapWidgetStyle.satelliteTerrain:
-        bgPaint.shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF2A3439),
-            const Color(0xFF1B2327),
-            const Color(0xFF0F1416),
-          ],
-        ).createShader(Offset.zero & size);
-        break;
-    }
-
-    canvas.drawRect(
-      Rect.fromCenter(
-        center: center,
-        width: size.width * 4,
-        height: size.height * 4,
-      ),
-      bgPaint,
-    );
-  }
-
-  void _drawContourLines(Canvas canvas, Size size, Offset center) {
-    final contourPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-
-    final primaryContourPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8;
-
-    switch (style) {
-      case MapWidgetStyle.topoContours:
-        contourPaint.color = const Color(0xFFD97706).withAlpha(100);
-        primaryContourPaint.color = const Color(0xFFF59E0B).withAlpha(180);
-        break;
-      case MapWidgetStyle.minimalVector:
-        contourPaint.color = Colors.cyanAccent.withAlpha(60);
-        primaryContourPaint.color = Colors.cyanAccent.withAlpha(140);
-        break;
-      case MapWidgetStyle.thermalHeatmap:
-        contourPaint.color = Colors.blueGrey.withAlpha(40);
-        primaryContourPaint.color = Colors.blueGrey.withAlpha(80);
-        break;
-      case MapWidgetStyle.satelliteTerrain:
-        contourPaint.color = Colors.white24;
-        primaryContourPaint.color = Colors.white38;
-        break;
-    }
-
-    final radii = [60.0, 110.0, 160.0, 220.0, 290.0, 360.0];
-    for (int i = 0; i < radii.length; i++) {
-      final r = radii[i];
-      final path = Path();
-      final points = 24;
-      for (int step = 0; step <= points; step++) {
-        final angle = step * 2 * math.pi / points;
-        final noise = math.sin(angle * 3 + i) * 12 + math.cos(angle * 5 + i * 2) * 8;
-        final dist = r + noise;
-        final x = center.dx + dist * math.cos(angle);
-        final y = center.dy + dist * math.sin(angle) * 0.85;
-        if (step == 0) {
-          path.moveTo(x, y);
-        } else {
-          path.lineTo(x, y);
-        }
-      }
-      path.close();
-
-      final isMajor = i % 2 == 1;
-      canvas.drawPath(path, isMajor ? primaryContourPaint : contourPaint);
-    }
-  }
-
-  void _drawPeaksAndWaypoints(Canvas canvas, Size size, Offset center) {
-    final peaks = [
-      (Offset(center.dx - 90, center.dy - 80), 'Hohe Salve 1828m'),
-      (Offset(center.dx + 110, center.dy - 120), 'Kitzbuehel 1996m'),
-      (Offset(center.dx + 80, center.dy + 100), 'Hahnenkamm 1712m'),
-    ];
-
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-
-    for (final peak in peaks) {
-      final peakPath = Path();
-      peakPath.moveTo(peak.$1.dx, peak.$1.dy - 6);
-      peakPath.lineTo(peak.$1.dx - 5, peak.$1.dy + 4);
-      peakPath.lineTo(peak.$1.dx + 5, peak.$1.dy + 4);
-      peakPath.close();
-
-      canvas.drawPath(
-        peakPath,
-        Paint()
-          ..color = const Color(0xFFFBBF24)
-          ..style = PaintingStyle.fill,
-      );
-
-      textPainter.text = TextSpan(
-        text: peak.$2,
-        style: const TextStyle(
-          color: Color(0xFFFBBF24),
-          fontSize: 8,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(peak.$1.dx - textPainter.width / 2, peak.$1.dy + 6),
-      );
-    }
-  }
-
-  void _drawAirspaces(Canvas canvas, Size size, Offset center) {
-    final airspacePath = Path();
-    airspacePath.moveTo(center.dx - 140, center.dy - 180);
-    airspacePath.lineTo(center.dx + 60, center.dy - 200);
-    airspacePath.lineTo(center.dx + 40, center.dy - 90);
-    airspacePath.lineTo(center.dx - 150, center.dy - 100);
-    airspacePath.close();
-
+    // Outline
     canvas.drawPath(
-      airspacePath,
-      Paint()
-        ..color = const Color(0xFFEF4444).withAlpha(35)
-        ..style = PaintingStyle.fill,
-    );
-
-    canvas.drawPath(
-      airspacePath,
-      Paint()
-        ..color = const Color(0xFFEF4444).withAlpha(180)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
-
-    final textPainter = TextPainter(
-      text: const TextSpan(
-        text: 'CTR INNSBRUCK [D] GND-FL120',
-        style: TextStyle(
-          color: Color(0xFFFCA5A5),
-          fontSize: 8,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    textPainter.paint(canvas, Offset(center.dx - 130, center.dy - 140));
-  }
-
-  void _drawThermals(Canvas canvas, Size size, Offset center) {
-    final thermals = [
-      (Offset(center.dx - 45, center.dy + 35), '+2.8 m/s', 30.0),
-      (Offset(center.dx + 65, center.dy - 30), '+3.4 m/s', 38.0),
-      (Offset(center.dx - 10, center.dy - 90), '+1.9 m/s', 24.0),
-    ];
-
-    for (final th in thermals) {
-      final pos = th.$1;
-      final lift = th.$2;
-      final radius = th.$3;
-
-      final thermalGradient = RadialGradient(
-        colors: [
-          const Color(0xFFF97316).withAlpha(160),
-          const Color(0xFFEA580C).withAlpha(60),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCircle(center: pos, radius: radius));
-
-      canvas.drawCircle(
-        pos,
-        radius,
-        Paint()..shader = thermalGradient,
-      );
-
-      canvas.drawCircle(
-        pos,
-        3.5,
-        Paint()..color = const Color(0xFFFACC15),
-      );
-
-      final tp = TextPainter(
-        text: TextSpan(
-          text: lift,
-          style: const TextStyle(
-            color: Color(0xFFFDBA74),
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(pos.dx - tp.width / 2, pos.dy + 6));
-    }
-  }
-
-  void _drawFlightTrack(Canvas canvas, Size size, Offset center) {
-    final trackPoints = [
-      Offset(center.dx - 120, center.dy + 110),
-      Offset(center.dx - 80, center.dy + 85),
-      Offset(center.dx - 50, center.dy + 50),
-      Offset(center.dx - 40, center.dy + 30),
-      Offset(center.dx - 15, center.dy + 15),
-      center,
-    ];
-
-    final trackPath = Path();
-    for (int i = 0; i < trackPoints.length; i++) {
-      if (i == 0) {
-        trackPath.moveTo(trackPoints[i].dx, trackPoints[i].dy);
-      } else {
-        trackPath.lineTo(trackPoints[i].dx, trackPoints[i].dy);
-      }
-    }
-
-    canvas.drawPath(
-      trackPath,
+      path,
       Paint()
         ..color = Colors.black87
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 4.0
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
+        ..strokeWidth = 2.5,
     );
 
-    final trailColor = climbRateMs >= 0.2
-        ? const Color(0xFF22C55E)
-        : (climbRateMs <= -0.2 ? const Color(0xFFEF4444) : const Color(0xFFEAB308));
-
+    // Body
     canvas.drawPath(
-      trackPath,
-      Paint()
-        ..color = trailColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-
-    for (final pt in trackPoints) {
-      canvas.drawCircle(pt, 2.0, Paint()..color = Colors.white);
-    }
-  }
-
-  void _drawPilotMarker(Canvas canvas, Size size, Offset center) {
-    final pilotPath = Path();
-    pilotPath.moveTo(center.dx, center.dy - 12);
-    pilotPath.lineTo(center.dx - 9, center.dy + 9);
-    pilotPath.lineTo(center.dx, center.dy + 4);
-    pilotPath.lineTo(center.dx + 9, center.dy + 9);
-    pilotPath.close();
-
-    canvas.drawCircle(
-      center,
-      16,
-      Paint()
-        ..color = Colors.cyanAccent.withAlpha(50)
-        ..style = PaintingStyle.fill,
-    );
-
-    canvas.drawPath(
-      pilotPath,
-      Paint()
-        ..color = Colors.black87
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
-    );
-
-    canvas.drawPath(
-      pilotPath,
+      path,
       Paint()
         ..color = Colors.cyanAccent
         ..style = PaintingStyle.fill,
@@ -680,18 +601,5 @@ class _MapTerrainPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_MapTerrainPainter old) {
-    return old.style != style ||
-        old.orientation != orientation ||
-        old.zoomLevel != zoomLevel ||
-        old.panOffset != panOffset ||
-        old.showAirspace != showAirspace ||
-        old.showThermals != showThermals ||
-        old.showTrack != showTrack ||
-        old.showContours != showContours ||
-        old.altitudeM != altitudeM ||
-        old.speedKmh != speedKmh ||
-        old.climbRateMs != climbRateMs ||
-        old.headingDeg != headingDeg;
-  }
+  bool shouldRepaint(_PilotArrowPainter old) => false;
 }

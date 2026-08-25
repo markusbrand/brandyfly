@@ -340,6 +340,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                 onSelected: (selected) {
                   if (selected) {
                     widget.screenManager.setActiveScreen(screen.id);
+                    widget.screenManager.toggleNavBar(false);
                   }
                 },
               ),
@@ -377,6 +378,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
       onChanged: (newId) {
         if (newId != null) {
           widget.screenManager.setActiveScreen(newId);
+          widget.screenManager.toggleNavBar(false);
         }
       },
     );
@@ -396,6 +398,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           icon: const Icon(Icons.flight),
           label: const Text('Flights'),
           onPressed: () {
+            widget.screenManager.toggleNavBar(false);
             widget.screenManager.toggleFlightsScreen(true);
           },
         ),
@@ -407,6 +410,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           icon: const Icon(Icons.dashboard_customize),
           label: const Text('Edit Mode'),
           onPressed: () {
+            widget.screenManager.toggleNavBar(false);
             widget.screenManager.toggleEditMode(true);
           },
         ),
@@ -418,6 +422,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           icon: const Icon(Icons.settings),
           label: const Text('Settings'),
           onPressed: () {
+            widget.screenManager.toggleNavBar(false);
             widget.screenManager.toggleSettingsPanel(true);
           },
         ),

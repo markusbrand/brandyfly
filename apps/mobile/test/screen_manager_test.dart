@@ -8,7 +8,7 @@ void main() {
       final manager = ScreenManagerService();
       expect(manager.config.navBarStyle, NavBarStyle.translucentDrawer);
       expect(
-        manager.config.layoutStrategyStyle,
+        manager.activeScreen.layoutStrategy,
         LayoutStrategyStyle.sidebarDashboard,
       );
       expect(manager.isEditMode, false);
@@ -29,44 +29,44 @@ void main() {
       ); // Nav bar hides when edit mode opens
     });
 
-    test('updates visual mockup style options', () {
+    test('updates shell preferences and screen properties', () {
       final manager = ScreenManagerService();
 
       manager.setNavBarStyle(NavBarStyle.floatingPill);
       expect(manager.config.navBarStyle, NavBarStyle.floatingPill);
 
-      manager.setLayoutStrategyStyle(LayoutStrategyStyle.freeformHud);
+      manager.setSettingsStyle(SettingsStyle.cardDashboard);
+      expect(manager.config.settingsStyle, SettingsStyle.cardDashboard);
+
+      manager.setThermalingStyle(ThermalingStyle.focusMode);
+      expect(manager.config.thermalingStyle, ThermalingStyle.focusMode);
+
+      manager.setScreenLayoutStrategy('normal_flight', LayoutStrategyStyle.freeformHud);
       expect(
-        manager.config.layoutStrategyStyle,
+        manager.activeScreen.layoutStrategy,
         LayoutStrategyStyle.freeformHud,
       );
 
-      manager.setNumericWidgetStyle(NumericWidgetStyle.highContrastBox);
+      manager.setScreenAutoSwitchTrigger('normal_flight', ScreenAutoSwitchTrigger.onGlideStraight);
       expect(
-        manager.config.numericWidgetStyle,
-        NumericWidgetStyle.highContrastBox,
+        manager.activeScreen.autoSwitchTrigger,
+        ScreenAutoSwitchTrigger.onGlideStraight,
       );
+    });
 
-      manager.setWindWidgetStyle(WindWidgetStyle.miniCompassRose);
-      expect(manager.config.windWidgetStyle, WindWidgetStyle.miniCompassRose);
+    test('updates individual widget styling without affecting global config', () {
+      final manager = ScreenManagerService();
+      final widgetId = manager.activeScreen.widgets.first.id;
+      final original = manager.activeScreen.widgets.first;
 
-      manager.setMapWidgetStyle(MapWidgetStyle.satelliteTerrain);
-      expect(manager.config.mapWidgetStyle, MapWidgetStyle.satelliteTerrain);
+      final updated = original.copyWith(
+        numericStyle: NumericWidgetStyle.retroDigital,
+      );
+      manager.updateWidgetPlacement(updated);
 
-      manager.setMapOrientation(MapOrientation.northUp);
-      expect(manager.config.mapOrientation, MapOrientation.northUp);
-
-      manager.toggleMapAirspace(false);
-      expect(manager.config.mapShowAirspace, false);
-
-      manager.toggleMapThermals(false);
-      expect(manager.config.mapShowThermals, false);
-
-      manager.toggleMapTrack(false);
-      expect(manager.config.mapShowTrack, false);
-
-      manager.toggleMapContours(false);
-      expect(manager.config.mapShowContours, false);
+      final current = manager.activeScreen.widgets.firstWhere((w) => w.id == widgetId);
+      expect(current.numericStyle, NumericWidgetStyle.retroDigital);
+      expect(current.effectiveNumericStyle, NumericWidgetStyle.retroDigital);
     });
 
     test('adds map widget with full-screen initial dimensions', () {
@@ -79,15 +79,22 @@ void main() {
       expect(added.y, 0);
       expect(added.w, 4);
       expect(added.h, 4);
+      expect(added.effectiveMapStyle, MapWidgetStyle.topoContours);
     });
 
     test('adds, switches, and removes flight screens', () {
       final manager = ScreenManagerService();
       final initialCount = manager.config.screens.length;
 
-      manager.addScreen('Cross Country');
+      manager.addScreen(
+        'Cross Country',
+        layoutStrategy: LayoutStrategyStyle.snapToGrid,
+        autoSwitchTrigger: ScreenAutoSwitchTrigger.onGlideStraight,
+      );
       expect(manager.config.screens.length, initialCount + 1);
       expect(manager.activeScreen.name, 'Cross Country');
+      expect(manager.activeScreen.layoutStrategy, LayoutStrategyStyle.snapToGrid);
+      expect(manager.activeScreen.autoSwitchTrigger, ScreenAutoSwitchTrigger.onGlideStraight);
 
       manager.setActiveScreen('normal_flight');
       expect(manager.activeScreen.name, 'Normal Flight Screen');
@@ -110,7 +117,7 @@ void main() {
 
     test('repositions and resizes widgets with bounds clamping', () {
       final manager = ScreenManagerService();
-      final widgetId = manager.activeScreen.widgets.first.id;
+      final widgetId = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.altitude).id;
 
       // Update position
       manager.updateWidgetPosition(widgetId, 1, 2);
@@ -147,20 +154,15 @@ void main() {
     test('serializes and deserializes UIConfig correctly', () {
       final config = UIConfig.defaultConfig().copyWith(
         navBarStyle: NavBarStyle.cornerMenu,
-        numericWidgetStyle: NumericWidgetStyle.retroDigital,
-        mapWidgetStyle: MapWidgetStyle.thermalHeatmap,
-        mapOrientation: MapOrientation.headingUp,
-        mapShowAirspace: false,
+        settingsStyle: SettingsStyle.cardDashboard,
       );
 
       final encoded = config.encodeJson();
       final decoded = UIConfig.decodeJson(encoded);
 
       expect(decoded.navBarStyle, NavBarStyle.cornerMenu);
-      expect(decoded.numericWidgetStyle, NumericWidgetStyle.retroDigital);
-      expect(decoded.mapWidgetStyle, MapWidgetStyle.thermalHeatmap);
-      expect(decoded.mapOrientation, MapOrientation.headingUp);
-      expect(decoded.mapShowAirspace, false);
+      expect(decoded.settingsStyle, SettingsStyle.cardDashboard);
+      expect(decoded.screens.length, config.screens.length);
     });
   });
 }

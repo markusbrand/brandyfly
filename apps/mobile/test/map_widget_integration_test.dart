@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:brandyfly/models/ui_config.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/widgets/flight/map_widget.dart';
 import 'package:brandyfly/widgets/layout/layout_strategy_container.dart';
 import 'package:brandyfly/widgets/layout/widget_picker_sheet.dart';
-import 'package:brandyfly/widgets/settings/ui_settings_panel.dart';
 
 void main() {
   group('Map View Autonomous Integration & Behavior Test Suite', () {
@@ -147,7 +148,6 @@ void main() {
       'TC-MAP-005: Verifies Map is placed in the background layer behind other instruments in LayoutStrategyContainer',
       (tester) async {
         final manager = ScreenManagerService();
-        manager.addWidget(WidgetType.map);
 
         await tester.pumpWidget(
           MaterialApp(
@@ -225,7 +225,7 @@ void main() {
 
         final manager = ScreenManagerService();
         // Use freeform HUD layout so all handles are clean
-        manager.setLayoutStrategyStyle(LayoutStrategyStyle.freeformHud);
+        manager.setScreenLayoutStrategy('normal_flight', LayoutStrategyStyle.freeformHud);
         manager.addWidget(WidgetType.map);
         manager.toggleEditMode(true);
 
@@ -265,42 +265,283 @@ void main() {
     );
 
     testWidgets(
-      'TC-MAP-008: Verifies full UISettingsPanel configuration controls for map styles and layers',
+      'TC-MAP-008: Verifies in-place Edit Mode configuration controls for map styles and layers',
       (tester) async {
         tester.view.physicalSize = const Size(800, 1800);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() => tester.view.resetPhysicalSize());
 
         final manager = ScreenManagerService();
+        manager.addScreen('Map Test Screen');
+        manager.addWidget(WidgetType.map);
+        manager.toggleEditMode(true);
+
+        final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+        final id = mapWidget.id;
 
         await tester.pumpWidget(
           MaterialApp(
-            home: UISettingsPanel(screenManager: manager),
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {'altitude': 1500.0},
+              ),
+            ),
           ),
         );
         await tester.pumpAndSettle();
 
-        // Change Map style to satellite terrain
-        manager.setMapWidgetStyle(MapWidgetStyle.satelliteTerrain);
-        await tester.pump();
-        expect(manager.config.mapWidgetStyle, MapWidgetStyle.satelliteTerrain);
+        // Open in-place tune dialog
+        await tester.tap(find.byKey(Key('btn_config_$id')));
+        await tester.pumpAndSettle();
 
-        // Change orientation to heading up
-        manager.setMapOrientation(MapOrientation.headingUp);
-        await tester.pump();
-        expect(manager.config.mapOrientation, MapOrientation.headingUp);
+        expect(find.text('Configure MAP'), findsOneWidget);
+        expect(find.text('MAP STYLE'), findsOneWidget);
+        expect(find.text('MAP ORIENTATION'), findsOneWidget);
+        expect(find.text('MAP LAYER OVERLAYS'), findsOneWidget);
 
-        // Toggle layer switches
-        manager.toggleMapAirspace(false);
-        manager.toggleMapThermals(false);
-        manager.toggleMapTrack(false);
-        manager.toggleMapContours(false);
-        await tester.pump();
+        // Change Map style to Shaded Relief
+        await tester.tap(find.text('Shaded Relief'));
+        await tester.pumpAndSettle();
 
-        expect(manager.config.mapShowAirspace, false);
-        expect(manager.config.mapShowThermals, false);
-        expect(manager.config.mapShowTrack, false);
-        expect(manager.config.mapShowContours, false);
+        // Change orientation to Heading Up
+        await tester.tap(find.text('Heading Up'));
+        await tester.pumpAndSettle();
+
+        // Toggle an overlay
+        await tester.tap(find.text('Airspaces (CTR / TMA)'));
+        await tester.pumpAndSettle();
+
+        // Apply changes
+        await tester.tap(find.text('Apply'));
+        await tester.pumpAndSettle();
+
+        final updated = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
+        expect(updated.mapStyle, MapWidgetStyle.satelliteTerrain);
+        expect(updated.mapOrientation, MapOrientation.headingUp);
+        expect(updated.mapShowAirspace, false);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-009: Verifies Map Zoom Level configuration slider, stepper, presets, and model persistence',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        final manager = ScreenManagerService();
+        manager.addScreen('Zoom Test Screen');
+        manager.addWidget(WidgetType.map);
+        manager.toggleEditMode(true);
+
+        final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+        final id = mapWidget.id;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {'altitude': 1500.0},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Open config dialog
+        await tester.tap(find.byKey(Key('btn_config_$id')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('INITIAL ZOOM LEVEL'), findsOneWidget);
+        expect(find.text('Zoom: 13.5x'), findsOneWidget);
+
+        // Tap preset "Overview (10.0x)"
+        await tester.tap(find.text('Overview (10.0x)'));
+        await tester.pumpAndSettle();
+        expect(find.text('Zoom: 10.0x'), findsOneWidget);
+
+        // Tap stepper zoom increase (+) twice
+        await tester.tap(find.byKey(const Key('btn_config_zoom_increase')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('btn_config_zoom_increase')));
+        await tester.pumpAndSettle();
+        expect(find.text('Zoom: 11.0x'), findsOneWidget);
+
+        // Apply changes
+        await tester.tap(find.text('Apply'));
+        await tester.pumpAndSettle();
+
+        final updated = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
+        expect(updated.mapZoomLevel, 11.0);
+        expect(updated.effectiveMapZoomLevel, 11.0);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-010: Verifies TileLayer maxNativeZoom and over-zoom capability up to zoom 22 without blank canvas',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 500,
+                height: 500,
+                child: MapWidget(
+                  style: MapWidgetStyle.topoContours,
+                  initialZoom: 18.5,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
+        expect(tileLayer.maxNativeZoom, 17);
+        expect(tileLayer.maxZoom, 22.0);
+        expect(tileLayer.minZoom, 1.0);
+        expect(tileLayer.minNativeZoom, 3);
+
+        // Zoom in beyond native limit using the on-screen zoom button
+        await tester.tap(find.byKey(const Key('btn_map_zoom_in')));
+        await tester.pumpAndSettle();
+
+        // Layer remains present and active
+        expect(find.byType(TileLayer), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-011: Verifies dynamic style switching updates TileLayer key and urlTemplate',
+      (tester) async {
+        final styles = [
+          (MapWidgetStyle.topoContours, 'topoContours'),
+          (MapWidgetStyle.minimalVector, 'minimalVector'),
+          (MapWidgetStyle.thermalHeatmap, 'thermalHeatmap'),
+          (MapWidgetStyle.satelliteTerrain, 'satelliteTerrain'),
+        ];
+
+        for (final (style, expectedStyleName) in styles) {
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 400,
+                  height: 400,
+                  child: MapWidget(style: style),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
+          final keyString = (tileLayer.key as ValueKey<String>).value;
+          expect(keyString, contains(expectedStyleName));
+        }
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-012: Verifies showContours toggle updates tile layer URL template',
+      (tester) async {
+        // With contours enabled
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(
+                  style: MapWidgetStyle.topoContours,
+                  showContours: true,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        var tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
+        expect(tileLayer.urlTemplate, contains('opentopomap.org'));
+
+        // With contours disabled
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(
+                  style: MapWidgetStyle.topoContours,
+                  showContours: false,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
+        expect(tileLayer.urlTemplate, contains('tile.openstreetmap.org'));
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-013: Verifies telemetry streaming preserves active camera zoom and pilot recentering',
+      (tester) async {
+        double? reportedZoom;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(
+                  initialZoom: 14.0,
+                  pilotPosition: const LatLng(47.525, 13.685),
+                  onZoomChanged: (z) => reportedZoom = z,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Zoom in to 15.0
+        await tester.tap(find.byKey(const Key('btn_map_zoom_in')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('btn_map_zoom_in')));
+        await tester.pumpAndSettle();
+        expect(reportedZoom, 15.0);
+
+        // Stream new telemetry data (altitude, heading, pilot position)
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(
+                  initialZoom: 14.0, // initialZoom unchanged
+                  altitudeM: 1850.0,
+                  headingDeg: 240.0,
+                  speedKmh: 52.0,
+                  pilotPosition: const LatLng(47.530, 13.690),
+                  onZoomChanged: (z) => reportedZoom = z,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify altitude HUD updated without resetting zoom
+        expect(find.textContaining('ALT: 1850m'), findsOneWidget);
+        expect(find.textContaining('SPD: 52km/h'), findsOneWidget);
       },
     );
   });

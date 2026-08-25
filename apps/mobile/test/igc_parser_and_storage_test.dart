@@ -126,5 +126,48 @@ void main() {
       expect(storage.plannedFlights.length, 1);
       expect(storage.flights.length, 2);
     });
+
+    test('Parses Southern and Western hemisphere coordinates accurately', () {
+      const southernWesternIgc = '''AXFH001
+HFDTE200826
+HFPLTPILOT:Southern Pilot
+I00
+B1200002254321S04312345WA0050000520
+''';
+      final flight = parser.parseIgc(southernWesternIgc);
+      expect(flight.points.length, 1);
+      final pt = flight.points.first;
+      expect(pt.latitude, lessThan(0)); // South
+      expect(pt.longitude, lessThan(0)); // West
+      expect(pt.altitude, 500.0);
+    });
+
+    test('Calculates distance and bearing correctly between coordinates', () {
+      // Distance between Vienna (48.2082 N, 16.3738 E) and Graz (47.0707 N, 15.4395 E) is ~145 km
+      final dist = IGCParserService.calculateDistanceKm(48.2082, 16.3738, 47.0707, 15.4395);
+      expect(dist, closeTo(145.0, 10.0));
+
+      final bearing = IGCParserService.calculateBearing(48.2082, 16.3738, 47.0707, 15.4395);
+      expect(bearing, greaterThan(180.0)); // Bearing southwest
+      expect(bearing, lessThan(270.0));
+    });
+
+    test('Handles edge cases in computeStatistics gracefully', () {
+      final emptyStats = IGCParserService.computeStatistics([]);
+      expect(emptyStats.duration, Duration.zero);
+      expect(emptyStats.maxAltitude, 0.0);
+
+      final singlePointStats = IGCParserService.computeStatistics([
+        FlightPoint(
+          timestamp: DateTime.utc(2026, 8, 20, 10, 0, 0),
+          latitude: 47.0,
+          longitude: 13.0,
+          altitude: 1500.0,
+        ),
+      ]);
+      expect(singlePointStats.duration, Duration.zero);
+      expect(singlePointStats.maxAltitude, 1500.0);
+      expect(singlePointStats.minAltitude, 1500.0);
+    });
   });
 }

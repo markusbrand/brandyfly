@@ -183,16 +183,21 @@ class _SparklinePainter extends CustomPainter {
     final range = (maxVal - minVal) == 0 ? 1.0 : (maxVal - minVal);
 
     final path = Path();
-    final stepX = size.width / (history.length - 1);
-
-    for (int i = 0; i < history.length; i++) {
-      final normY = (history[i] - minVal) / range;
-      final x = i * stepX;
-      final y = size.height - (normY * (size.height - 10) + 5);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
+    if (history.length == 1) {
+      final y = size.height / 2;
+      path.moveTo(0, y);
+      path.lineTo(size.width, y);
+    } else {
+      final stepX = size.width / (history.length - 1);
+      for (int i = 0; i < history.length; i++) {
+        final normY = (history[i] - minVal) / range;
+        final x = i * stepX;
+        final y = size.height - (normY * (size.height - 10) + 5);
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
       }
     }
 
