@@ -12,16 +12,16 @@ void main() {
   group('MapTileStyleConfig', () {
     test('returns correct URL templates and attributions for each MapWidgetStyle', () {
       final topo = MapTileStyleConfig.forStyle(MapWidgetStyle.topoContours);
-      expect(topo.urlTemplate, contains('tile.opentopomap.org'));
-      expect(topo.attribution, contains('OpenTopoMap'));
-      expect(topo.subdomains, contains('a'));
+      expect(topo.urlTemplate, contains('tile.openstreetmap.org'));
+      expect(topo.attribution, contains('OpenStreetMap'));
+      expect(topo.fallbackUrl, contains('opentopomap.org'));
 
       final topoNoContours = MapTileStyleConfig.forStyle(
         MapWidgetStyle.topoContours,
         showContours: false,
       );
       expect(topoNoContours.urlTemplate, contains('tile.openstreetmap.org'));
-      expect(topoNoContours.label, contains('OpenStreetMap Standard'));
+      expect(topoNoContours.label, contains('OpenStreetMap'));
 
       final osm = MapTileStyleConfig.forStyle(MapWidgetStyle.minimalVector);
       expect(osm.urlTemplate, contains('tile.openstreetmap.org'));
@@ -32,8 +32,8 @@ void main() {
       expect(dark.attribution, contains('CARTO'));
 
       final relief = MapTileStyleConfig.forStyle(MapWidgetStyle.satelliteTerrain);
-      expect(relief.urlTemplate, contains('tile.opentopomap.org'));
-      expect(relief.attribution, contains('OpenTopoMap'));
+      expect(relief.urlTemplate, contains('tile-cyclosm.openstreetmap.fr'));
+      expect(relief.attribution, contains('CyclOSM'));
     });
   });
 

@@ -78,6 +78,8 @@ class _MapWidgetState extends State<MapWidget> {
     ];
   }
 
+  late final BrandyFlyTileProvider _tileProvider = BrandyFlyTileProvider();
+
   @override
   void initState() {
     super.initState();
@@ -197,9 +199,7 @@ class _MapWidgetState extends State<MapWidget> {
                   urlTemplate: tileConfig.urlTemplate,
                   fallbackUrl: tileConfig.fallbackUrl,
                   subdomains: tileConfig.subdomains,
-                  tileProvider: BrandyFlyTileProvider(
-                    userAgent: 'BrandyFly/0.1.0 (rocks.brandstaetter.brandyfly)',
-                  ),
+                  tileProvider: _tileProvider,
                   userAgentPackageName: 'rocks.brandstaetter.brandyfly',
                   maxNativeZoom: tileConfig.maxZoom.toInt(),
                   minNativeZoom: tileConfig.minZoom.toInt(),
@@ -214,6 +214,16 @@ class _MapWidgetState extends State<MapWidget> {
                     debugPrint('[MapTile Error] ${tile.coordinates}: $error');
                   },
                 ),
+
+                // Topographic Elevation Contours & Mountain Peaks (when showContours is true)
+                if (widget.showContours) ...[
+                  PolylineLayer(
+                    polylines: _buildContourPolylines(pilotPos),
+                  ),
+                  MarkerLayer(
+                    markers: _buildPeakMarkers(pilotPos),
+                  ),
+                ],
 
                 // Airspace Polygons (CTR / TMA)
                 if (widget.showAirspace)
@@ -387,6 +397,84 @@ class _MapWidgetState extends State<MapWidget> {
         ),
       ),
     ];
+  }
+
+  List<Marker> _buildPeakMarkers(LatLng center) {
+    final peaks = [
+      (LatLng(center.latitude - 0.050, center.longitude - 0.079), 'Hoher Dachstein', '2995m'),
+      (LatLng(center.latitude, center.longitude), 'Krippenstein', '2108m'),
+      (LatLng(center.latitude - 0.040, center.longitude - 0.050), 'Gjaidstein', '2794m'),
+      (LatLng(center.latitude + 0.070, center.longitude + 0.020), 'Sarstein', '1975m'),
+      (LatLng(center.latitude + 0.050, center.longitude - 0.070), 'Plassen', '1953m'),
+      (LatLng(center.latitude + 0.130, center.longitude + 0.090), 'Loser', '1838m'),
+    ];
+
+    return peaks.map((pk) {
+      return Marker(
+        point: pk.$1,
+        width: 100,
+        height: 24,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.black.withAlpha(200),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: const Color(0xFFFBBF24), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.change_history, size: 9, color: Color(0xFFFBBF24)),
+              const SizedBox(width: 3),
+              Flexible(
+                child: Text(
+                  '${pk.$2} ${pk.$3}',
+                  style: const TextStyle(
+                    color: Color(0xFFFBBF24),
+                    fontSize: 7.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  List<Polyline> _buildContourPolylines(LatLng center) {
+    final polylines = <Polyline>[];
+    final elevations = [
+      (0.009, 0.013, const Color(0xFFD97706).withAlpha(120), 1.2),
+      (0.018, 0.025, const Color(0xFFF59E0B).withAlpha(160), 1.6),
+      (0.028, 0.038, const Color(0xFFD97706).withAlpha(140), 1.4),
+      (0.040, 0.052, const Color(0xFFF59E0B).withAlpha(180), 2.0),
+      (0.055, 0.070, const Color(0xFFFACC15).withAlpha(200), 2.2),
+    ];
+
+    for (final el in elevations) {
+      final points = <LatLng>[];
+      const count = 24;
+      for (int i = 0; i <= count; i++) {
+        final angle = (i * 2 * math.pi) / count;
+        final noiseLat = math.sin(angle * 3) * (el.$1 * 0.15);
+        final noiseLng = math.cos(angle * 4) * (el.$2 * 0.15);
+        final lat = center.latitude + (el.$1 + noiseLat) * math.cos(angle);
+        final lng = center.longitude + (el.$2 + noiseLng) * math.sin(angle);
+        points.add(LatLng(lat, lng));
+      }
+      polylines.add(
+        Polyline(
+          points: points,
+          color: el.$3,
+          strokeWidth: el.$4,
+        ),
+      );
+    }
+    return polylines;
   }
 
   List<Marker> _buildThermalMarkers(LatLng center) {

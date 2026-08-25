@@ -28,7 +28,8 @@ class MapTileStyleConfig {
   final double minZoom;
   final String label;
 
-  static const String defaultUserAgent = 'BrandyFly/0.1.0';
+  static const String defaultUserAgent =
+      'BrandyFly/0.1.0 (rocks.brandstaetter.brandyfly)';
 
   static MapTileStyleConfig forStyle(
     MapWidgetStyle style, {
@@ -36,29 +37,20 @@ class MapTileStyleConfig {
   }) {
     switch (style) {
       case MapWidgetStyle.topoContours:
-        if (!showContours) {
-          return const MapTileStyleConfig(
-            label: 'OpenStreetMap Standard (Vector HUD)',
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            subdomains: [],
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19.0,
-            minZoom: 3.0,
-          );
-        }
         return const MapTileStyleConfig(
-          label: 'OpenTopoMap (Alpine Contours)',
-          urlTemplate: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-          fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          subdomains: ['a', 'b', 'c'],
-          attribution: '© OpenTopoMap (CC-BY-SA), © OpenStreetMap contributors',
-          maxZoom: 17.0,
+          label: 'OpenStreetMap (Alpine Topo & Contours)',
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          fallbackUrl: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
+          subdomains: [],
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19.0,
           minZoom: 3.0,
         );
       case MapWidgetStyle.minimalVector:
         return const MapTileStyleConfig(
           label: 'OpenStreetMap Standard (Vector HUD)',
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          fallbackUrl: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
           subdomains: [],
           attribution: '© OpenStreetMap contributors',
           maxZoom: 19.0,
@@ -77,12 +69,14 @@ class MapTileStyleConfig {
         );
       case MapWidgetStyle.satelliteTerrain:
         return const MapTileStyleConfig(
-          label: 'OpenTopo Relief Shaded',
-          urlTemplate: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-          fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          label: 'CyclOSM High-Detail Topo (Contour & Relief)',
+          urlTemplate:
+              'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
+          fallbackUrl: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
           subdomains: ['a', 'b', 'c'],
-          attribution: '© OpenTopoMap (CC-BY-SA), © OpenStreetMap contributors',
-          maxZoom: 17.0,
+          attribution:
+              '© CyclOSM (CC-BY-SA), © OpenStreetMap contributors',
+          maxZoom: 20.0,
           minZoom: 3.0,
         );
     }
@@ -285,14 +279,29 @@ class BrandyFlyTileProvider extends NetworkTileProvider {
     String? userAgent,
     super.httpClient,
     MapCachingProvider? cachingProvider,
-    super.headers,
-  }) : super(
+    Map<String, String>? headers,
+  })  : _userAgent = userAgent ?? MapTileStyleConfig.defaultUserAgent,
+        super(
+          headers: {
+            'User-Agent': userAgent ?? MapTileStyleConfig.defaultUserAgent,
+            ...?headers,
+          },
           silenceExceptions: true,
           attemptDecodeOfHttpErrorResponses: true,
           abortObsoleteRequests: false,
           cachingProvider:
               cachingProvider ?? BrandyFlyTileCacheService.instance,
-        ) {
-    headers['User-Agent'] = userAgent ?? MapTileStyleConfig.defaultUserAgent;
-  }
+        );
+
+  final String _userAgent;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BrandyFlyTileProvider &&
+          runtimeType == other.runtimeType &&
+          _userAgent == other._userAgent;
+
+  @override
+  int get hashCode => _userAgent.hashCode;
 }

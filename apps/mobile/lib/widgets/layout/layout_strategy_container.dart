@@ -482,6 +482,7 @@ class LayoutStrategyContainer extends StatelessWidget {
         );
       case WidgetType.map:
         return MapWidget(
+          key: ValueKey('map_widget_${model.id}'),
           style: model.effectiveMapStyle,
           orientation: model.effectiveMapOrientation,
           showAirspace: model.effectiveMapShowAirspace,

@@ -399,7 +399,7 @@ void main() {
         await tester.pumpAndSettle();
 
         final tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
-        expect(tileLayer.maxNativeZoom, 17);
+        expect(tileLayer.maxNativeZoom, 19);
         expect(tileLayer.maxZoom, 22.0);
         expect(tileLayer.minZoom, 1.0);
         expect(tileLayer.minNativeZoom, 3);
@@ -445,7 +445,7 @@ void main() {
     );
 
     testWidgets(
-      'TC-MAP-012: Verifies showContours toggle updates tile layer URL template',
+      'TC-MAP-012: Verifies showContours toggle updates tile layer and fallback configuration',
       (tester) async {
         // With contours enabled
         await tester.pumpWidget(
@@ -465,7 +465,8 @@ void main() {
         await tester.pumpAndSettle();
 
         var tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
-        expect(tileLayer.urlTemplate, contains('opentopomap.org'));
+        expect(tileLayer.urlTemplate, contains('tile.openstreetmap.org'));
+        expect(tileLayer.fallbackUrl, contains('opentopomap.org'));
 
         // With contours disabled
         await tester.pumpWidget(
@@ -486,6 +487,7 @@ void main() {
 
         tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
         expect(tileLayer.urlTemplate, contains('tile.openstreetmap.org'));
+        expect(tileLayer.fallbackUrl, contains('opentopomap.org'));
       },
     );
 
