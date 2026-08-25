@@ -322,11 +322,6 @@ class LayoutStrategyContainer extends StatelessWidget {
     final climb = _parseTelemetryDouble('climb', 1.8);
     final windDeg = _parseTelemetryDouble('windDir', 220.0);
     final windSpd = _parseTelemetryDouble('windSpeed', 14.0);
-    final history =
-        (telemetryData['history'] as List<dynamic>?)
-            ?.map((e) => (e as num).toDouble())
-            .toList() ??
-        [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
 
     switch (model.type) {
       case WidgetType.altitude:
@@ -369,6 +364,12 @@ class LayoutStrategyContainer extends StatelessWidget {
           style: cfg.liftSinkBarStyle,
         );
       case WidgetType.altitudeChart:
+        // ⚡ Bolt: Lazily parse expensive telemetry array to prevent O(N * W) scaling
+        final history =
+            (telemetryData['history'] as List<dynamic>?)
+                ?.map((e) => (e as num).toDouble())
+                .toList() ??
+            [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
         return AltitudeSparklineChart(
           history: history,
           style: cfg.altitudeChartStyle,
