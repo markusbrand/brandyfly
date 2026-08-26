@@ -49,9 +49,12 @@ repo_args() {
 gh_call() {
   # Run gh, classifying connectivity/auth failures explicitly.
   local out rc
-  mapfile -t _repo < <(repo_args)
+  _repo=()
+  while IFS= read -r _line; do
+    [[ -n "$_line" ]] && _repo+=("$_line")
+  done < <(repo_args)
   set +e
-  out="$("$GH_BIN" "${_repo[@]}" "$@" 2>&1)"
+  out="$("$GH_BIN" ${_repo[@]+"${_repo[@]}"} "$@" 2>&1)"
   rc=$?
   set -e
   if [[ $rc -ne 0 ]]; then
@@ -66,7 +69,10 @@ gh_call() {
     fi
     err "$out"; return $rc
   fi
-  printf '%s' "$out"
+  if [[ -n "$out" ]]; then
+    printf '%s\n' "$out"
+  fi
+  return 0
 }
 
 # ---- sensitive content -------------------------------------------------------
@@ -127,10 +133,17 @@ extract_section() {
 }
 
 is_date() {
-  # strict YYYY-MM-DD calendar date
+  # strict YYYY-MM-DD calendar date (portable: BSD/macOS + GNU/Linux)
   [[ "$1" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || return 1
-  date -d "$1" +%Y-%m-%d >/dev/null 2>&1 || return 1
-  return 0
+  # BSD date (macOS): -j -f format
+  if date -j -f '%Y-%m-%d' "$1" +%Y-%m-%d >/dev/null 2>&1; then
+    return 0
+  fi
+  # GNU date (Linux): -d datestring
+  if date -d "$1" +%Y-%m-%d >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
 }
 
 validate_metadata_json() {
@@ -339,7 +352,10 @@ cmd_find() {
   load_openspec_issues
   assert_issues_wellformed "$OPENSPEC_ISSUES_JSON"
   out="$(filter_issue_numbers "$name" "$OPENSPEC_ISSUES_JSON")"
-  mapfile -t nums < <(printf '%s' "$out" | grep -E '^[0-9]+$' || true)
+  nums=()
+  while IFS= read -r _line; do
+    [[ -n "$_line" ]] && nums+=("$_line")
+  done < <(printf '%s' "$out" | grep -E '^[0-9]+$' || true)
   if [[ "${#nums[@]}" -eq 0 ]]; then
     die "$EX_NOT_FOUND" "no OpenSpec issue found for change '$name'"
   elif [[ "${#nums[@]}" -gt 1 ]]; then
@@ -406,7 +422,10 @@ cmd_create() {
   load_openspec_issues
   assert_issues_wellformed "$OPENSPEC_ISSUES_JSON"
   existing_out="$(filter_issue_numbers "$name" "$OPENSPEC_ISSUES_JSON")"
-  mapfile -t existing < <(printf '%s' "$existing_out" | grep -E '^[0-9]+$' || true)
+  existing=()
+  while IFS= read -r _line; do
+    [[ -n "$_line" ]] && existing+=("$_line")
+  done < <(printf '%s' "$existing_out" | grep -E '^[0-9]+$' || true)
   if [[ "${#existing[@]}" -gt 0 ]]; then
     die "$EX_DUPLICATE" "change '$name' already has issue(s): ${existing[*]}"
   fi
@@ -540,14 +559,19 @@ cmd_set_section() {
     BEGIN { while ((getline line < nf) > 0) newc = newc line "\n" }
     {sub(/\r$/,"")}
     /<!-- openspec:section:[a-z]+:start -->/ {
-      match($0, /<!-- openspec:section:([a-z]+):start -->/, m)
+      # Extract section name portably (no gawk match with capture groups)
+      cur = $0
+      sub(/.*<!-- openspec:section:/, "", cur)
+      sub(/:start -->.*/, "", cur)
       print
-      if (m[1] == s) { printf "%s", newc; skip=1 }
+      if (cur == s) { printf "%s", newc; skip=1 }
       next
     }
     /<!-- openspec:section:[a-z]+:end -->/ {
-      match($0, /<!-- openspec:section:([a-z]+):end -->/, m)
-      if (m[1] == s) skip=0
+      cur = $0
+      sub(/.*<!-- openspec:section:/, "", cur)
+      sub(/:end -->.*/, "", cur)
+      if (cur == s) skip=0
       print
       next
     }
@@ -696,7 +720,10 @@ _validate_issue() {
   validate_body_string "$body"
   meta="$(printf '%s' "$body" | extract_metadata)"
   lifecycle="$(jq -r '.lifecycle // ""' <<<"$meta")"
-  mapfile -t labels < <(issue_labels "$num")
+  labels=()
+  while IFS= read -r _line || [[ -n "$_line" ]]; do
+    [[ -n "$_line" ]] && labels+=("$_line")
+  done < <(issue_labels "$num")
   printf '%s\n' "${labels[@]}" | grep -qxF "$DISCOVERY_LABEL" \
     || die "$EX_VALIDATE" "issue #$num missing '$DISCOVERY_LABEL' label"
   for l in "${LIFECYCLE_LABELS[@]}"; do

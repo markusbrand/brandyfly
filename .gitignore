@@ -22,3 +22,5 @@
 /tools/map_pipeline/output/
 
 services/backend/brandyfly-backend
+
+node_modules/

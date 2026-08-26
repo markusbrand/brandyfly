@@ -1,0 +1,36 @@
+{
+  "device": {
+    "model": "FILL_IN_DEVICE_MODEL",
+    "os": "macos",
+    "osVersion": "Version 26.6.2 (Build 25G83)",
+    "buildMode": "release"
+  },
+  "package": {
+    "name": "maplibre 0.3.6",
+    "version": "0.3.6"
+  },
+  "startup": {
+    "firstMapMs": 14
+  },
+  "frames": {
+    "totalFrames": 56,
+    "p50Ms": 1.842,
+    "p95Ms": 4.141,
+    "p99Ms": 12.998,
+    "over16Count": 1,
+    "stallsOver100Count": 0
+  },
+  "memory": {
+    "peakMb": 110.40625
+  },
+  "thermal": {
+    "invalidated": false
+  },
+  "heartbeat": {
+    "maxSensorDelayMs": 2,
+    "pings": 16
+  },
+  "fixtureVersion": "1.0.0",
+  "fixtureChecksum": "PLACEHOLDER_MUST_BE_REPLACED_BY_OPERATOR",
+  "runTimestamp": "2026-08-26T16:06:26.100840"
+}

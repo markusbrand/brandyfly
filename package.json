@@ -1,0 +1,27 @@
+{
+  "name": "brandyfly",
+  "version": "1.0.0",
+  "description": "BrandyFly is a local-first, open-source paragliding vario application for Android and iOS. The project is in its foundation phase and does not yet provide flight-ready functionality.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markusbrand/brandyfly.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/markusbrand/brandyfly/issues"
+  },
+  "homepage": "https://github.com/markusbrand/brandyfly#readme",
+  "devDependencies": {
+    "@fission-ai/openspec": "^1.10.0"
+  }
+}

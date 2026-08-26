@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:maplibre/maplibre.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../benchmark_scenario.dart';
 import '../measurement_harness.dart';
@@ -12,7 +15,7 @@ import '../measurement_harness.dart';
 /// package re-exported by `maplibre`).
 ///
 /// PMTiles file requirement: `alpine_overview.pmtiles` and `alpine_terrain.pmtiles`
-/// must be in the app's support directory before running on a physical device.
+/// must be in the app's support or documents directory before running on a physical device.
 /// Stub (zero-byte) files are caught by the style load failure — the benchmark
 /// will surface the error rather than falling back to online tiles.
 class MaplibreAdapter implements MapEngineAdapter {
@@ -71,10 +74,8 @@ class MaplibreAdapter implements MapEngineAdapter {
     debugPrint('[maplibre adapter] overlays ready for injection');
   }
 
-  String _buildStyleJson() {
+  String _buildStyleJson(String basePath) {
     // Offline style using local PMTiles via pmtiles:// scheme.
-    // In a physical device run, the pmtiles:// paths must point to real files
-    // placed in the app's support directory (see BENCHMARK_PROCEDURE.md).
     return '''
 {
   "version": 8,
@@ -82,11 +83,11 @@ class MaplibreAdapter implements MapEngineAdapter {
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "pmtiles:///data/user/0/rocks.brandstaetter.benchmark_map/files/alpine_overview.pmtiles"
+      "url": "pmtiles://$basePath/alpine_overview.pmtiles"
     },
     "terrain": {
       "type": "raster-dem",
-      "url": "pmtiles:///data/user/0/rocks.brandstaetter.benchmark_map/files/alpine_terrain.pmtiles",
+      "url": "pmtiles://$basePath/alpine_terrain.pmtiles",
       "tileSize": 512,
       "encoding": "terrarium"
     }
@@ -126,24 +127,60 @@ class _MaplibreAdapterWidget extends StatefulWidget {
 }
 
 class _MaplibreAdapterWidgetState extends State<_MaplibreAdapterWidget> {
+  String? _styleJson;
+
   @override
   void initState() {
     super.initState();
     widget.harness.onMapBuildStart();
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      widget.harness.onFirstFrame();
-    });
+    _initStyle();
+  }
+
+  Future<void> _initStyle() async {
+    try {
+      final supportDir = await getApplicationSupportDirectory();
+      final docsDir = await getApplicationDocumentsDirectory();
+      String basePath = supportDir.path;
+      final testSupport = File('${supportDir.path}/alpine_overview.pmtiles');
+      if (!testSupport.existsSync()) {
+        final testDocs = File('${docsDir.path}/alpine_overview.pmtiles');
+        if (testDocs.existsSync()) {
+          basePath = docsDir.path;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _styleJson = widget.adapter._buildStyleJson(basePath);
+        });
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          widget.harness.onFirstFrame();
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _styleJson = widget.adapter._buildStyleJson('/data/user/0/rocks.brandstaetter.benchmark_map/files');
+        });
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          widget.harness.onFirstFrame();
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_styleJson == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return MapLibreMap(
       options: MapOptions(
         initCenter: const Geographic(lon: 13.685, lat: 47.525),
         initZoom: 13.5,
-        initStyle: widget.adapter._buildStyleJson(),
+        initStyle: _styleJson!,
       ),
       onMapCreated: widget.adapter._onMapCreated,
     );
   }
 }
+
