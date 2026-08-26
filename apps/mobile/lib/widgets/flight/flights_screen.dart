@@ -582,6 +582,15 @@ class _FlightsScreenState extends State<FlightsScreen>
 
   void _showRenameDialog(BuildContext context, FlightModel flight) {
     final controller = TextEditingController(text: flight.title);
+
+    void submit(BuildContext ctx) {
+      final newTitle = controller.text.trim();
+      if (newTitle.isNotEmpty) {
+        widget.storageService.renameFlight(flight.id, newTitle);
+      }
+      Navigator.pop(ctx);
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -589,6 +598,10 @@ class _FlightsScreenState extends State<FlightsScreen>
         title: const Text('Rename Flight', style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => submit(ctx),
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(hintText: 'Flight Title'),
         ),
@@ -598,13 +611,7 @@ class _FlightsScreenState extends State<FlightsScreen>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              final newTitle = controller.text.trim();
-              if (newTitle.isNotEmpty) {
-                widget.storageService.renameFlight(flight.id, newTitle);
-              }
-              Navigator.pop(ctx);
-            },
+            onPressed: () => submit(ctx),
             child: const Text('Save'),
           ),
         ],
