@@ -31,6 +31,7 @@ func NewHandler() http.Handler {
 				return
 			}
 		}
+		response.Header().Set("X-Content-Type-Options", "nosniff")
 		response.Header().Set("Content-Type", "application/json")
 		response.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(response, "{\"status\":\"ok\"}\n")
