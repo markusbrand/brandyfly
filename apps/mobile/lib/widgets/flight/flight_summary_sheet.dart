@@ -396,5 +396,5 @@ class _MiniTrackPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _MiniTrackPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _MiniTrackPainter oldDelegate) => oldDelegate.points != points;
 }

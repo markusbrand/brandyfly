@@ -13,3 +13,11 @@
 ## 2024-08-24 - Prevent Unconditional Repaints in CustomPainter
 **Learning:** In Flutter, `CustomPainter.shouldRepaint` checks that rely on reference equality (`oldDelegate.property != property`) for lists will cause unconditional repaints on every layout frame if the parent widget is reallocating the list during `build` (such as `.toList()` from dynamic JSON arrays).
 **Action:** Always use `listEquals(oldDelegate.list, list)` from `package:flutter/foundation.dart` for deep equality comparison of list properties in `shouldRepaint` methods to avoid expensive, unnecessary canvas redraws.
+
+## 2024-08-26 - CustomPainter and `const` Constructors vs Caching `Paint`
+**Learning:** In Flutter `CustomPainter` implementations, caching `Paint` objects as `final` class properties prevents per-frame allocations during `paint()`. However, because `Paint` cannot be `const`, doing this forces the painter constructor to become non-const. If the parent widget passes fixed data (like a completed flight track) and originally instantiated the painter with `const`, making the constructor non-const will inadvertently force the entire painter object (and the `Paint` object) to be reallocated on every `build()`.
+**Action:** Before converting a `const` painter to cache a non-const `Paint`, evaluate the lifecycle. If the parent widget is frequently rebuilding but passing static data, preserving the `const` constructor may be more efficient than caching the `Paint` locally inside the `paint()` method.
+
+## 2024-08-26 - Large Lists and `listEquals` vs Reference Equality in `shouldRepaint`
+**Learning:** In Flutter `CustomPainter.shouldRepaint` methods, using `listEquals()` for large list properties (like a flight track with thousands of points) introduces an O(N) operation on the main UI thread during every rebuild, causing severe UI stuttering.
+**Action:** Prefer reference equality (`!=`) over `listEquals()` for large list properties in `shouldRepaint` when it is safe to assume the parent widget uses immutable updates (i.e. it passes a new list instance when state changes, rather than mutating an existing list).
