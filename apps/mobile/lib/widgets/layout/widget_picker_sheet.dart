@@ -52,6 +52,18 @@ class WidgetPickerSheet extends StatelessWidget {
         'Sparkline height history chart',
         Icons.show_chart,
       ),
+      (
+        WidgetType.map,
+        'Offline Map & Terrain',
+        'Alpine map with contours, airspace, thermals & track',
+        Icons.map,
+      ),
+      (
+        WidgetType.thermalMap,
+        'Thermal Assistant Map',
+        'Lift (green) & sink (red) trail with core tracking & ribbon modes',
+        Icons.radar,
+      ),
     ];
 
     return Container(

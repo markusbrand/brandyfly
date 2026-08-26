@@ -33,4 +33,37 @@ abstract class BrandyflyNativePlatform extends PlatformInterface {
       'configureLocalMockFlightMode() has not been implemented.',
     );
   }
+
+  Future<int?> getMonotonicTimeNanos() {
+    throw UnimplementedError(
+      'getMonotonicTimeNanos() has not been implemented.',
+    );
+  }
+
+  Future<Map<String, Object?>?> runNativeBenchmark() {
+    throw UnimplementedError(
+      'runNativeBenchmark() has not been implemented.',
+    );
+  }
+
+  Future<bool> startSkyDrop1Transport({
+    bool developerModeOnly = true,
+    String? deviceAddress,
+  }) {
+    throw UnimplementedError(
+      'startSkyDrop1Transport() has not been implemented.',
+    );
+  }
+
+  Future<void> stopSkyDrop1Transport() {
+    throw UnimplementedError(
+      'stopSkyDrop1Transport() has not been implemented.',
+    );
+  }
+
+  Future<Map<String, Object?>?> runSkyDrop1HardwareBenchmark() {
+    throw UnimplementedError(
+      'runSkyDrop1HardwareBenchmark() has not been implemented.',
+    );
+  }
 }

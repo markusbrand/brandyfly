@@ -1,5 +1,27 @@
 #![forbid(unsafe_code)]
 
+pub mod benchmark;
+pub mod bounded_pipeline;
+
+pub mod durable_recorder;
+pub mod procedural_generator;
+pub mod replay_fixtures;
+
+pub use benchmark::{BenchmarkConfig, run_pipeline_benchmark};
+pub use bounded_pipeline::{
+    AudioToneCommand, AudioToneState, BoundedEventQueue, BoundedFlightPipeline, KpiSnapshot,
+    LatestValueAudioControl, OverflowPolicy, RateLimitedKpiPublisher,
+};
+pub use durable_recorder::{
+    DurableFlightRecorder, FlightRecordFrame, MAX_RECORD_PAYLOAD_SIZE, RECORDER_MAGIC,
+    RecoveryReport, calculate_crc32, recover_flight_records,
+};
+pub use procedural_generator::{ProceduralFlightGenerator, ProceduralManeuver, TelemetrySource};
+pub use replay_fixtures::{
+    SkyDrop1ReplayGenerator, SkyDrop1ReplayScenario, SyntheticReplayGenerator,
+    SyntheticReplayScenario, replay_skydrop1_sequence,
+};
+
 /// Version of the public flight-core contract.
 pub const CORE_API_VERSION: u16 = 1;
 
@@ -386,5 +408,45 @@ mod tests {
             first.canonical_replay_hash(),
             second.canonical_replay_hash()
         );
+    }
+
+    #[test]
+    fn disabled_config_initializes_with_expected_defaults() {
+        let config = LocalMockFlightModeConfig::disabled();
+        assert!(!config.enabled);
+        assert_eq!(config.seed, 1);
+        assert_eq!(config.logical_clock_step_ms, 1_000);
+        assert_eq!(config.provenance, "synthetic-anonymized");
+        assert_eq!(config.session_label, "simulated");
+    }
+
+    #[test]
+    fn export_summary_and_session_markers_format_correctly() {
+        let config = LocalMockFlightModeConfig::new(
+            true,
+            "mock-flight-v1",
+            42,
+            1_000,
+            0,
+            "synthetic-anonymized",
+            "simulated",
+        );
+        let replay = MockFlightReplay::new(config);
+        let frames = replay.frames();
+
+        assert_eq!(frames.len(), 4);
+        assert_eq!(frames[0].kind, MockFlightScenarioKind::Nominal);
+        assert_eq!(frames[1].kind, MockFlightScenarioKind::Offline);
+        assert_eq!(frames[2].kind, MockFlightScenarioKind::Stale);
+        assert_eq!(frames[3].kind, MockFlightScenarioKind::Failure);
+
+        let marker = frames[0].session_marker();
+        assert!(marker.starts_with("SIMULATED_SESSION:Nominal:"));
+
+        let summary = replay.export_summary();
+        assert!(summary.contains("SIMULATED_SESSION=simulated"));
+        assert!(summary.contains("fixture=mock-flight-v1"));
+        assert!(summary.contains("seed=42"));
+        assert!(summary.contains("phase=Nominal"));
     }
 }

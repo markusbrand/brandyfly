@@ -14,6 +14,35 @@ class MockBrandyflyNativePlatform
   Future<void> configureLocalMockFlightMode(MockFlightModeConfig config) async {
     return;
   }
+
+  @override
+  Future<int?> getMonotonicTimeNanos() => Future.value(1234567890);
+
+  @override
+  Future<Map<String, Object?>?> runNativeBenchmark() => Future.value({
+        'platform': 'mock',
+        'allGatesPassed': true,
+      });
+
+  @override
+  Future<bool> startSkyDrop1Transport({
+    bool developerModeOnly = true,
+    String? deviceAddress,
+  }) =>
+      Future.value(true);
+
+  @override
+  Future<void> stopSkyDrop1Transport() async => Future.value();
+
+  @override
+  Future<Map<String, Object?>?> runSkyDrop1HardwareBenchmark() => Future.value({
+        'platform': 'android',
+        'allGatesPassed': true,
+        'latencyGatePassed': true,
+        'reconnectWithoutRestartPassed': true,
+        'androidStatus': 'supported',
+        'iosStatus': 'unsupported',
+      });
 }
 
 void main() {
@@ -54,5 +83,47 @@ void main() {
       brandyflyNativePlugin.configureLocalMockFlightMode(config),
       completes,
     );
+  });
+
+  test('getMonotonicTimeNanos returns monotonic timestamp', () async {
+    final brandyflyNativePlugin = BrandyflyNative();
+    final fakePlatform = MockBrandyflyNativePlatform();
+    BrandyflyNativePlatform.instance = fakePlatform;
+
+    final nanos = await brandyflyNativePlugin.getMonotonicTimeNanos();
+    expect(nanos, 1234567890);
+  });
+
+  test('runNativeBenchmark executes and returns results', () async {
+    final brandyflyNativePlugin = BrandyflyNative();
+    final fakePlatform = MockBrandyflyNativePlatform();
+    BrandyflyNativePlatform.instance = fakePlatform;
+
+    final result = await brandyflyNativePlugin.runNativeBenchmark();
+    expect(result?['allGatesPassed'], true);
+  });
+
+  test('startSkyDrop1Transport, stop, and runSkyDrop1HardwareBenchmark', () async {
+    final brandyflyNativePlugin = BrandyflyNative();
+    final fakePlatform = MockBrandyflyNativePlatform();
+    BrandyflyNativePlatform.instance = fakePlatform;
+
+    final started = await brandyflyNativePlugin.startSkyDrop1Transport(
+      developerModeOnly: true,
+      deviceAddress: '00:11:22:33:44:55',
+    );
+    expect(started, true);
+
+    await expectLater(brandyflyNativePlugin.stopSkyDrop1Transport(), completes);
+
+    final benchMap = await brandyflyNativePlugin.runSkyDrop1HardwareBenchmark();
+    expect(benchMap, isNotNull);
+    final benchResult = SkyDrop1BenchmarkResult.fromMap(benchMap!);
+    expect(benchResult.platform, 'android');
+    expect(benchResult.allGatesPassed, true);
+    expect(benchResult.latencyGatePassed, true);
+    expect(benchResult.reconnectWithoutRestartPassed, true);
+    expect(benchResult.androidStatus, 'supported');
+    expect(benchResult.iosStatus, 'unsupported');
   });
 }

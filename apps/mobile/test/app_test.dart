@@ -1,5 +1,6 @@
 import 'package:brandyfly/main.dart';
 import 'package:brandyfly_native/brandyfly_native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -77,7 +78,7 @@ void main() {
     expect(find.text('Simulated platform bootstrap error'), findsOneWidget);
   });
 
-  testWidgets('renders the simulated flight dashboard', (tester) async {
+  testWidgets('renders the simulated flight dashboard and toggles minimize/expand', (tester) async {
     await tester.pumpWidget(
       BrandyFlyApp(
         config: MockFlightModeConfig(
@@ -100,6 +101,25 @@ void main() {
     expect(find.textContaining('Mock flight session'), findsOneWidget);
     expect(find.textContaining('Nominal glide'), findsOneWidget);
     expect(find.textContaining('Replay hash:'), findsOneWidget);
+
+    // Minimize mock flight session section
+    final minimizeButton = find.byKey(const Key('btn_minimize_mock_session'));
+    expect(minimizeButton, findsOneWidget);
+    await tester.tap(minimizeButton);
+    await tester.pumpAndSettle();
+
+    // The detailed replay hash should now be hidden in minimized state
+    expect(find.textContaining('Replay hash:'), findsNothing);
+    expect(find.byKey(const Key('btn_expand_mock_session')), findsOneWidget);
+
+    // Expand mock flight session section
+    final expandButton = find.byKey(const Key('btn_expand_mock_session'));
+    await tester.tap(expandButton);
+    await tester.pumpAndSettle();
+
+    // Expanded details are visible again
+    expect(find.textContaining('Replay hash:'), findsOneWidget);
+    expect(find.byKey(const Key('btn_minimize_mock_session')), findsOneWidget);
   });
 
   test('rejects mock mode in release builds', () {
