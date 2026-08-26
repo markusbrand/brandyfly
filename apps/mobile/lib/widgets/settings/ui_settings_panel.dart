@@ -1,15 +1,49 @@
 import 'package:flutter/material.dart';
+import '../../models/flight_settings.dart';
 import '../../models/ui_config.dart';
+import '../../services/flight_tracking_service.dart';
 import '../../services/screen_manager_service.dart';
+import '../../services/xcontest_upload_service.dart';
 
-class UISettingsPanel extends StatelessWidget {
-  const UISettingsPanel({super.key, required this.screenManager});
+class UISettingsPanel extends StatefulWidget {
+  const UISettingsPanel({
+    super.key,
+    required this.screenManager,
+    this.trackingService,
+    this.uploadService,
+  });
 
   final ScreenManagerService screenManager;
+  final FlightTrackingService? trackingService;
+  final XContestUploadService? uploadService;
+
+  @override
+  State<UISettingsPanel> createState() => _UISettingsPanelState();
+}
+
+class _UISettingsPanelState extends State<UISettingsPanel> {
+  ScreenManagerService get screenManager => widget.screenManager;
+  late TextEditingController _userController;
+  late TextEditingController _passController;
+
+  @override
+  void initState() {
+    super.initState();
+    final settings = widget.trackingService?.settings ?? const FlightSettings();
+    _userController = TextEditingController(text: settings.xcontestUsername);
+    _passController = TextEditingController(text: settings.xcontestPassword);
+  }
+
+  @override
+  void dispose() {
+    _userController.dispose();
+    _passController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cfg = screenManager.config;
+    final cfg = widget.screenManager.config;
     final style = cfg.settingsStyle;
 
     switch (style) {
@@ -27,32 +61,34 @@ class UISettingsPanel extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey.shade900,
       appBar: AppBar(
-        title: const Text('UI Visual Mockup Settings'),
+        title: const Text('Application Settings'),
         backgroundColor: Colors.grey.shade900,
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
             tooltip: 'Close',
-            onPressed: () => screenManager.toggleSettingsPanel(false),
+            onPressed: () => widget.screenManager.toggleSettingsPanel(false),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          ..._buildNavigationAndLayoutSection(cfg),
+          ..._buildShellAndNavSection(cfg),
           const Divider(color: Colors.white24, height: 32),
-          ..._buildFlightInstrumentsSection(cfg),
+          ..._buildScreenManagementSection(cfg),
           const Divider(color: Colors.white24, height: 32),
-          ..._buildScreenModesSection(cfg),
+          ..._buildFlightTrackingSection(),
+          const Divider(color: Colors.white24, height: 32),
+          ..._buildXContestSection(),
         ],
       ),
     );
   }
 
-  List<Widget> _buildNavigationAndLayoutSection(UIConfig cfg) {
+  List<Widget> _buildShellAndNavSection(UIConfig cfg) {
     return [
-      _buildCategoryHeader('Navigation & Layout'),
+      _buildCategoryHeader('Shell & Navigation Preferences'),
       _buildEnumSelector<NavBarStyle>(
         title: 'Navigation Bar Style (REQ-UI-003)',
         currentValue: cfg.navBarStyle,
@@ -65,87 +101,6 @@ class UISettingsPanel extends StatelessWidget {
         },
         onChanged: (val) => screenManager.setNavBarStyle(val),
       ),
-      _buildEnumSelector<LayoutStrategyStyle>(
-        title: 'Flight Screen Layout Strategy (REQ-UI-004)',
-        currentValue: cfg.layoutStrategyStyle,
-        values: LayoutStrategyStyle.values,
-        labels: {
-          LayoutStrategyStyle.freeformHud: 'Option 1: Freeform HUD',
-          LayoutStrategyStyle.snapToGrid: 'Option 2: Snap-to-Grid',
-          LayoutStrategyStyle.sidebarDashboard:
-              'Option 3: Sidebar Dashboard',
-        },
-        onChanged: (val) => screenManager.setLayoutStrategyStyle(val),
-      ),
-    ];
-  }
-
-  List<Widget> _buildFlightInstrumentsSection(UIConfig cfg) {
-    return [
-      _buildCategoryHeader('Flight Instruments & Widgets'),
-      _buildEnumSelector<NumericWidgetStyle>(
-        title: 'Numeric / Text Widgets',
-        currentValue: cfg.numericWidgetStyle,
-        values: NumericWidgetStyle.values,
-        labels: {
-          NumericWidgetStyle.minimalistText: 'Option 1: Minimalist Text',
-          NumericWidgetStyle.highContrastBox: 'Option 2: High-Contrast Box',
-          NumericWidgetStyle.circularGauge: 'Option 3: Circular Gauge',
-          NumericWidgetStyle.retroDigital: 'Option 4: Retro Digital',
-        },
-        onChanged: (val) => screenManager.setNumericWidgetStyle(val),
-      ),
-      _buildEnumSelector<WindWidgetStyle>(
-        title: 'Wind Direction Widget',
-        currentValue: cfg.windWidgetStyle,
-        values: WindWidgetStyle.values,
-        labels: {
-          WindWidgetStyle.relativeArrow: 'Option 1: Relative Arrow',
-          WindWidgetStyle.miniCompassRose: 'Option 2: Mini Compass Rose',
-          WindWidgetStyle.windsockIndicator: 'Option 3: Windsock Indicator',
-        },
-        onChanged: (val) => screenManager.setWindWidgetStyle(val),
-      ),
-      _buildEnumSelector<LiftSinkBarStyle>(
-        title: 'Visual Lift / Sink Bar',
-        currentValue: cfg.liftSinkBarStyle,
-        values: LiftSinkBarStyle.values,
-        labels: {
-          LiftSinkBarStyle.verticalEdgeBar: 'Option 1: Vertical Edge Bar',
-          LiftSinkBarStyle.analogDial: 'Option 2: Analog Dial',
-          LiftSinkBarStyle.screenEdgeGlow: 'Option 3: Screen Edge Glow',
-        },
-        onChanged: (val) => screenManager.setLiftSinkBarStyle(val),
-      ),
-      _buildEnumSelector<AltitudeChartStyle>(
-        title: 'Altitude Sparkline Chart',
-        currentValue: cfg.altitudeChartStyle,
-        values: AltitudeChartStyle.values,
-        labels: {
-          AltitudeChartStyle.minimalSparkline:
-              'Option 1: Minimal Sparkline',
-          AltitudeChartStyle.filledAreaGraph: 'Option 2: Filled Area Graph',
-          AltitudeChartStyle.detailedGrid: 'Option 3: Detailed Grid',
-        },
-        onChanged: (val) => screenManager.setAltitudeChartStyle(val),
-      ),
-    ];
-  }
-
-  List<Widget> _buildScreenModesSection(UIConfig cfg) {
-    return [
-      _buildCategoryHeader('Screen Modes & Overlays'),
-      _buildEnumSelector<ThermalingStyle>(
-        title: 'Thermaling Screen Style',
-        currentValue: cfg.thermalingStyle,
-        values: ThermalingStyle.values,
-        labels: {
-          ThermalingStyle.zoomedRadar: 'Option 1: Zoomed Radar',
-          ThermalingStyle.focusMode: 'Option 2: Focus Mode',
-          ThermalingStyle.assistantDisplay: 'Option 3: Assistant Display',
-        },
-        onChanged: (val) => screenManager.setThermalingStyle(val),
-      ),
       _buildEnumSelector<SettingsStyle>(
         title: 'Settings Screen Layout',
         currentValue: cfg.settingsStyle,
@@ -157,6 +112,100 @@ class UISettingsPanel extends StatelessWidget {
           SettingsStyle.cardDashboard: 'Option 3: Card-Based Dashboard',
         },
         onChanged: (val) => screenManager.setSettingsStyle(val),
+      ),
+      _buildEnumSelector<ThermalingStyle>(
+        title: 'Thermaling Mode Display',
+        currentValue: cfg.thermalingStyle,
+        values: ThermalingStyle.values,
+        labels: {
+          ThermalingStyle.zoomedRadar: 'Option 1: Zoomed Radar',
+          ThermalingStyle.focusMode: 'Option 2: Focus Mode',
+          ThermalingStyle.assistantDisplay: 'Option 3: Assistant Display',
+        },
+        onChanged: (val) => screenManager.setThermalingStyle(val),
+      ),
+    ];
+  }
+
+  List<Widget> _buildScreenManagementSection(UIConfig cfg) {
+    final activeScreen = screenManager.activeScreen;
+
+    return [
+      _buildCategoryHeader('Flight Screen Management'),
+      Card(
+        color: Colors.grey.shade900,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Active Screen & Layout Strategy',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Active Screen:', style: TextStyle(color: Colors.white70)),
+                  DropdownButton<String>(
+                    value: activeScreen.id,
+                    dropdownColor: Colors.blueGrey.shade900,
+                    underline: const SizedBox(),
+                    style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                    items: cfg.screens.map((s) {
+                      return DropdownMenuItem<String>(
+                        value: s.id,
+                        child: Text(s.name),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        screenManager.setActiveScreen(val);
+                        setState(() {});
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white12),
+              _buildEnumSelector<LayoutStrategyStyle>(
+                title: 'Screen Layout Strategy (${activeScreen.name})',
+                currentValue: activeScreen.layoutStrategy,
+                values: LayoutStrategyStyle.values,
+                labels: {
+                  LayoutStrategyStyle.freeformHud: 'Option 1: Freeform HUD',
+                  LayoutStrategyStyle.snapToGrid: 'Option 2: Snap-to-Grid',
+                  LayoutStrategyStyle.sidebarDashboard: 'Option 3: Sidebar Dashboard',
+                },
+                onChanged: (val) {
+                  screenManager.setScreenLayoutStrategy(activeScreen.id, val);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 4),
+              _buildEnumSelector<ScreenAutoSwitchTrigger>(
+                title: 'Automatic Screen Switch Trigger',
+                currentValue: activeScreen.autoSwitchTrigger,
+                values: ScreenAutoSwitchTrigger.values,
+                labels: {
+                  ScreenAutoSwitchTrigger.manualOnly: 'Manual Switch Only',
+                  ScreenAutoSwitchTrigger.onThermalCircling: 'Auto: When Circling in Thermal',
+                  ScreenAutoSwitchTrigger.onGlideStraight: 'Auto: When Gliding Straight',
+                },
+                onChanged: (val) {
+                  screenManager.setScreenAutoSwitchTrigger(activeScreen.id, val);
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     ];
   }
@@ -175,7 +224,7 @@ class UISettingsPanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Quick UI Settings',
+                  'Quick Global Settings',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -228,10 +277,12 @@ class UISettingsPanel extends StatelessWidget {
 
   // Option 3: Card-Based Dashboard
   Widget _buildCardDashboard(BuildContext context, UIConfig cfg) {
+    final activeScreen = screenManager.activeScreen;
+
     return Scaffold(
       backgroundColor: Colors.blueGrey.shade900,
       appBar: AppBar(
-        title: const Text('UI Options Dashboard'),
+        title: const Text('Settings Dashboard'),
         backgroundColor: Colors.blueGrey.shade900,
         actions: [
           IconButton(
@@ -253,23 +304,23 @@ class UISettingsPanel extends StatelessWidget {
             NavBarStyle.values,
             (v) => screenManager.setNavBarStyle(v),
           ),
+          _buildCardItem<SettingsStyle>(
+            'Settings Style',
+            cfg.settingsStyle,
+            SettingsStyle.values,
+            (v) => screenManager.setSettingsStyle(v),
+          ),
           _buildCardItem<LayoutStrategyStyle>(
             'Layout Strategy',
-            cfg.layoutStrategyStyle,
+            activeScreen.layoutStrategy,
             LayoutStrategyStyle.values,
-            (v) => screenManager.setLayoutStrategyStyle(v),
+            (v) => screenManager.setScreenLayoutStrategy(activeScreen.id, v),
           ),
-          _buildCardItem<NumericWidgetStyle>(
-            'Numeric Widgets',
-            cfg.numericWidgetStyle,
-            NumericWidgetStyle.values,
-            (v) => screenManager.setNumericWidgetStyle(v),
-          ),
-          _buildCardItem<WindWidgetStyle>(
-            'Wind Widget',
-            cfg.windWidgetStyle,
-            WindWidgetStyle.values,
-            (v) => screenManager.setWindWidgetStyle(v),
+          _buildCardItem<ScreenAutoSwitchTrigger>(
+            'Auto-Switch Trigger',
+            activeScreen.autoSwitchTrigger,
+            ScreenAutoSwitchTrigger.values,
+            (v) => screenManager.setScreenAutoSwitchTrigger(activeScreen.id, v),
           ),
         ],
       ),
@@ -381,5 +432,143 @@ class UISettingsPanel extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildFlightTrackingSection() {
+    final settings = widget.trackingService?.settings ?? const FlightSettings();
+    return [
+      _buildCategoryHeader('Flight Tracking & Sensor Fusion'),
+      Card(
+        color: Colors.blueGrey.shade900,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Takeoff Speed Threshold (km/h)',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                value: settings.takeoffSpeedThresholdKmh,
+                min: 5.0,
+                max: 25.0,
+                divisions: 20,
+                label: '${settings.takeoffSpeedThresholdKmh.toStringAsFixed(1)} km/h',
+                onChanged: (val) {
+                  widget.trackingService?.updateSettings(
+                    settings.copyWith(takeoffSpeedThresholdKmh: val),
+                  );
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Takeoff Vario Trigger (|m/s|)',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                value: settings.takeoffVarioThresholdMs,
+                min: 0.2,
+                max: 2.0,
+                divisions: 18,
+                label: '${settings.takeoffVarioThresholdMs.toStringAsFixed(1)} m/s',
+                onChanged: (val) {
+                  widget.trackingService?.updateSettings(
+                    settings.copyWith(takeoffVarioThresholdMs: val),
+                  );
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Landing Settling Duration (seconds)',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                value: settings.landingSettlingDurationSeconds.toDouble(),
+                min: 5.0,
+                max: 60.0,
+                divisions: 11,
+                label: '${settings.landingSettlingDurationSeconds}s',
+                onChanged: (val) {
+                  widget.trackingService?.updateSettings(
+                    settings.copyWith(landingSettlingDurationSeconds: val.round()),
+                  );
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildXContestSection() {
+    final settings = widget.trackingService?.settings ?? const FlightSettings();
+    return [
+      _buildCategoryHeader('XContest.org Integration'),
+      Card(
+        color: Colors.blueGrey.shade900,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SwitchListTile(
+                title: const Text(
+                  'Auto-upload on landing',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  'Automatically upload finalized flights to XContest.org upon landing detection',
+                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                ),
+                value: settings.autoUploadToXContest,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) {
+                  final newSettings = settings.copyWith(autoUploadToXContest: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.uploadService?.updateSettings(newSettings);
+                  setState(() {});
+                },
+              ),
+              const Divider(color: Colors.white12),
+              TextField(
+                controller: _userController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'XContest Username',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  prefixIcon: Icon(Icons.person, color: Colors.white60),
+                ),
+                onChanged: (val) {
+                  final newSettings = settings.copyWith(xcontestUsername: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.uploadService?.updateSettings(newSettings);
+                },
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _passController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'XContest Password / API Key',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  prefixIcon: Icon(Icons.lock, color: Colors.white60),
+                ),
+                onChanged: (val) {
+                  final newSettings = settings.copyWith(xcontestPassword: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.uploadService?.updateSettings(newSettings);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
   }
 }

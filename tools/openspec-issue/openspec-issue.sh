@@ -212,6 +212,7 @@ issue_state() {
 
 cmd_preflight() {
   local write=0
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]] && usage
   [[ "${1:-}" == "--write" ]] && write=1
   gh_call auth status >/dev/null 2>&1 || true
   # Resolve repo (also validates connectivity + auth via classification).
@@ -333,6 +334,7 @@ filter_issue_numbers() {
 }
 
 cmd_find() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]] && usage
   local name="${1:?change name required}" out
   load_openspec_issues
   assert_issues_wellformed "$OPENSPEC_ISSUES_JSON"
@@ -351,6 +353,7 @@ cmd_list() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --state) state="$2"; shift 2;;
+      -h|--help|help) usage;;
       *) die "$EX_USAGE" "unknown arg to list: $1";;
     esac
   done
@@ -390,6 +393,7 @@ cmd_create() {
       --lifecycle) lifecycle="$2"; lifecycle_supplied=1; shift 2;;
       --created) created="$2"; created_supplied=1; shift 2;;
       --body-file) bodyfile="$2"; shift 2;;
+      -h|--help|help) usage;;
       *) die "$EX_USAGE" "unknown arg to create: $1";;
     esac
   done
@@ -497,21 +501,24 @@ rewrite_metadata_field() {
   ' "$bodyfile"
 }
 
-cmd_read() { issue_body "${1:?issue number required}"; }
+cmd_read() { [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]] && usage; issue_body "${1:?issue number required}"; }
 
 cmd_get_section() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]] && usage
   local num="${1:?issue}" sec="${2:?section}"
   if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   issue_body "$num" | extract_section "$sec"
 }
 
 cmd_set_section() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]] && usage
   local num="${1:?issue}" sec="${2:?section}"; shift 2
   if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   local bodyfile=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --body-file) bodyfile="$2"; shift 2;;
+      -h|--help|help) usage;;
       *) die "$EX_USAGE" "unknown arg: $1";;
     esac
   done
@@ -555,6 +562,7 @@ cmd_set_section() {
 }
 
 cmd_set_metadata() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]] && usage
   local num="${1:?issue}"; shift
   if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   local key="" value=""
@@ -562,6 +570,7 @@ cmd_set_metadata() {
     case "$1" in
       --key) key="$2"; shift 2;;
       --value) value="$2"; shift 2;;
+      -h|--help|help) usage;;
       *) die "$EX_USAGE" "unknown arg: $1";;
     esac
   done
@@ -606,6 +615,7 @@ lifecycle_transition_allowed() {
 }
 
 cmd_set_lifecycle() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]] && usage
   local num="${1:?issue}" lifecycle="${2:?lifecycle}"
   if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   printf '%s\n' " ${LIFECYCLE_LABELS[*]} " | grep -qF " openspec:$lifecycle " \
@@ -733,6 +743,7 @@ edit_body_or_rollback() {
 }
 
 cmd_validate() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]] && usage
   local num="${1:?issue}"
   if [[ ! "$num" =~ ^[0-9]+$ ]]; then num="$(cmd_find "$num")"; fi
   _validate_issue "$num"
@@ -743,6 +754,7 @@ cmd_scan_content() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --body-file) bodyfile="$2"; shift 2;;
+      -h|--help|help) usage;;
       *) die "$EX_USAGE" "unknown arg: $1";;
     esac
   done
@@ -762,6 +774,7 @@ cmd_render_body() {
       --design) d="$2"; shift 2;;
       --tasks) t="$2"; shift 2;;
       --verification) v="$2"; shift 2;;
+      -h|--help|help) usage;;
       *) die "$EX_USAGE" "unknown arg: $1";;
     esac
   done

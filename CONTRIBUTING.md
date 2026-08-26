@@ -11,7 +11,7 @@ Contributions are welcome through GitHub pull requests.
    Markdown files. Durable capability specs stay under `openspec/specs/`.
 3. Keep changes focused and add targeted tests.
 4. Run the validation commands in `docs/development.md`.
-5. Use Conventional Commit messages.
+5. Use Conventional Commit messages (`feat:`, `fix:`, `chore:`, etc.) with appropriate component scopes (e.g., `feat(mobile): ...`, `fix(flight_core): ...`). Releases and changelogs are automated via [Release Please](https://github.com/googleapis/release-please).
 
 Do not commit credentials, signing material, private flight logs, proprietary
 protocol documentation, or datasets that cannot be redistributed. The same rule

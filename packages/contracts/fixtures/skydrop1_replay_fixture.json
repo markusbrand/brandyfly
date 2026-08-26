@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "fixture_id": "skydrop1-replay-v1",
+  "description": "Deterministic redistributable SkyDrop 1 replay fixture with expected parse results (sanitized, zero private coordinates or credentials)",
+  "provenance": "synthetic-redistributable",
+  "review_date": "2026-08-25",
+  "frames": [
+    {
+      "sequence": 1,
+      "trace_id": 1001,
+      "native_received_timestamp_ns": 1000000000,
+      "raw_nmea": "$LK8EX1,101325,1250,120,21,95*01\r\n",
+      "expected_status": "valid",
+      "expected_pressure_hpa": 1013.25,
+      "expected_altitude_m": 1250.0,
+      "expected_vario_mps": 1.20,
+      "expected_temperature_c": 21.0,
+      "expected_battery_percent": 95.0
+    },
+    {
+      "sequence": 2,
+      "trace_id": 1002,
+      "native_received_timestamp_ns": 1050000000,
+      "raw_nmea": "$LK8EX1,101300,1255,150,21,95*0F\r\n",
+      "expected_status": "valid",
+      "expected_pressure_hpa": 1013.00,
+      "expected_altitude_m": 1255.0,
+      "expected_vario_mps": 1.50,
+      "expected_temperature_c": 21.0,
+      "expected_battery_percent": 95.0
+    },
+    {
+      "sequence": 3,
+      "trace_id": 1003,
+      "native_received_timestamp_ns": 1100000000,
+      "raw_nmea": "$LK8EX1,999999,99999,9999,9999,999*2A\r\n",
+      "expected_status": "valid_sentinels_null",
+      "expected_pressure_hpa": null,
+      "expected_altitude_m": null,
+      "expected_vario_mps": null,
+      "expected_temperature_c": null,
+      "expected_battery_percent": null
+    },
+    {
+      "sequence": 4,
+      "trace_id": 1004,
+      "native_received_timestamp_ns": 1150000000,
+      "raw_nmea": "$LK8EX1,101250,1260,200,22,94*0D\r\n",
+      "expected_status": "valid",
+      "expected_pressure_hpa": 1012.50,
+      "expected_altitude_m": 1260.0,
+      "expected_vario_mps": 2.00,
+      "expected_temperature_c": 22.0,
+      "expected_battery_percent": 94.0
+    },
+    {
+      "sequence": 5,
+      "trace_id": 1005,
+      "native_received_timestamp_ns": 1200000000,
+      "raw_nmea": "$LK8EX1,101250,1260,200,22,94*99\r\n",
+      "expected_status": "checksum_mismatch",
+      "expected_error": "checksum_mismatch"
+    },
+    {
+      "sequence": 6,
+      "trace_id": 1006,
+      "native_received_timestamp_ns": 1250000000,
+      "raw_nmea": "$LK8EX1,101200,1265\r\n",
+      "expected_status": "malformed_framing",
+      "expected_error": "missing_checksum_delimiter"
+    },
+    {
+      "sequence": 7,
+      "trace_id": 1007,
+      "native_received_timestamp_ns": 1300000000,
+      "raw_nmea": "$PGRMZ,1265,m,3*30\r\n",
+      "expected_status": "blocked_unverified",
+      "expected_error": "blocked_unverified_field"
+    }
+  ]
+}

@@ -222,6 +222,11 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
               child: Center(child: _buildScreenSelectorDropdown(context)),
             ),
             IconButton(
+              icon: const Icon(Icons.flight, color: Colors.lightGreenAccent),
+              tooltip: 'Flights',
+              onPressed: () => widget.screenManager.toggleFlightsScreen(true),
+            ),
+            IconButton(
               icon: const Icon(Icons.edit_note, color: Colors.cyanAccent),
               tooltip: 'Edit Mode',
               onPressed: () => widget.screenManager.toggleEditMode(true),
@@ -338,6 +343,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                 onSelected: (selected) {
                   if (selected) {
                     widget.screenManager.setActiveScreen(screen.id);
+                    widget.screenManager.toggleNavBar(false);
                   }
                 },
               ),
@@ -375,15 +381,30 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
       onChanged: (newId) {
         if (newId != null) {
           widget.screenManager.setActiveScreen(newId);
+          widget.screenManager.toggleNavBar(false);
         }
       },
     );
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Wrap(
+      alignment: WrapAlignment.spaceEvenly,
+      spacing: 8,
+      runSpacing: 8,
       children: [
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.teal.shade700,
+            foregroundColor: Colors.white,
+          ),
+          icon: const Icon(Icons.flight),
+          label: const Text('Flights'),
+          onPressed: () {
+            widget.screenManager.toggleNavBar(false);
+            widget.screenManager.toggleFlightsScreen(true);
+          },
+        ),
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.cyan.shade700,
@@ -392,6 +413,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           icon: const Icon(Icons.dashboard_customize),
           label: const Text('Edit Mode'),
           onPressed: () {
+            widget.screenManager.toggleNavBar(false);
             widget.screenManager.toggleEditMode(true);
           },
         ),
@@ -403,6 +425,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           icon: const Icon(Icons.settings),
           label: const Text('Settings'),
           onPressed: () {
+            widget.screenManager.toggleNavBar(false);
             widget.screenManager.toggleSettingsPanel(true);
           },
         ),

@@ -12,6 +12,12 @@ enum LayoutStrategyStyle {
   sidebarDashboard, // Option 3 (Default)
 }
 
+enum ScreenAutoSwitchTrigger {
+  manualOnly, // Option 1 (Default)
+  onThermalCircling, // Option 2
+  onGlideStraight, // Option 3
+}
+
 enum NumericWidgetStyle {
   minimalistText, // Option 1 (Default)
   highContrastBox, // Option 2
@@ -37,10 +43,29 @@ enum AltitudeChartStyle {
   detailedGrid, // Option 3
 }
 
+enum MapWidgetStyle {
+  topoContours, // Option 1 (Default)
+  minimalVector, // Option 2
+  thermalHeatmap, // Option 3
+  satelliteTerrain, // Option 4
+}
+
+enum MapOrientation {
+  northUp, // Option 1
+  trackUp, // Option 2 (Default)
+  headingUp, // Option 3
+}
+
 enum ThermalingStyle {
   zoomedRadar, // Option 1
   focusMode, // Option 2
   assistantDisplay, // Option 3 (Default)
+}
+
+enum ThermalMapStyle {
+  xctrackBubbles, // Option 1 (Default)
+  burnairCore, // Option 2
+  navigatorRibbon, // Option 3
 }
 
 enum SettingsStyle {
@@ -57,6 +82,8 @@ enum WidgetType {
   windDirection,
   varioBar,
   altitudeChart,
+  map,
+  thermalMap,
 }
 
 class WidgetPlacementModel {
@@ -67,6 +94,20 @@ class WidgetPlacementModel {
     required this.y,
     required this.w,
     required this.h,
+    this.numericStyle,
+    this.windStyle,
+    this.varioStyle,
+    this.altitudeChartStyle,
+    this.mapStyle,
+    this.mapOrientation,
+    this.mapShowAirspace,
+    this.mapShowThermals,
+    this.mapShowTrack,
+    this.mapShowContours,
+    this.mapZoomLevel,
+    this.thermalMapStyle,
+    this.thermalMapShowCore,
+    this.thermalMapHistorySeconds,
   });
 
   final String id;
@@ -76,6 +117,46 @@ class WidgetPlacementModel {
   final int w;
   final int h;
 
+  // Widget-specific visual styling options
+  final NumericWidgetStyle? numericStyle;
+  final WindWidgetStyle? windStyle;
+  final LiftSinkBarStyle? varioStyle;
+  final AltitudeChartStyle? altitudeChartStyle;
+  final MapWidgetStyle? mapStyle;
+  final MapOrientation? mapOrientation;
+  final bool? mapShowAirspace;
+  final bool? mapShowThermals;
+  final bool? mapShowTrack;
+  final bool? mapShowContours;
+  final double? mapZoomLevel;
+  final ThermalMapStyle? thermalMapStyle;
+  final bool? thermalMapShowCore;
+  final int? thermalMapHistorySeconds;
+
+  // Fallback defaults
+  NumericWidgetStyle get effectiveNumericStyle =>
+      numericStyle ?? NumericWidgetStyle.minimalistText;
+  WindWidgetStyle get effectiveWindStyle =>
+      windStyle ?? WindWidgetStyle.relativeArrow;
+  LiftSinkBarStyle get effectiveVarioStyle =>
+      varioStyle ?? LiftSinkBarStyle.verticalEdgeBar;
+  AltitudeChartStyle get effectiveAltitudeChartStyle =>
+      altitudeChartStyle ?? AltitudeChartStyle.minimalSparkline;
+  MapWidgetStyle get effectiveMapStyle =>
+      mapStyle ?? MapWidgetStyle.topoContours;
+  MapOrientation get effectiveMapOrientation =>
+      mapOrientation ?? MapOrientation.trackUp;
+  bool get effectiveMapShowAirspace => mapShowAirspace ?? true;
+  bool get effectiveMapShowThermals => mapShowThermals ?? true;
+  bool get effectiveMapShowTrack => mapShowTrack ?? true;
+  bool get effectiveMapShowContours => mapShowContours ?? true;
+  double get effectiveMapZoomLevel => mapZoomLevel ?? 13.5;
+  ThermalMapStyle get effectiveThermalMapStyle =>
+      thermalMapStyle ?? ThermalMapStyle.xctrackBubbles;
+  bool get effectiveThermalMapShowCore => thermalMapShowCore ?? true;
+  int get effectiveThermalMapHistorySeconds =>
+      thermalMapHistorySeconds ?? 90;
+
   WidgetPlacementModel copyWith({
     String? id,
     WidgetType? type,
@@ -83,6 +164,20 @@ class WidgetPlacementModel {
     int? y,
     int? w,
     int? h,
+    NumericWidgetStyle? numericStyle,
+    WindWidgetStyle? windStyle,
+    LiftSinkBarStyle? varioStyle,
+    AltitudeChartStyle? altitudeChartStyle,
+    MapWidgetStyle? mapStyle,
+    MapOrientation? mapOrientation,
+    bool? mapShowAirspace,
+    bool? mapShowThermals,
+    bool? mapShowTrack,
+    bool? mapShowContours,
+    double? mapZoomLevel,
+    ThermalMapStyle? thermalMapStyle,
+    bool? thermalMapShowCore,
+    int? thermalMapHistorySeconds,
   }) {
     return WidgetPlacementModel(
       id: id ?? this.id,
@@ -91,6 +186,21 @@ class WidgetPlacementModel {
       y: y ?? this.y,
       w: w ?? this.w,
       h: h ?? this.h,
+      numericStyle: numericStyle ?? this.numericStyle,
+      windStyle: windStyle ?? this.windStyle,
+      varioStyle: varioStyle ?? this.varioStyle,
+      altitudeChartStyle: altitudeChartStyle ?? this.altitudeChartStyle,
+      mapStyle: mapStyle ?? this.mapStyle,
+      mapOrientation: mapOrientation ?? this.mapOrientation,
+      mapShowAirspace: mapShowAirspace ?? this.mapShowAirspace,
+      mapShowThermals: mapShowThermals ?? this.mapShowThermals,
+      mapShowTrack: mapShowTrack ?? this.mapShowTrack,
+      mapShowContours: mapShowContours ?? this.mapShowContours,
+      mapZoomLevel: mapZoomLevel ?? this.mapZoomLevel,
+      thermalMapStyle: thermalMapStyle ?? this.thermalMapStyle,
+      thermalMapShowCore: thermalMapShowCore ?? this.thermalMapShowCore,
+      thermalMapHistorySeconds:
+          thermalMapHistorySeconds ?? this.thermalMapHistorySeconds,
     );
   }
 
@@ -101,17 +211,102 @@ class WidgetPlacementModel {
     'y': y,
     'w': w,
     'h': h,
+    if (numericStyle != null) 'numericStyle': numericStyle!.name,
+    if (windStyle != null) 'windStyle': windStyle!.name,
+    if (varioStyle != null) 'varioStyle': varioStyle!.name,
+    if (altitudeChartStyle != null)
+      'altitudeChartStyle': altitudeChartStyle!.name,
+    if (mapStyle != null) 'mapStyle': mapStyle!.name,
+    if (mapOrientation != null) 'mapOrientation': mapOrientation!.name,
+    if (mapShowAirspace != null) 'mapShowAirspace': mapShowAirspace,
+    if (mapShowThermals != null) 'mapShowThermals': mapShowThermals,
+    if (mapShowTrack != null) 'mapShowTrack': mapShowTrack,
+    if (mapShowContours != null) 'mapShowContours': mapShowContours,
+    if (mapZoomLevel != null) 'mapZoomLevel': mapZoomLevel,
+    if (thermalMapStyle != null) 'thermalMapStyle': thermalMapStyle!.name,
+    if (thermalMapShowCore != null) 'thermalMapShowCore': thermalMapShowCore,
+    if (thermalMapHistorySeconds != null)
+      'thermalMapHistorySeconds': thermalMapHistorySeconds,
   };
 
-  factory WidgetPlacementModel.fromJson(Map<String, dynamic> json) =>
-      WidgetPlacementModel(
-        id: json['id'] as String,
-        type: WidgetType.values.byName(json['type'] as String),
-        x: json['x'] as int,
-        y: json['y'] as int,
-        w: json['w'] as int,
-        h: json['h'] as int,
-      );
+  factory WidgetPlacementModel.fromJson(Map<String, dynamic> json) {
+    NumericWidgetStyle? numStyle;
+    if (json['numericStyle'] is String) {
+      try {
+        numStyle =
+            NumericWidgetStyle.values.byName(json['numericStyle'] as String);
+      } catch (_) {}
+    }
+
+    WindWidgetStyle? wStyle;
+    if (json['windStyle'] is String) {
+      try {
+        wStyle = WindWidgetStyle.values.byName(json['windStyle'] as String);
+      } catch (_) {}
+    }
+
+    LiftSinkBarStyle? vStyle;
+    if (json['varioStyle'] is String) {
+      try {
+        vStyle = LiftSinkBarStyle.values.byName(json['varioStyle'] as String);
+      } catch (_) {}
+    }
+
+    AltitudeChartStyle? altStyle;
+    if (json['altitudeChartStyle'] is String) {
+      try {
+        altStyle = AltitudeChartStyle.values.byName(
+          json['altitudeChartStyle'] as String,
+        );
+      } catch (_) {}
+    }
+
+    MapWidgetStyle? mStyle;
+    if (json['mapStyle'] is String) {
+      try {
+        mStyle = MapWidgetStyle.values.byName(json['mapStyle'] as String);
+      } catch (_) {}
+    }
+
+    MapOrientation? mOrientation;
+    if (json['mapOrientation'] is String) {
+      try {
+        mOrientation =
+            MapOrientation.values.byName(json['mapOrientation'] as String);
+      } catch (_) {}
+    }
+
+    ThermalMapStyle? tStyle;
+    if (json['thermalMapStyle'] is String) {
+      try {
+        tStyle =
+            ThermalMapStyle.values.byName(json['thermalMapStyle'] as String);
+      } catch (_) {}
+    }
+
+    return WidgetPlacementModel(
+      id: json['id'] as String,
+      type: WidgetType.values.byName(json['type'] as String),
+      x: json['x'] as int,
+      y: json['y'] as int,
+      w: json['w'] as int,
+      h: json['h'] as int,
+      numericStyle: numStyle,
+      windStyle: wStyle,
+      varioStyle: vStyle,
+      altitudeChartStyle: altStyle,
+      mapStyle: mStyle,
+      mapOrientation: mOrientation,
+      mapShowAirspace: json['mapShowAirspace'] as bool?,
+      mapShowThermals: json['mapShowThermals'] as bool?,
+      mapShowTrack: json['mapShowTrack'] as bool?,
+      mapShowContours: json['mapShowContours'] as bool?,
+      mapZoomLevel: (json['mapZoomLevel'] as num?)?.toDouble(),
+      thermalMapStyle: tStyle,
+      thermalMapShowCore: json['thermalMapShowCore'] as bool?,
+      thermalMapHistorySeconds: json['thermalMapHistorySeconds'] as int?,
+    );
+  }
 }
 
 class FlightScreenModel {
@@ -119,24 +314,28 @@ class FlightScreenModel {
     required this.id,
     required this.name,
     this.layoutStrategy = LayoutStrategyStyle.sidebarDashboard,
+    this.autoSwitchTrigger = ScreenAutoSwitchTrigger.manualOnly,
     required this.widgets,
   });
 
   final String id;
   final String name;
   final LayoutStrategyStyle layoutStrategy;
+  final ScreenAutoSwitchTrigger autoSwitchTrigger;
   final List<WidgetPlacementModel> widgets;
 
   FlightScreenModel copyWith({
     String? id,
     String? name,
     LayoutStrategyStyle? layoutStrategy,
+    ScreenAutoSwitchTrigger? autoSwitchTrigger,
     List<WidgetPlacementModel>? widgets,
   }) {
     return FlightScreenModel(
       id: id ?? this.id,
       name: name ?? this.name,
       layoutStrategy: layoutStrategy ?? this.layoutStrategy,
+      autoSwitchTrigger: autoSwitchTrigger ?? this.autoSwitchTrigger,
       widgets: widgets ?? this.widgets,
     );
   }
@@ -145,32 +344,46 @@ class FlightScreenModel {
     'id': id,
     'name': name,
     'layoutStrategy': layoutStrategy.name,
+    'autoSwitchTrigger': autoSwitchTrigger.name,
     'widgets': widgets.map((w) => w.toJson()).toList(),
   };
 
-  factory FlightScreenModel.fromJson(Map<String, dynamic> json) =>
-      FlightScreenModel(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        layoutStrategy: LayoutStrategyStyle.values.byName(
-          json['layoutStrategy'] as String? ?? 'sidebarDashboard',
-        ),
-        widgets: (json['widgets'] as List<dynamic>)
-            .map(
-              (w) => WidgetPlacementModel.fromJson(w as Map<String, dynamic>),
-            )
-            .toList(),
-      );
+  factory FlightScreenModel.fromJson(Map<String, dynamic> json) {
+    LayoutStrategyStyle strategy = LayoutStrategyStyle.sidebarDashboard;
+    if (json['layoutStrategy'] is String) {
+      try {
+        strategy = LayoutStrategyStyle.values.byName(
+          json['layoutStrategy'] as String,
+        );
+      } catch (_) {}
+    }
+
+    ScreenAutoSwitchTrigger trigger = ScreenAutoSwitchTrigger.manualOnly;
+    if (json['autoSwitchTrigger'] is String) {
+      try {
+        trigger = ScreenAutoSwitchTrigger.values.byName(
+          json['autoSwitchTrigger'] as String,
+        );
+      } catch (_) {}
+    }
+
+    return FlightScreenModel(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      layoutStrategy: strategy,
+      autoSwitchTrigger: trigger,
+      widgets: (json['widgets'] as List<dynamic>? ?? [])
+          .map(
+            (w) => WidgetPlacementModel.fromJson(w as Map<String, dynamic>),
+          )
+          .toList(),
+    );
+  }
 }
 
 class UIConfig {
   const UIConfig({
     this.navBarStyle = NavBarStyle.translucentDrawer,
-    this.layoutStrategyStyle = LayoutStrategyStyle.sidebarDashboard,
-    this.numericWidgetStyle = NumericWidgetStyle.minimalistText,
-    this.windWidgetStyle = WindWidgetStyle.relativeArrow,
-    this.liftSinkBarStyle = LiftSinkBarStyle.verticalEdgeBar,
-    this.altitudeChartStyle = AltitudeChartStyle.minimalSparkline,
     this.thermalingStyle = ThermalingStyle.assistantDisplay,
     this.settingsStyle = SettingsStyle.categorizedList,
     this.screens = const [],
@@ -178,11 +391,6 @@ class UIConfig {
   });
 
   final NavBarStyle navBarStyle;
-  final LayoutStrategyStyle layoutStrategyStyle;
-  final NumericWidgetStyle numericWidgetStyle;
-  final WindWidgetStyle windWidgetStyle;
-  final LiftSinkBarStyle liftSinkBarStyle;
-  final AltitudeChartStyle altitudeChartStyle;
   final ThermalingStyle thermalingStyle;
   final SettingsStyle settingsStyle;
   final List<FlightScreenModel> screens;
@@ -191,11 +399,6 @@ class UIConfig {
   static UIConfig defaultConfig() {
     return UIConfig(
       navBarStyle: NavBarStyle.translucentDrawer,
-      layoutStrategyStyle: LayoutStrategyStyle.sidebarDashboard,
-      numericWidgetStyle: NumericWidgetStyle.minimalistText,
-      windWidgetStyle: WindWidgetStyle.relativeArrow,
-      liftSinkBarStyle: LiftSinkBarStyle.verticalEdgeBar,
-      altitudeChartStyle: AltitudeChartStyle.minimalSparkline,
       thermalingStyle: ThermalingStyle.assistantDisplay,
       settingsStyle: SettingsStyle.categorizedList,
       activeScreenId: 'normal_flight',
@@ -204,46 +407,87 @@ class UIConfig {
           id: 'normal_flight',
           name: 'Normal Flight Screen',
           layoutStrategy: LayoutStrategyStyle.sidebarDashboard,
+          autoSwitchTrigger: ScreenAutoSwitchTrigger.manualOnly,
           widgets: [
+            WidgetPlacementModel(
+              id: 'w_map',
+              type: WidgetType.map,
+              x: 0,
+              y: 0,
+              w: 4,
+              h: 4,
+              mapStyle: MapWidgetStyle.topoContours,
+            ),
             WidgetPlacementModel(
               id: 'w1',
               type: WidgetType.altitude,
               x: 0,
               y: 0,
-              w: 2,
+              w: 1,
               h: 1,
+              numericStyle: NumericWidgetStyle.minimalistText,
             ),
             WidgetPlacementModel(
               id: 'w2',
               type: WidgetType.speed,
-              x: 2,
-              y: 0,
-              w: 2,
+              x: 0,
+              y: 1,
+              w: 1,
               h: 1,
+              numericStyle: NumericWidgetStyle.minimalistText,
             ),
             WidgetPlacementModel(
               id: 'w3',
               type: WidgetType.varioBar,
               x: 0,
-              y: 1,
+              y: 2,
               w: 1,
-              h: 3,
+              h: 2,
+              varioStyle: LiftSinkBarStyle.verticalEdgeBar,
             ),
             WidgetPlacementModel(
               id: 'w4',
               type: WidgetType.windDirection,
-              x: 1,
-              y: 1,
-              w: 3,
-              h: 2,
+              x: 3,
+              y: 0,
+              w: 1,
+              h: 1,
+              windStyle: WindWidgetStyle.relativeArrow,
+            ),
+          ],
+        ),
+        FlightScreenModel(
+          id: 'map_screen',
+          name: 'Alpine Map Screen',
+          layoutStrategy: LayoutStrategyStyle.freeformHud,
+          autoSwitchTrigger: ScreenAutoSwitchTrigger.manualOnly,
+          widgets: [
+            WidgetPlacementModel(
+              id: 'wm_map',
+              type: WidgetType.map,
+              x: 0,
+              y: 0,
+              w: 4,
+              h: 4,
+              mapStyle: MapWidgetStyle.topoContours,
             ),
             WidgetPlacementModel(
-              id: 'w5',
-              type: WidgetType.altitudeChart,
+              id: 'wm_vario',
+              type: WidgetType.varioBar,
+              x: 0,
+              y: 0,
+              w: 1,
+              h: 4,
+              varioStyle: LiftSinkBarStyle.verticalEdgeBar,
+            ),
+            WidgetPlacementModel(
+              id: 'wm_alt',
+              type: WidgetType.altitude,
               x: 1,
-              y: 3,
+              y: 0,
               w: 3,
               h: 1,
+              numericStyle: NumericWidgetStyle.minimalistText,
             ),
           ],
         ),
@@ -251,7 +495,17 @@ class UIConfig {
           id: 'thermaling',
           name: 'Thermaling Screen',
           layoutStrategy: LayoutStrategyStyle.sidebarDashboard,
+          autoSwitchTrigger: ScreenAutoSwitchTrigger.onThermalCircling,
           widgets: [
+            WidgetPlacementModel(
+              id: 'tw_map',
+              type: WidgetType.thermalMap,
+              x: 0,
+              y: 0,
+              w: 4,
+              h: 4,
+              thermalMapStyle: ThermalMapStyle.xctrackBubbles,
+            ),
             WidgetPlacementModel(
               id: 'tw1',
               type: WidgetType.varioBar,
@@ -259,6 +513,7 @@ class UIConfig {
               y: 0,
               w: 1,
               h: 4,
+              varioStyle: LiftSinkBarStyle.verticalEdgeBar,
             ),
             WidgetPlacementModel(
               id: 'tw2',
@@ -267,6 +522,7 @@ class UIConfig {
               y: 0,
               w: 3,
               h: 3,
+              windStyle: WindWidgetStyle.relativeArrow,
             ),
             WidgetPlacementModel(
               id: 'tw3',
@@ -275,6 +531,7 @@ class UIConfig {
               y: 3,
               w: 3,
               h: 1,
+              numericStyle: NumericWidgetStyle.minimalistText,
             ),
           ],
         ),
@@ -284,11 +541,6 @@ class UIConfig {
 
   UIConfig copyWith({
     NavBarStyle? navBarStyle,
-    LayoutStrategyStyle? layoutStrategyStyle,
-    NumericWidgetStyle? numericWidgetStyle,
-    WindWidgetStyle? windWidgetStyle,
-    LiftSinkBarStyle? liftSinkBarStyle,
-    AltitudeChartStyle? altitudeChartStyle,
     ThermalingStyle? thermalingStyle,
     SettingsStyle? settingsStyle,
     List<FlightScreenModel>? screens,
@@ -296,11 +548,6 @@ class UIConfig {
   }) {
     return UIConfig(
       navBarStyle: navBarStyle ?? this.navBarStyle,
-      layoutStrategyStyle: layoutStrategyStyle ?? this.layoutStrategyStyle,
-      numericWidgetStyle: numericWidgetStyle ?? this.numericWidgetStyle,
-      windWidgetStyle: windWidgetStyle ?? this.windWidgetStyle,
-      liftSinkBarStyle: liftSinkBarStyle ?? this.liftSinkBarStyle,
-      altitudeChartStyle: altitudeChartStyle ?? this.altitudeChartStyle,
       thermalingStyle: thermalingStyle ?? this.thermalingStyle,
       settingsStyle: settingsStyle ?? this.settingsStyle,
       screens: screens ?? this.screens,
@@ -310,49 +557,47 @@ class UIConfig {
 
   Map<String, dynamic> toJson() => {
     'navBarStyle': navBarStyle.name,
-    'layoutStrategyStyle': layoutStrategyStyle.name,
-    'numericWidgetStyle': numericWidgetStyle.name,
-    'windWidgetStyle': windWidgetStyle.name,
-    'liftSinkBarStyle': liftSinkBarStyle.name,
-    'altitudeChartStyle': altitudeChartStyle.name,
     'thermalingStyle': thermalingStyle.name,
     'settingsStyle': settingsStyle.name,
     'activeScreenId': activeScreenId,
     'screens': screens.map((s) => s.toJson()).toList(),
   };
 
-  factory UIConfig.fromJson(Map<String, dynamic> json) => UIConfig(
-    navBarStyle: NavBarStyle.values.byName(
-      json['navBarStyle'] as String? ?? 'translucentDrawer',
-    ),
-    layoutStrategyStyle: LayoutStrategyStyle.values.byName(
-      json['layoutStrategyStyle'] as String? ?? 'sidebarDashboard',
-    ),
-    numericWidgetStyle: NumericWidgetStyle.values.byName(
-      json['numericWidgetStyle'] as String? ?? 'minimalistText',
-    ),
-    windWidgetStyle: WindWidgetStyle.values.byName(
-      json['windWidgetStyle'] as String? ?? 'relativeArrow',
-    ),
-    liftSinkBarStyle: LiftSinkBarStyle.values.byName(
-      json['liftSinkBarStyle'] as String? ?? 'verticalEdgeBar',
-    ),
-    altitudeChartStyle: AltitudeChartStyle.values.byName(
-      json['altitudeChartStyle'] as String? ?? 'minimalSparkline',
-    ),
-    thermalingStyle: ThermalingStyle.values.byName(
-      json['thermalingStyle'] as String? ?? 'assistantDisplay',
-    ),
-    settingsStyle: SettingsStyle.values.byName(
-      json['settingsStyle'] as String? ?? 'categorizedList',
-    ),
-    activeScreenId: json['activeScreenId'] as String? ?? 'normal_flight',
-    screens: json['screens'] != null
-        ? (json['screens'] as List<dynamic>)
+  factory UIConfig.fromJson(Map<String, dynamic> json) {
+    NavBarStyle nav = NavBarStyle.translucentDrawer;
+    if (json['navBarStyle'] is String) {
+      try {
+        nav = NavBarStyle.values.byName(json['navBarStyle'] as String);
+      } catch (_) {}
+    }
+
+    ThermalingStyle therm = ThermalingStyle.assistantDisplay;
+    if (json['thermalingStyle'] is String) {
+      try {
+        therm =
+            ThermalingStyle.values.byName(json['thermalingStyle'] as String);
+      } catch (_) {}
+    }
+
+    SettingsStyle sett = SettingsStyle.categorizedList;
+    if (json['settingsStyle'] is String) {
+      try {
+        sett = SettingsStyle.values.byName(json['settingsStyle'] as String);
+      } catch (_) {}
+    }
+
+    return UIConfig(
+      navBarStyle: nav,
+      thermalingStyle: therm,
+      settingsStyle: sett,
+      activeScreenId: json['activeScreenId'] as String? ?? 'normal_flight',
+      screens: json['screens'] != null
+          ? (json['screens'] as List<dynamic>)
               .map((s) => FlightScreenModel.fromJson(s as Map<String, dynamic>))
               .toList()
-        : defaultConfig().screens,
-  );
+          : defaultConfig().screens,
+    );
+  }
 
   String encodeJson() => jsonEncode(toJson());
 

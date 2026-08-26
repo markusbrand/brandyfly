@@ -1,0 +1,29 @@
+name: benchmark_map
+description: "Offline map engine benchmark comparing maplibre vs maplibre_gl for BrandyFly."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Both candidates pinned for side-by-side comparison.
+  # Active adapter selected at compile time via --dart-define=BENCHMARK_ADAPTER=maplibre|maplibre_gl
+  maplibre: 0.3.6
+  maplibre_gl: 0.27.0
+  path_provider: ^2.1.6
+  crypto: ^3.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/benchmark_fixtures/fixture_manifest.json
+    - assets/benchmark_fixtures/camera_script.json
+    - assets/benchmark_fixtures/overlays.json

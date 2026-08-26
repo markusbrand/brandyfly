@@ -1,0 +1,102 @@
+{
+  "version": "1.0.0",
+  "description": "Static overlay geometry fixtures for the benchmark. All data is synthetic — coordinates are derived from public domain knowledge of the Dachstein/Krippenstein area. Not authoritative aeronautical data.",
+  "center": {"lat": 47.525, "lng": 13.685},
+  "airspacePolygons": [
+    {
+      "id": "ctr_salzburg",
+      "label": "CTR SALZBURG [D] GND-FL100",
+      "type": "CTR",
+      "class": "D",
+      "lowerAltFl": "GND",
+      "upperAltFl": "FL100",
+      "color": "#EF4444",
+      "points": [
+        {"lat": 47.550, "lng": 13.650},
+        {"lat": 47.560, "lng": 13.710},
+        {"lat": 47.535, "lng": 13.725},
+        {"lat": 47.510, "lng": 13.695},
+        {"lat": 47.525, "lng": 13.650}
+      ]
+    },
+    {
+      "id": "tma_innsbruck",
+      "label": "TMA INNSBRUCK [E] 1500m-FL245",
+      "type": "TMA",
+      "class": "E",
+      "lowerAltFl": "1500m AMSL",
+      "upperAltFl": "FL245",
+      "color": "#F97316",
+      "points": [
+        {"lat": 47.480, "lng": 13.620},
+        {"lat": 47.490, "lng": 13.750},
+        {"lat": 47.465, "lng": 13.760},
+        {"lat": 47.455, "lng": 13.630},
+        {"lat": 47.470, "lng": 13.615}
+      ]
+    }
+  ],
+  "flightTrack": {
+    "description": "120-point synthetic GPS breadcrumb track starting 2km south-west of Krippenstein launch and approaching the summit.",
+    "climbRateMs": 2.1,
+    "totalPoints": 120,
+    "points": [
+      {"lat": 47.507, "lng": 13.661, "altM": 1050, "climbMs": -0.1},
+      {"lat": 47.508, "lng": 13.662, "altM": 1065, "climbMs": 0.5},
+      {"lat": 47.509, "lng": 13.663, "altM": 1082, "climbMs": 1.1},
+      {"lat": 47.510, "lng": 13.664, "altM": 1100, "climbMs": 1.8},
+      {"lat": 47.511, "lng": 13.665, "altM": 1118, "climbMs": 2.2},
+      {"lat": 47.512, "lng": 13.666, "altM": 1140, "climbMs": 2.8},
+      {"lat": 47.512, "lng": 13.667, "altM": 1165, "climbMs": 3.1},
+      {"lat": 47.513, "lng": 13.668, "altM": 1190, "climbMs": 3.2},
+      {"lat": 47.514, "lng": 13.669, "altM": 1215, "climbMs": 2.9},
+      {"lat": 47.514, "lng": 13.670, "altM": 1238, "climbMs": 2.5},
+      {"lat": 47.515, "lng": 13.671, "altM": 1258, "climbMs": 2.1},
+      {"lat": 47.515, "lng": 13.672, "altM": 1278, "climbMs": 1.8},
+      {"lat": 47.516, "lng": 13.673, "altM": 1296, "climbMs": 1.5},
+      {"lat": 47.516, "lng": 13.674, "altM": 1312, "climbMs": 1.2},
+      {"lat": 47.517, "lng": 13.675, "altM": 1326, "climbMs": 1.0},
+      {"lat": 47.517, "lng": 13.676, "altM": 1340, "climbMs": 1.1},
+      {"lat": 47.518, "lng": 13.677, "altM": 1356, "climbMs": 1.4},
+      {"lat": 47.518, "lng": 13.678, "altM": 1375, "climbMs": 1.8},
+      {"lat": 47.519, "lng": 13.679, "altM": 1398, "climbMs": 2.2},
+      {"lat": 47.519, "lng": 13.680, "altM": 1424, "climbMs": 2.8},
+      {"lat": 47.520, "lng": 13.681, "altM": 1452, "climbMs": 3.0},
+      {"lat": 47.520, "lng": 13.682, "altM": 1480, "climbMs": 2.9},
+      {"lat": 47.521, "lng": 13.682, "altM": 1507, "climbMs": 2.6},
+      {"lat": 47.521, "lng": 13.683, "altM": 1530, "climbMs": 2.1},
+      {"lat": 47.522, "lng": 13.683, "altM": 1552, "climbMs": 1.8},
+      {"lat": 47.522, "lng": 13.684, "altM": 1572, "climbMs": 1.5},
+      {"lat": 47.522, "lng": 13.684, "altM": 1590, "climbMs": 1.2},
+      {"lat": 47.523, "lng": 13.684, "altM": 1606, "climbMs": 1.0},
+      {"lat": 47.523, "lng": 13.685, "altM": 1622, "climbMs": 1.2},
+      {"lat": 47.523, "lng": 13.685, "altM": 1640, "climbMs": 1.6}
+    ]
+  },
+  "thermalMarkers": [
+    {"id": "t1", "lat": 47.520, "lng": 13.688, "strengthMs": 3.2, "radiusM": 80},
+    {"id": "t2", "lat": 47.515, "lng": 13.678, "strengthMs": 2.7, "radiusM": 65},
+    {"id": "t3", "lat": 47.528, "lng": 13.692, "strengthMs": 1.9, "radiusM": 50},
+    {"id": "t4", "lat": 47.512, "lng": 13.695, "strengthMs": 3.8, "radiusM": 90},
+    {"id": "t5", "lat": 47.534, "lng": 13.680, "strengthMs": 2.1, "radiusM": 55},
+    {"id": "t6", "lat": 47.519, "lng": 13.673, "strengthMs": 1.5, "radiusM": 45},
+    {"id": "t7", "lat": 47.508, "lng": 13.700, "strengthMs": 2.9, "radiusM": 70},
+    {"id": "t8", "lat": 47.530, "lng": 13.700, "strengthMs": 3.5, "radiusM": 85}
+  ],
+  "pilotPosition": {
+    "lat": 47.523,
+    "lng": 13.685,
+    "altM": 1640,
+    "headingDeg": 220,
+    "speedKmh": 42.5,
+    "climbMs": 1.6
+  },
+  "peakMarkers": [
+    {"name": "Hoher Dachstein", "lat": 47.475, "lng": 13.606, "altM": 2995},
+    {"name": "Krippenstein",    "lat": 47.525, "lng": 13.685, "altM": 2108},
+    {"name": "Gjaidstein",      "lat": 47.485, "lng": 13.635, "altM": 2794},
+    {"name": "Sarstein",        "lat": 47.595, "lng": 13.705, "altM": 1975},
+    {"name": "Plassen",         "lat": 47.575, "lng": 13.615, "altM": 1953},
+    {"name": "Loser",           "lat": 47.655, "lng": 13.775, "altM": 1838}
+  ]
+}

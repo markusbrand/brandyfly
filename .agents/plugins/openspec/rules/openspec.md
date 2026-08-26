@@ -5,44 +5,35 @@ description: Always follow OpenSpec change management guidelines when working on
 
 # OpenSpec Integration Guidelines
 
-When working with OpenSpec in this repository, follow these guidelines and CLI conventions:
+In this repository, GitHub issues are the authoritative change store for all OpenSpec changes (see `openspec/specs/github-issue-change-management/spec.md` and `tools/openspec-issue/CONTRACT.md`).
 
-Before using the `openspec` CLI, run `openspec --version` (or `npx @fission-ai/openspec --version`). If it is unavailable, suggest installing it with `npm install -g @fission-ai/openspec`.
+All OpenSpec workflows MUST use the repository integration adapter `./tools/openspec-issue/openspec-issue.sh` to create, read, update, list, and complete changes. Never create or store per-change Markdown files under `openspec/changes/`.
 
-## What is OpenSpec?
-
-OpenSpec is a structured change management system for codebases. It organizes work into **changes** with planning artifacts (proposals, specs, designs, tasks) that guide implementation.
-
-## Key CLI Commands
-
-### Agent-Compatible CLI Commands (prefer `--json` for structured output)
+## Key Adapter Commands (`./tools/openspec-issue/openspec-issue.sh`)
 
 | Command | Purpose |
 |---------|---------|
-| `openspec list [--json]` | List all changes and specs |
-| `openspec show <item> [--json]` | View a specific change or spec |
-| `openspec validate [--all] [--json]` | Validate changes and specs for issues |
-| `openspec status [--change <name>] [--json]` | Show artifact progress for a change |
-| `openspec instructions [artifact] [--change <name>] [--json]` | Get next-step instructions for a change |
-| `openspec templates [--json]` | List available templates |
-| `openspec schemas [--json]` | List available workflow schemas |
-| `openspec archive <change> --json [--yes]` | Archive a completed change |
+| `preflight [--write]` | Verify `gh` authentication and issue write permissions |
+| `list [--state open\|closed\|all]` | List all OpenSpec issues with lifecycle, state, and task completion |
+| `find <change-name>` | Find the issue number for a change name |
+| `read <issue>` | Read the full issue body |
+| `get-section <issue> <section>` | Read a managed section (`proposal`, `requirements`, `design`, `tasks`, `verification`) |
+| `set-section <issue> <section> --body-file <f>` | Update a specific managed section in the issue |
+| `set-lifecycle <issue> <lifecycle>` | Transition lifecycle (`proposed`, `ready`, `implementing`, `completed`) |
+| `create --name <n> --title <t> --body-file <f>` | Create a new authoritative OpenSpec issue |
+| `render-body --meta <f> ...` | Format an issue body with metadata and sections |
+| `validate <issue>` | Validate an issue's schema, metadata, and sections |
 
 ## Core Workflow
 
-1. **Find the change**: Run `openspec list --json` to see active changes.
-2. **Check progress**: Run `openspec status --change <name> --json` for the selected change.
-3. **Follow instructions**: Run `openspec instructions [artifact] --change <name> --json` for the next artifact.
-4. **Validate before completing**: Run `openspec validate <name> --json` or `openspec validate --all --strict`.
+1. **Discover & Select Change**: Run `./tools/openspec-issue/openspec-issue.sh list` or `./tools/openspec-issue/openspec-issue.sh find <change-name>`.
+2. **Read Issue Content**: Read the authoritative proposal, requirements, design, and tasks from the issue using `./tools/openspec-issue/openspec-issue.sh get-section <issue> <section>`.
+3. **Update Tasks During Implementation**: Update completed tasks (`- [x]`) in the issue using `./tools/openspec-issue/openspec-issue.sh set-section <issue> tasks --body-file <file>`.
+4. **Complete & Archive**: Sync accepted requirement deltas to `openspec/specs/<capability>/spec.md`, record verification evidence, and complete the issue via `./tools/openspec-issue/openspec-issue.sh set-lifecycle <issue> completed`.
 
 ## Key Directories
 
-- `openspec/` — Root OpenSpec directory
-- `openspec/changes/` — Active changes with their planning artifacts
+- `openspec/` — Root directory
+- `openspec/specs/` — Durable capability specifications (source controlled)
 - `openspec/config.yaml` — Project configuration and rules
-
-## Best Practices
-
-- Always use the `--json` flag when programmatically parsing OpenSpec CLI output.
-- Never edit or create changes manually by creating folders directly without scaffolding via `openspec new change <name>`.
-- Run `openspec validate` after creating or modifying OpenSpec artifacts.
+- `tools/openspec-issue/` — Authoritative GitHub issue change adapter and tools

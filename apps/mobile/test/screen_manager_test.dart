@@ -8,7 +8,7 @@ void main() {
       final manager = ScreenManagerService();
       expect(manager.config.navBarStyle, NavBarStyle.translucentDrawer);
       expect(
-        manager.config.layoutStrategyStyle,
+        manager.activeScreen.layoutStrategy,
         LayoutStrategyStyle.sidebarDashboard,
       );
       expect(manager.isEditMode, false);
@@ -29,35 +29,72 @@ void main() {
       ); // Nav bar hides when edit mode opens
     });
 
-    test('updates visual mockup style options', () {
+    test('updates shell preferences and screen properties', () {
       final manager = ScreenManagerService();
 
       manager.setNavBarStyle(NavBarStyle.floatingPill);
       expect(manager.config.navBarStyle, NavBarStyle.floatingPill);
 
-      manager.setLayoutStrategyStyle(LayoutStrategyStyle.freeformHud);
+      manager.setSettingsStyle(SettingsStyle.cardDashboard);
+      expect(manager.config.settingsStyle, SettingsStyle.cardDashboard);
+
+      manager.setThermalingStyle(ThermalingStyle.focusMode);
+      expect(manager.config.thermalingStyle, ThermalingStyle.focusMode);
+
+      manager.setScreenLayoutStrategy('normal_flight', LayoutStrategyStyle.freeformHud);
       expect(
-        manager.config.layoutStrategyStyle,
+        manager.activeScreen.layoutStrategy,
         LayoutStrategyStyle.freeformHud,
       );
 
-      manager.setNumericWidgetStyle(NumericWidgetStyle.highContrastBox);
+      manager.setScreenAutoSwitchTrigger('normal_flight', ScreenAutoSwitchTrigger.onGlideStraight);
       expect(
-        manager.config.numericWidgetStyle,
-        NumericWidgetStyle.highContrastBox,
+        manager.activeScreen.autoSwitchTrigger,
+        ScreenAutoSwitchTrigger.onGlideStraight,
       );
+    });
 
-      manager.setWindWidgetStyle(WindWidgetStyle.miniCompassRose);
-      expect(manager.config.windWidgetStyle, WindWidgetStyle.miniCompassRose);
+    test('updates individual widget styling without affecting global config', () {
+      final manager = ScreenManagerService();
+      final widgetId = manager.activeScreen.widgets.first.id;
+      final original = manager.activeScreen.widgets.first;
+
+      final updated = original.copyWith(
+        numericStyle: NumericWidgetStyle.retroDigital,
+      );
+      manager.updateWidgetPlacement(updated);
+
+      final current = manager.activeScreen.widgets.firstWhere((w) => w.id == widgetId);
+      expect(current.numericStyle, NumericWidgetStyle.retroDigital);
+      expect(current.effectiveNumericStyle, NumericWidgetStyle.retroDigital);
+    });
+
+    test('adds map widget with full-screen initial dimensions', () {
+      final manager = ScreenManagerService();
+      manager.addWidget(WidgetType.map);
+
+      final added = manager.activeScreen.widgets.last;
+      expect(added.type, WidgetType.map);
+      expect(added.x, 0);
+      expect(added.y, 0);
+      expect(added.w, 4);
+      expect(added.h, 4);
+      expect(added.effectiveMapStyle, MapWidgetStyle.topoContours);
     });
 
     test('adds, switches, and removes flight screens', () {
       final manager = ScreenManagerService();
       final initialCount = manager.config.screens.length;
 
-      manager.addScreen('Cross Country');
+      manager.addScreen(
+        'Cross Country',
+        layoutStrategy: LayoutStrategyStyle.snapToGrid,
+        autoSwitchTrigger: ScreenAutoSwitchTrigger.onGlideStraight,
+      );
       expect(manager.config.screens.length, initialCount + 1);
       expect(manager.activeScreen.name, 'Cross Country');
+      expect(manager.activeScreen.layoutStrategy, LayoutStrategyStyle.snapToGrid);
+      expect(manager.activeScreen.autoSwitchTrigger, ScreenAutoSwitchTrigger.onGlideStraight);
 
       manager.setActiveScreen('normal_flight');
       expect(manager.activeScreen.name, 'Normal Flight Screen');
@@ -78,17 +115,54 @@ void main() {
       expect(manager.activeScreen.widgets.length, initialWidgetCount);
     });
 
+    test('repositions and resizes widgets with bounds clamping', () {
+      final manager = ScreenManagerService();
+      final widgetId = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.altitude).id;
+
+      // Update position
+      manager.updateWidgetPosition(widgetId, 1, 2);
+      var w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.x, 1);
+      expect(w.y, 2);
+
+      // Move widget
+      manager.moveWidget(widgetId, 1, -1);
+      w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.x, 2);
+      expect(w.y, 1);
+
+      // Resize widget
+      manager.updateWidgetSize(widgetId, 2, 2);
+      w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.w, 2);
+      expect(w.h, 2);
+
+      manager.resizeWidget(widgetId, -1, 1);
+      w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.w, 1);
+      expect(w.h, 3);
+
+      // Clamping checks: width cannot exceed grid columns (4), x clamped so x+w <= 4
+      manager.updateWidgetPlacement(w.copyWith(x: 3, w: 3, y: -5, h: 10));
+      w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
+      expect(w.w, 3);
+      expect(w.x, 1); // clamped to 4 - 3 = 1
+      expect(w.y, 0); // clamped to min 0
+      expect(w.h, 6); // clamped to max 6
+    });
+
     test('serializes and deserializes UIConfig correctly', () {
       final config = UIConfig.defaultConfig().copyWith(
         navBarStyle: NavBarStyle.cornerMenu,
-        numericWidgetStyle: NumericWidgetStyle.retroDigital,
+        settingsStyle: SettingsStyle.cardDashboard,
       );
 
       final encoded = config.encodeJson();
       final decoded = UIConfig.decodeJson(encoded);
 
       expect(decoded.navBarStyle, NavBarStyle.cornerMenu);
-      expect(decoded.numericWidgetStyle, NumericWidgetStyle.retroDigital);
+      expect(decoded.settingsStyle, SettingsStyle.cardDashboard);
+      expect(decoded.screens.length, config.screens.length);
     });
   });
 }

@@ -8,3 +8,4 @@ repository = "https://github.com/markusbrand/brandyfly"
 publish = false
 
 [dependencies]
+brandyfly_contracts = { path = "../../packages/contracts" }
