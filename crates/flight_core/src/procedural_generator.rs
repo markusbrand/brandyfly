@@ -301,7 +301,8 @@ mod tests {
     fn steady_glide_generates_expected_speed_and_sink_profile() {
         let mut generator = ProceduralFlightGenerator::new(10, 1_000_000_000);
         let start_alt = generator.current_altitude_m();
-        let events = generator.generate_maneuver_events(ProceduralManeuver::SteadyGlide, 10.0, 50.0);
+        let events =
+            generator.generate_maneuver_events(ProceduralManeuver::SteadyGlide, 10.0, 50.0);
 
         assert_eq!(events.len(), 500);
         let end_alt = generator.current_altitude_m();
@@ -316,7 +317,10 @@ mod tests {
 
         // Check GPS event speeds
         for event in &events {
-            if let SensorPayload::Gps { ground_speed_mps, .. } = &event.payload {
+            if let SensorPayload::Gps {
+                ground_speed_mps, ..
+            } = &event.payload
+            {
                 let speed_kmh = ground_speed_mps * 3.6;
                 assert!(
                     (35.0..=42.0).contains(&speed_kmh),
@@ -333,7 +337,8 @@ mod tests {
         let start_bearing = generator.current_bearing_deg();
 
         // 20 seconds at 18 deg/s = 360 deg turn
-        let events = generator.generate_maneuver_events(ProceduralManeuver::ThermalClimb360, 20.0, 50.0);
+        let events =
+            generator.generate_maneuver_events(ProceduralManeuver::ThermalClimb360, 20.0, 50.0);
         assert_eq!(events.len(), 1000);
 
         let end_alt = generator.current_altitude_m();
@@ -360,7 +365,8 @@ mod tests {
         let start_alt = generator.current_altitude_m();
 
         // 12 seconds: 5s heavy sink, 5s transition, 2s steady
-        let events = generator.generate_maneuver_events(ProceduralManeuver::SinkRecovery, 12.0, 50.0);
+        let events =
+            generator.generate_maneuver_events(ProceduralManeuver::SinkRecovery, 12.0, 50.0);
         assert_eq!(events.len(), 600);
 
         let end_alt = generator.current_altitude_m();

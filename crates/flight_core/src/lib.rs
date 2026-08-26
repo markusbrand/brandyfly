@@ -16,9 +16,7 @@ pub use durable_recorder::{
     DurableFlightRecorder, FlightRecordFrame, MAX_RECORD_PAYLOAD_SIZE, RECORDER_MAGIC,
     RecoveryReport, calculate_crc32, recover_flight_records,
 };
-pub use procedural_generator::{
-    ProceduralFlightGenerator, ProceduralManeuver, TelemetrySource,
-};
+pub use procedural_generator::{ProceduralFlightGenerator, ProceduralManeuver, TelemetrySource};
 pub use replay_fixtures::{
     SkyDrop1ReplayGenerator, SkyDrop1ReplayScenario, SyntheticReplayGenerator,
     SyntheticReplayScenario, replay_skydrop1_sequence,
