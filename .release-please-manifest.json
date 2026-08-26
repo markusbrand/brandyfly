@@ -1,7 +1,7 @@
 {
-  "apps/mobile": "0.1.0",
-  "crates/flight_core": "0.1.0",
-  "packages/contracts": "0.1.0",
-  "plugins/brandyfly_native": "0.0.1",
-  "services/backend": "0.1.0"
+  "apps/mobile": "0.2.0",
+  "crates/flight_core": "0.2.0",
+  "packages/contracts": "0.2.0",
+  "plugins/brandyfly_native": "0.1.0",
+  "services/backend": "0.1.1"
 }
