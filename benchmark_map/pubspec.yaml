@@ -9,10 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Both candidates pinned for side-by-side comparison.
-  # Active adapter selected at compile time via --dart-define=BENCHMARK_ADAPTER=maplibre|maplibre_gl
+  # Candidate 1 active:
   maplibre: 0.3.6
-  maplibre_gl: 0.27.0
+  # maplibre_gl: 0.27.0
   path_provider: ^2.1.6
   crypto: ^3.0.7
 

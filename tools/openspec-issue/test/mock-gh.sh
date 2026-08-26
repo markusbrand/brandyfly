@@ -92,12 +92,15 @@ case "$cmd" in
     # collect all issue numbers sorted numerically
     nums=()
     for d in "$STORE"/issues/*/; do [[ -d "$d" ]] && nums+=("$(basename "$d")"); done
-    IFS=$'\n' sorted=($(printf '%s\n' "${nums[@]}" | sort -n)); unset IFS
+    sorted=()
+    if [[ ${#nums[@]} -gt 0 ]]; then
+      IFS=$'\n' sorted=($(printf '%s\n' "${nums[@]}" | sort -n)); unset IFS
+    fi
     total="${#sorted[@]}"
     start=$(( (page-1) * per ))
     arr="[]"
     idx=0
-    for n in "${sorted[@]}"; do
+    for n in ${sorted[@]+"${sorted[@]}"}; do
       if [[ $idx -ge $start && $idx -lt $((start+per)) ]]; then
         obj="$(rest_issue "$n")" && arr="$(jq -c --argjson o "$obj" '. + [$o]' <<<"$arr")"
       fi
