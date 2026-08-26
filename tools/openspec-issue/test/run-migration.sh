@@ -77,7 +77,7 @@ run_migrate "$store" apply >"$store/log2" 2>&1; rc=$?
 # 3. Conflict detection: mutate an existing issue's managed content, re-run -> fail
 an2="$(MOCK_GH_STORE="$store" OPENSPEC_ISSUE_GH="$MOCK" bash "$HERE/../openspec-issue.sh" find active-one)"
 # tamper the proposal section content in the stored issue body
-sed -i 's/Fixture active change./TAMPERED content./' "$store/issues/$an2/body"
+sed -i.bak 's/Fixture active change./TAMPERED content./' "$store/issues/$an2/body" && rm -f "$store/issues/$an2/body.bak"
 run_migrate "$store" apply >"$store/log3" 2>&1; rc=$?
 { [[ $rc -ne 0 ]] && grep -q "CONFLICT" "$store/log3"; } \
   && ok "conflict detected on divergent reuse (nonzero exit)" || no "conflict detection (rc=$rc)"

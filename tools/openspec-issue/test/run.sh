@@ -146,13 +146,13 @@ after="$(run "$store6" read 1)"
 [[ "$before" == "$after" ]] && ok "issue content unchanged on permission failure" || no "content unchanged on permission failure"
 rm -f "$sf"
 
-# 9. Interrupted/partial update detection: post-write validate catches unbalanced body
+# 9. Interrupted / partial writes detected
 store7="$(new_store)"
 im="$(meta_file interrupt-change)"; ibody="$store7/ibody"
 run "$store7" render-body --meta "$im" --proposal "$FIX/proposal.md" >"$ibody"
 run "$store7" create --name interrupt-change --title int --body-file "$ibody" >/dev/null
 # Simulate a corrupt remote write by damaging markers, then ensure validate fails
-sed -i 's#<!-- openspec:section:tasks:end -->##' "$store7/issues/1/body"
+sed -i.bak 's#<!-- openspec:section:tasks:end -->##' "$store7/issues/1/body" && rm -f "$store7/issues/1/body.bak"
 run "$store7" validate 1 >/dev/null 2>&1; rc=$?
 [[ $rc -eq 5 ]] && ok "interrupted/partial write detected by validate" || no "interrupted write detected (rc=$rc)"
 
@@ -190,7 +190,7 @@ run "$store9" render-body --meta "$cm" --proposal "$FIX/proposal.md" >"$BODY"
 run "$store9" create --name consistency-change --title c --body-file "$BODY" >/dev/null
 cn="$(run "$store9" find consistency-change)"
 # Directly rewrite only the metadata lifecycle in the stored body (label stays proposed)
-sed -i 's/"lifecycle":"proposed"/"lifecycle":"implementing"/' "$store9/issues/$cn/body"
+sed -i.bak 's/"lifecycle":"proposed"/"lifecycle":"implementing"/' "$store9/issues/$cn/body" && rm -f "$store9/issues/$cn/body.bak"
 run "$store9" validate "$cn" >/dev/null 2>&1; rc=$?
 [[ $rc -eq 11 ]] && ok "validate rejects label!=metadata lifecycle (exit 11)" || no "label/metadata mismatch rejected (rc=$rc)"
 

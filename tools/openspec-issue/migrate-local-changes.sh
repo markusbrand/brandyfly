@@ -184,7 +184,18 @@ process_change() {
 
 # Normalize section text for comparison (strip trailing whitespace + leading and
 # trailing blank lines) so cosmetic differences do not cause false conflicts.
-_norm() { sed -e 's/[[:space:]]*$//' | sed -e '/./,$!d' | tac | sed -e '/./,$!d' | tac; }
+_norm() {
+  awk '
+    { sub(/[[:space:]]+$/, ""); lines[NR] = $0 }
+    END {
+      start = 1
+      while (start <= NR && lines[start] == "") start++
+      end = NR
+      while (end >= start && lines[end] == "") end--
+      for (i = start; i <= end; i++) print lines[i]
+    }
+  '
+}
 
 # Compare the generated payload against an existing issue's managed sections and
 # key metadata. Returns nonzero (conflict) if they differ. This protects against
