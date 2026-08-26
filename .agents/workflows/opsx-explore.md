@@ -77,45 +77,40 @@ Depending on what the user brings, you might:
 
 ---
 
-## OpenSpec Awareness
+## OpenSpec & GitHub Issue Awareness
 
-You have full context of the OpenSpec system. Use it naturally, don't force it.
+In this repository, GitHub issues are the sole authoritative change store for all OpenSpec changes (see `tools/openspec-issue/CONTRACT.md`).
 
-### Check for context
+### Check for active changes
 
-At the start, quickly check what exists:
+Run:
 ```bash
-openspec list --json
+./tools/openspec-issue/openspec-issue.sh list
 ```
 
 This tells you:
 - If there are active changes
-- Their names, schemas, and status
-- What the user might be working on
+- Their issue numbers, lifecycle states, and task completion progress
 
-Then read the project's own context from the resolved root - `<root.path>/openspec/config.yaml` (or `config.yml`). Use the `root.path` returned above, and skip this if neither file exists:
-- `context`: project background - tech stack, conventions, constraints
-- `rules`: keyed by artifact id - the entries for an artifact apply only when you write that artifact
+When exploring in the context of an existing change, read its contents via:
+```bash
+./tools/openspec-issue/openspec-issue.sh read <issue-number-or-name>
+```
 
-Ground your thinking in these. They are constraints for you to follow, not content to reproduce: do NOT copy them into the conversation or into any artifact you create.
+### When capturing a new change
 
-If the user mentioned a specific change name, read its artifacts for context.
+When insights crystallize and the user asks to start/capture a new change:
 
-### When no change exists
+1. Run `./tools/openspec-issue/openspec-issue.sh preflight --write` to verify GitHub connectivity and permissions.
+2. Structure the proposal, requirement deltas, design, and task list.
+3. Render the issue body using `render-body` and scan for secrets with `scan-content`.
+4. Create the authoritative GitHub issue using:
+   ```bash
+   ./tools/openspec-issue/openspec-issue.sh create --name "<name>" --title "OpenSpec: <name>" --schema spec-driven --lifecycle ready --body-file <body-file>
+   ```
+5. Never create per-change directories under `openspec/changes/`.
+6. Show the created GitHub issue number, link, and summary to the user.
 
-Think freely. When insights crystallize, you might offer:
-
-- "This feels solid enough to start a change. Want me to create a proposal?"
-- Or keep exploring - no pressure to formalize
-
-If the user asks you to capture the exploration as a new change, transition seamlessly into the requested capture:
-
-1. Run `openspec new change "<name>"` (with `--store <id>` when applicable) before creating any artifacts. Never create a new change directory under `openspec/changes/` by hand; the CLI scaffold creates required metadata such as `.openspec.yaml`. Keep the selected `--store <id>` on every applicable follow-up `status` and `instructions` command.
-2. Run `openspec status --change "<name>" --json` (append the confirmed `--store "<id>"` only for a registered standalone store), then process the requested artifacts in dependency order. For each requested artifact that is `ready`, run `openspec instructions "<artifact-id>" --change "<name>" --json` (append the confirmed `--store "<id>"` only for a registered standalone store). Before creating a requested artifact, evaluate any condition in its own `instruction` against the explored change; record a deliberate skip instead when the condition does not apply. If a requested artifact is blocked by a direct prerequisite the user did not request, run `openspec instructions "<prerequisite-id>" --change "<name>" --json` (append the confirmed `--store "<id>"` only for a registered standalone store) for that prerequisite whether it is `ready` or `blocked`. If its own `instruction` states a condition, evaluate that condition against the explored change and record a deliberate skip only when the condition does not apply. If the condition applies, or the prerequisite is not conditional, treat it as a normal prerequisite and ask before expanding the capture. Do not create an unrequested prerequisite unless the user approves.
-3. Follow the returned `template` and `instruction` fields. Read completed dependency files listed in `dependencies`, and apply `context` and `rules` as constraints without copying them into the artifact. If the instruction delegates creation to a specific skill or command, invoke it; otherwise write the artifact to `resolvedOutputPath`, using the instruction to choose a concrete path when it is a glob. Verify that the selected concrete output exists.
-4. After creating each artifact, re-run `openspec status --change "<name>" --json` (append the confirmed `--store "<id>"` only for a registered standalone store) and continue until every requested artifact is `done`, `skipped`, or was deliberately skipped because its own `instruction` stated a condition that did not apply. Tell the user about a deliberate conditional skip, remember it, and do not reconsider it. Dependencies are enablers, not gates: if a requested artifact is still `blocked` only because you deliberately skipped a conditional prerequisite, run `openspec instructions "<artifact-id>" --change "<name>" --json` (append the confirmed `--store "<id>"` only for a registered standalone store) despite the blocked status, then create it using step 3 only when those recorded conditional skips are its sole missing dependencies. If a requested artifact is blocked by a prerequisite the user did not ask to capture and cannot be conditionally skipped, explain that dependency and ask before expanding the capture.
-
-Capture the artifact(s) the user requested without asking them to invoke another workflow command. If they asked only to start a change, stop after scaffolding and show its status.
 
 ### When a change exists
 

@@ -26,10 +26,31 @@ class UIPersistenceService {
       return UIConfig.defaultConfig();
     }
     try {
-      return UIConfig.decodeJson(rawJson);
+      final config = UIConfig.decodeJson(rawJson);
+      return _ensureDefaultMapWidget(config);
     } catch (_) {
       return UIConfig.defaultConfig();
     }
+  }
+
+  static UIConfig _ensureDefaultMapWidget(UIConfig config) {
+    final updatedScreens = config.screens.map((screen) {
+      if (screen.id == 'normal_flight') {
+        final hasMap = screen.widgets.any((w) => w.type == WidgetType.map);
+        if (!hasMap) {
+          return UIConfig.defaultConfig().screens.firstWhere((s) => s.id == 'normal_flight');
+        }
+      }
+      return screen;
+    }).toList();
+
+    final hasMapScreen = updatedScreens.any((s) => s.id == 'map_screen');
+    if (!hasMapScreen) {
+      updatedScreens.add(
+        UIConfig.defaultConfig().screens.firstWhere((s) => s.id == 'map_screen'),
+      );
+    }
+    return config.copyWith(screens: updatedScreens);
   }
 
   Future<bool> saveConfig(UIConfig config) async {

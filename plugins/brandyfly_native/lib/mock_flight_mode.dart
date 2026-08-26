@@ -64,35 +64,35 @@ class MockFlightModeConfig {
 
   factory MockFlightModeConfig.fromEnvironment() {
     return MockFlightModeConfig(
-      enabled: bool.fromEnvironment(
+      enabled: const bool.fromEnvironment(
         'BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE',
         defaultValue: false,
       ),
-      fixtureVersion: String.fromEnvironment(
+      fixtureVersion: const String.fromEnvironment(
         'BRANDYFLY_LOCAL_MOCK_FIXTURE_VERSION',
         defaultValue: 'mock-flight-v1',
       ),
-      seed: int.fromEnvironment(
+      seed: const int.fromEnvironment(
         'BRANDYFLY_LOCAL_MOCK_SEED',
         defaultValue: 170607,
       ),
-      logicalClockStep: Duration(
+      logicalClockStep: const Duration(
         milliseconds: int.fromEnvironment(
           'BRANDYFLY_LOCAL_MOCK_CLOCK_STEP_MS',
           defaultValue: 1000,
         ),
       ),
       startTime: DateTime.parse(
-        String.fromEnvironment(
+        const String.fromEnvironment(
           'BRANDYFLY_LOCAL_MOCK_START_ISO8601',
           defaultValue: '2026-08-07T00:00:00Z',
         ),
       ),
-      provenance: String.fromEnvironment(
+      provenance: const String.fromEnvironment(
         'BRANDYFLY_LOCAL_MOCK_PROVENANCE',
         defaultValue: 'synthetic-anonymized',
       ),
-      sessionLabel: String.fromEnvironment(
+      sessionLabel: const String.fromEnvironment(
         'BRANDYFLY_LOCAL_MOCK_SESSION_LABEL',
         defaultValue: 'simulated',
       ),

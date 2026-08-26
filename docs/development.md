@@ -19,6 +19,7 @@ npx --yes @fission-ai/openspec@latest validate --all --strict
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+tools/validate-data-sources.sh
 cd apps/mobile
 flutter pub get
 flutter analyze
@@ -78,6 +79,15 @@ tools/openspec-issue/check-local-change-storage.sh
 
 The guard `check-local-change-storage.sh` fails if a workflow reintroduces
 per-change Markdown storage (a `openspec/changes/` directory is prohibited).
+
+## Releases and versioning
+
+Releases and changelogs are managed automatically across monorepo packages using [Release Please](https://github.com/googleapis/release-please) via GitHub Actions (`.github/workflows/release-please.yml`).
+
+- Configuration: `release-please-config.json`
+- Versions manifest: `.release-please-manifest.json`
+
+When conventional commits (e.g. `feat:`, `fix:`, `feat(mobile):`) are pushed to `main`, Release Please maintains release PRs for affected packages. Merging a release PR automatically tags the release and publishes GitHub Releases.
 
 ## Local mock flight mode
 
