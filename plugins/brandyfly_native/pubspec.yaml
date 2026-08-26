@@ -1,6 +1,6 @@
 name: brandyfly_native
 description: "Native Android and iOS platform boundary for BrandyFly."
-version: 0.0.1
+version: 0.1.0
 homepage: https://github.com/markusbrand/brandyfly
 repository: https://github.com/markusbrand/brandyfly
 issue_tracker: https://github.com/markusbrand/brandyfly/issues
