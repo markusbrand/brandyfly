@@ -285,6 +285,16 @@ class _ThermalMapPainter extends CustomPainter {
   final List<ThermalPoint>? trackPoints;
   final double pulseAnimation;
 
+  // ⚡ Bolt: Cache Paint objects to prevent GC overhead on the 60fps rendering hot path.
+  final Paint _bubblePathPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  final Paint _bubbleFillPaint = Paint()..style = PaintingStyle.fill;
+  final Paint _bubbleOutlinePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
+  final Paint _bubbleCorePaint = Paint()..style = PaintingStyle.fill;
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2) + panOffset;
@@ -404,13 +414,8 @@ class _ThermalMapPainter extends CustomPainter {
         path.lineTo(pt.dx, pt.dy);
       }
     }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white.withAlpha(40)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
+    _bubblePathPaint.color = Colors.white.withAlpha(40);
+    canvas.drawPath(path, _bubblePathPaint);
 
     // Draw bubbles
     final now = DateTime.now();
@@ -432,25 +437,17 @@ class _ThermalMapPainter extends CustomPainter {
       final pt = Offset(p.dx, p.dy);
 
       // Filled Circle
-      canvas.drawCircle(pt, radius, Paint()..color = color);
+      _bubbleFillPaint.color = color;
+      canvas.drawCircle(pt, radius, _bubbleFillPaint);
 
       // Outer outline for high contrast
-      canvas.drawCircle(
-        pt,
-        radius,
-        Paint()
-          ..color = Colors.black.withAlpha((alpha * 0.7).toInt())
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.0,
-      );
+      _bubbleOutlinePaint.color = Colors.black.withAlpha((alpha * 0.7).toInt());
+      canvas.drawCircle(pt, radius, _bubbleOutlinePaint);
 
       // Center bright core dot for strong thermals
       if (p.climbRateMs >= 2.5) {
-        canvas.drawCircle(
-          pt,
-          radius * 0.35,
-          Paint()..color = Colors.white.withAlpha((alpha * 0.9).toInt()),
-        );
+        _bubbleCorePaint.color = Colors.white.withAlpha((alpha * 0.9).toInt());
+        canvas.drawCircle(pt, radius * 0.35, _bubbleCorePaint);
       }
     }
   }
