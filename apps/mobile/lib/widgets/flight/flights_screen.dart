@@ -144,6 +144,7 @@ class _FlightsScreenState extends State<FlightsScreen>
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear, color: Colors.white54),
+                            tooltip: 'Clear search',
                             onPressed: () => _searchController.clear(),
                           )
                         : null,
