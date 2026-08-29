@@ -662,22 +662,23 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                           ),
                         ),
                         // Configure Dialog Button
-                        InkWell(
+                        IconButton(
                           key: Key('btn_config_$id'),
-                          onTap: () => _showConfigDialog(context),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 2),
-                            child: Icon(Icons.tune, size: 14, color: Colors.white70),
-                          ),
+                          onPressed: () => _showConfigDialog(context),
+                          icon: const Icon(Icons.tune, size: 14, color: Colors.white70),
+                          tooltip: 'Configure widget',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
+                        const SizedBox(width: 4),
                         // Delete Button
-                        InkWell(
+                        IconButton(
                           key: Key('btn_delete_$id'),
-                          onTap: () => widget.screenManager.removeWidget(id),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 2),
-                            child: Icon(Icons.close, size: 14, color: Colors.redAccent),
-                          ),
+                          onPressed: () => widget.screenManager.removeWidget(id),
+                          icon: const Icon(Icons.close, size: 14, color: Colors.redAccent),
+                          tooltip: 'Delete widget',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
                       ],
                     ),

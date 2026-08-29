@@ -232,22 +232,25 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
     required String tooltip,
     required VoidCallback onTap,
   }) {
-    return Material(
-      key: key,
-      color: Colors.black.withAlpha(180),
-      borderRadius: BorderRadius.circular(6),
-      child: InkWell(
-        onTap: onTap,
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        key: key,
+        color: Colors.black.withAlpha(180),
         borderRadius: BorderRadius.circular(6),
-        child: Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.white30, width: 0.8),
-            borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white30, width: 0.8),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, color: Colors.white, size: 18),
           ),
-          child: Icon(icon, color: Colors.white, size: 18),
         ),
       ),
     );
