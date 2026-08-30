@@ -90,16 +90,15 @@ class ReplayControlOverlay extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            InkWell(
-                              onTap: onExit,
-                              borderRadius: BorderRadius.circular(16),
-                              child: const Padding(
-                                padding: EdgeInsets.all(4),
-                                child: Icon(
-                                  Icons.close,
-                                  color: Colors.white70,
-                                  size: 18,
-                                ),
+                            IconButton(
+                              onPressed: onExit,
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(),
+                              iconSize: 18,
+                              tooltip: 'Close Replay',
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white70,
                               ),
                             ),
                           ],
