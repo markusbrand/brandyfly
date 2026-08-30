@@ -285,6 +285,52 @@ class _ThermalMapPainter extends CustomPainter {
   final List<ThermalPoint>? trackPoints;
   final double pulseAnimation;
 
+  // Cached Paint objects to prevent per-frame allocation
+  final Paint _ringPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
+  final Paint _axisPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 0.8;
+  final Paint _pathPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  final Paint _bubblePaint = Paint();
+  final Paint _bubbleOutlinePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
+  final Paint _coreDotPaint = Paint();
+  final Paint _pulseRingPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.0;
+  final Paint _coreCenterPaint = Paint()
+    ..style = PaintingStyle.fill;
+  final Paint _coreInnerDotPaint = Paint()..color = Colors.white;
+  final Paint _driftPaint = Paint()
+    ..strokeWidth = 2.0
+    ..strokeCap = StrokeCap.round;
+  final Paint _ribbonPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 7.0
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
+  final Paint _milestoneWhitePaint = Paint()..color = Colors.white;
+  final Paint _milestoneColorPaint = Paint();
+  final Paint _badgeBgPaint = Paint();
+  final Paint _badgeOutlinePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
+  final Paint _wingShadowPaint = Paint()..color = Colors.black87;
+  final Paint _wingFillPaint = Paint()
+    ..style = PaintingStyle.fill;
+  final Paint _wingOutlinePaint = Paint()
+    ..color = Colors.white
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  final Paint _headingLinePaint = Paint()
+    ..strokeWidth = 1.8
+    ..strokeCap = StrokeCap.round;
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2) + panOffset;
@@ -319,24 +365,18 @@ class _ThermalMapPainter extends CustomPainter {
   }
 
   void _drawRadialGuides(Canvas canvas, Size size) {
-    final ringPaint = Paint()
-      ..color = Colors.cyanAccent.withAlpha(25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+    _ringPaint.color = Colors.cyanAccent.withAlpha(25);
 
     const radii = [40.0, 80.0, 120.0, 160.0];
     for (final r in radii) {
-      canvas.drawCircle(Offset.zero, r, ringPaint);
+      canvas.drawCircle(Offset.zero, r, _ringPaint);
     }
 
     // Crosshairs
-    final axisPaint = Paint()
-      ..color = Colors.white.withAlpha(20)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
+    _axisPaint.color = Colors.white.withAlpha(20);
 
-    canvas.drawLine(const Offset(-180, 0), const Offset(180, 0), axisPaint);
-    canvas.drawLine(const Offset(0, -180), const Offset(0, 180), axisPaint);
+    canvas.drawLine(const Offset(-180, 0), const Offset(180, 0), _axisPaint);
+    canvas.drawLine(const Offset(0, -180), const Offset(0, 180), _axisPaint);
   }
 
   List<ThermalPoint> _resolveTrackPoints() {
@@ -404,12 +444,10 @@ class _ThermalMapPainter extends CustomPainter {
         path.lineTo(pt.dx, pt.dy);
       }
     }
+    _pathPaint.color = Colors.white.withAlpha(40);
     canvas.drawPath(
       path,
-      Paint()
-        ..color = Colors.white.withAlpha(40)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
+      _pathPaint,
     );
 
     // Draw bubbles
@@ -432,24 +470,24 @@ class _ThermalMapPainter extends CustomPainter {
       final pt = Offset(p.dx, p.dy);
 
       // Filled Circle
-      canvas.drawCircle(pt, radius, Paint()..color = color);
+      _bubblePaint.color = color;
+      canvas.drawCircle(pt, radius, _bubblePaint);
 
       // Outer outline for high contrast
+      _bubbleOutlinePaint.color = Colors.black.withAlpha((alpha * 0.7).toInt());
       canvas.drawCircle(
         pt,
         radius,
-        Paint()
-          ..color = Colors.black.withAlpha((alpha * 0.7).toInt())
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.0,
+        _bubbleOutlinePaint,
       );
 
       // Center bright core dot for strong thermals
       if (p.climbRateMs >= 2.5) {
+        _coreDotPaint.color = Colors.white.withAlpha((alpha * 0.9).toInt());
         canvas.drawCircle(
           pt,
           radius * 0.35,
-          Paint()..color = Colors.white.withAlpha((alpha * 0.9).toInt()),
+          _coreDotPaint,
         );
       }
     }
@@ -485,23 +523,20 @@ class _ThermalMapPainter extends CustomPainter {
 
       // Pulsing concentric rings
       final pulseRadius = 24.0 + (pulseAnimation * 10.0);
-      final corePaint = Paint()
-        ..color = const Color(0xFFFACC15).withAlpha((180 - pulseAnimation * 80).toInt())
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
+      _pulseRingPaint.color = const Color(0xFFFACC15).withAlpha((180 - pulseAnimation * 80).toInt());
 
-      canvas.drawCircle(coreCenter, pulseRadius, corePaint);
+      canvas.drawCircle(coreCenter, pulseRadius, _pulseRingPaint);
+
+      _coreCenterPaint.color = const Color(0xFF00E676).withAlpha(160);
       canvas.drawCircle(
         coreCenter,
         14.0,
-        Paint()
-          ..color = const Color(0xFF00E676).withAlpha(160)
-          ..style = PaintingStyle.fill,
+        _coreCenterPaint,
       );
       canvas.drawCircle(
         coreCenter,
         4.0,
-        Paint()..color = Colors.white,
+        _coreInnerDotPaint,
       );
 
       // Wind drift vector arrow originating from core
@@ -510,13 +545,11 @@ class _ThermalMapPainter extends CustomPainter {
         coreCenter.dx + math.sin(windRad) * 35.0,
         coreCenter.dy - math.cos(windRad) * 35.0,
       );
+      _driftPaint.color = Colors.lightBlueAccent.withAlpha(180);
       canvas.drawLine(
         coreCenter,
         driftEnd,
-        Paint()
-          ..color = Colors.lightBlueAccent.withAlpha(180)
-          ..strokeWidth = 2.0
-          ..strokeCap = StrokeCap.round,
+        _driftPaint,
       );
 
       // Core Climb Label
@@ -554,17 +587,12 @@ class _ThermalMapPainter extends CustomPainter {
       final isLift = avgClimb >= 0;
       final baseColor = isLift ? const Color(0xFF00E676) : const Color(0xFFFF1744);
 
-      final ribbonPaint = Paint()
-        ..color = baseColor.withAlpha(alpha)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 7.0
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round;
+      _ribbonPaint.color = baseColor.withAlpha(alpha);
 
       canvas.drawLine(
         Offset(p1.dx, p1.dy),
         Offset(p2.dx, p2.dy),
-        ribbonPaint,
+        _ribbonPaint,
       );
     }
 
@@ -575,8 +603,9 @@ class _ThermalMapPainter extends CustomPainter {
       final color = isLift ? const Color(0xFF00E676) : const Color(0xFFFF1744);
       final pt = Offset(p.dx, p.dy);
 
-      canvas.drawCircle(pt, 5.0, Paint()..color = Colors.white);
-      canvas.drawCircle(pt, 3.5, Paint()..color = color);
+      canvas.drawCircle(pt, 5.0, _milestoneWhitePaint);
+      _milestoneColorPaint.color = color;
+      canvas.drawCircle(pt, 3.5, _milestoneColorPaint);
     }
 
     // 360-degree Turn Average Stats Badge Overlay
@@ -590,16 +619,15 @@ class _ThermalMapPainter extends CustomPainter {
       const Rect.fromLTWH(-80, 85, 160, 24),
       const Radius.circular(12),
     );
+    _badgeBgPaint.color = Colors.black.withAlpha(200);
     canvas.drawRRect(
       badgeRect,
-      Paint()..color = Colors.black.withAlpha(200),
+      _badgeBgPaint,
     );
+    _badgeOutlinePaint.color = const Color(0xFF00E676).withAlpha(120);
     canvas.drawRRect(
       badgeRect,
-      Paint()
-        ..color = const Color(0xFF00E676).withAlpha(120)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
+      _badgeOutlinePaint,
     );
 
     final statsTp = TextPainter(
@@ -633,30 +661,24 @@ class _ThermalMapPainter extends CustomPainter {
 
     canvas.drawPath(
       wingPath,
-      Paint()..color = Colors.black87,
+      _wingShadowPaint,
+    );
+    _wingFillPaint.color = const Color(0xFF00E676);
+    canvas.drawPath(
+      wingPath,
+      _wingFillPaint,
     );
     canvas.drawPath(
       wingPath,
-      Paint()
-        ..color = const Color(0xFF00E676)
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawPath(
-      wingPath,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
+      _wingOutlinePaint,
     );
 
     // Heading projected velocity line
+    _headingLinePaint.color = const Color(0xFF00E676);
     canvas.drawLine(
       const Offset(0, -12),
       const Offset(0, -32),
-      Paint()
-        ..color = const Color(0xFF00E676)
-        ..strokeWidth = 1.8
-        ..strokeCap = StrokeCap.round,
+      _headingLinePaint,
     );
 
     canvas.restore();
