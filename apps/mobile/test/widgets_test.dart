@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:brandyfly/models/ui_config.dart';
+import 'package:brandyfly/services/flight_replay_service.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/widgets/flight/altitude_sparkline_chart.dart';
 import 'package:brandyfly/widgets/flight/map_widget.dart';
 import 'package:brandyfly/widgets/flight/numeric_text_widget.dart';
+import 'package:brandyfly/widgets/flight/replay_control_overlay.dart';
 import 'package:brandyfly/widgets/flight/thermal_map_widget.dart';
 import 'package:brandyfly/widgets/flight/vario_lift_sink_bar.dart';
 import 'package:brandyfly/widgets/flight/wind_direction_widget.dart';
@@ -617,13 +619,85 @@ void main() {
       final config = UIConfig.defaultConfig();
       final thermalingScreen = config.screens.firstWhere((s) => s.id == 'thermaling');
 
-      final hasThermalMap = thermalingScreen.widgets.any((w) => w.type == WidgetType.thermalMap);
-      expect(hasThermalMap, isTrue);
-
       final thermalWidget = thermalingScreen.widgets.firstWhere((w) => w.type == WidgetType.thermalMap);
       expect(thermalWidget.w, 4);
       expect(thermalWidget.h, 4);
       expect(thermalWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
+    });
+
+    testWidgets('TopNavBarOverlay opens via top grab handle tap and slides down', (
+      tester,
+    ) async {
+      final manager = ScreenManagerService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TopNavBarOverlay(
+            screenManager: manager,
+            child: const Scaffold(body: Text('Main Body')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final grabHandleFinder = find.byKey(const Key('top_nav_grab_handle'));
+      expect(grabHandleFinder, findsOneWidget);
+
+      // Tap grab handle
+      await tester.tap(grabHandleFinder);
+      await tester.pumpAndSettle();
+
+      expect(manager.isNavBarVisible, isTrue);
+      expect(find.text('BrandyFly Navigation'), findsOneWidget);
+    });
+
+    testWidgets('ReplayControlOverlay supports collapsible bottom overlay minimization and expansion', (
+      tester,
+    ) async {
+      final replayService = FlightReplayService();
+      bool exited = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ReplayControlOverlay(
+              replayService: replayService,
+              onExit: () => exited = true,
+              initiallyExpanded: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Starts expanded: slider and play button visible
+      expect(find.byType(Slider), findsOneWidget);
+      expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+
+      // Collapse using toggle button
+      final collapseBtn = find.byKey(const Key('btn_replay_collapse'));
+      expect(collapseBtn, findsOneWidget);
+      await tester.tap(collapseBtn);
+      await tester.pumpAndSettle();
+
+      // Now minimized: slider hidden
+      expect(find.byType(Slider), findsNothing);
+      expect(find.byKey(const Key('btn_replay_expand')), findsOneWidget);
+
+      // Expand using grab handle tap
+      final bottomHandle = find.byKey(const Key('replay_bottom_grab_handle'));
+      expect(bottomHandle, findsOneWidget);
+      await tester.tap(bottomHandle);
+      await tester.pumpAndSettle();
+
+      // Expanded again: slider visible
+      expect(find.byType(Slider), findsOneWidget);
+
+      // Test exit button
+      final exitBtn = find.byTooltip('Close Replay');
+      expect(exitBtn, findsOneWidget);
+      await tester.tap(exitBtn);
+      expect(exited, isTrue);
     });
   });
 }

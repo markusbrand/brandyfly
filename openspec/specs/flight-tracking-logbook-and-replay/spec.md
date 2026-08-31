@@ -87,8 +87,8 @@ The application SHALL provide an interactive replay mode that jumps back to the 
 - **THEN** the app navigates to the active flight screen with a floating bottom Replay HUD
 - **AND** streams real-time altitude, vario, groundspeed, glide ratio, heading, coordinates, and HAG values into all active widgets matching the original flight timestamps
 
-### Requirement: Floating bottom Replay HUD with speed multiplier cycling
-The replay controller SHALL display a persistent floating bottom HUD supporting play/pause, timeline scrubbing, timestamp display, exit action, and discrete speed multipliers (1x, 2x, 5x, 10x) that cycle in a continuous loop back to 1x upon successive taps.
+### Requirement: Collapsible On-Demand Replay Control Overlay with speed multiplier cycling
+The replay controller SHALL display a collapsible bottom overlay supporting play/pause, timeline scrubbing, timestamp display, exit action, discrete speed multipliers (1x, 2x, 5x, 10x) that cycle in a continuous loop back to 1x upon successive taps, and swipe-down minimization / swipe-up expansion to minimize screen footprint during playback.
 
 #### Scenario: Cycling replay playback speed
 - **WHEN** the user taps the speed button on the Replay HUD while at 1x speed
@@ -96,9 +96,15 @@ The replay controller SHALL display a persistent floating bottom HUD supporting 
 - **AND WHEN** the user taps the speed button while at 10x speed
 - **THEN** the playback speed cycles back to 1x original speed
 
+#### Scenario: Collapsing and expanding replay controls on demand
+- **WHEN** the user swipes down on the Replay HUD or taps the collapse toggle
+- **THEN** the timeline scrubber and controls SHALL minimize into a compact bottom pill/handle
+- **AND WHEN** the user swipes up from the bottom edge or taps the expand handle
+- **THEN** the full scrubber and playback buttons SHALL expand back into view.
+
 #### Scenario: Swiping between flight screens during replay
 - **WHEN** the user swipes between custom instrument layouts and the thermaling screen while replay is active
-- **THEN** the floating bottom Replay HUD remains docked and playback continues uninterrupted
+- **THEN** the Replay HUD remains docked and playback continues uninterrupted
 
 ### Requirement: Modular telemetry provider abstraction and hot switching
 The telemetry subsystem SHALL define modular provider contracts in Dart (`ITelemetrySource`) and Rust (`TelemetrySource`) allowing dynamic registration, lifecycle management (initialize, start, pause, stop, dispose), and hot attachment/switching of physical BLE sensors, internal sensors, IGC replay streams, and procedural flight generators without loss of tracking state.

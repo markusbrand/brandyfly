@@ -30,52 +30,51 @@ class WindDirectionWidget extends StatelessWidget {
   Widget _buildRelativeArrow(BuildContext context) {
     return SizedBox.expand(
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.black45,
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.black.withAlpha(160),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white24, width: 1),
         ),
-        child: Center(
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Transform.rotate(
-                  angle: directionDegrees * (math.pi / 180),
-                  child: const Icon(
-                    Icons.navigation,
-                    color: Colors.lightBlueAccent,
-                    size: 32,
+        child: FittedBox(
+          fit: BoxFit.contain,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Transform.rotate(
+                angle: directionDegrees * (math.pi / 180),
+                child: const Icon(
+                  Icons.navigation,
+                  color: Colors.lightBlueAccent,
+                  size: 36,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'WIND',
+                    style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'WIND',
-                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                  Text(
+                    '${speedKmH.toStringAsFixed(1)} km/h',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'monospace',
                     ),
-                    Text(
-                      '${speedKmH.toStringAsFixed(1)} km/h',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '${directionDegrees.toInt()}°',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                  Text(
+                    '${directionDegrees.toInt()}°',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -86,27 +85,27 @@ class WindDirectionWidget extends StatelessWidget {
   Widget _buildMiniCompassRose(BuildContext context) {
     return SizedBox.expand(
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: Colors.blueGrey.shade900,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white24),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white24, width: 1),
         ),
         child: Center(
           child: FittedBox(
             fit: BoxFit.contain,
             child: SizedBox(
-              width: 70,
-              height: 70,
+              width: 80,
+              height: 80,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   Container(
-                    width: 70,
-                    height: 70,
+                    width: 80,
+                    height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white30, width: 1.5),
+                      border: Border.all(color: Colors.white38, width: 1.5),
                     ),
                     child: const Center(
                       child: Text(
@@ -114,7 +113,7 @@ class WindDirectionWidget extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.redAccent,
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                     ),
@@ -124,23 +123,24 @@ class WindDirectionWidget extends StatelessWidget {
                     child: const Icon(
                       Icons.arrow_upward_rounded,
                       color: Colors.amberAccent,
-                      size: 32,
+                      size: 38,
                     ),
                   ),
                   Positioned(
-                    bottom: 4,
+                    bottom: 2,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(3),
                       ),
-                      color: Colors.black87,
                       child: Text(
                         '${speedKmH.toInt()} km/h',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'monospace',
                         ),
                       ),
                     ),
@@ -158,11 +158,11 @@ class WindDirectionWidget extends StatelessWidget {
   Widget _buildWindsockIndicator(BuildContext context) {
     return SizedBox.expand(
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.orange.shade900.withAlpha(180),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.orangeAccent),
+          color: Colors.orange.shade900.withAlpha(200),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.orangeAccent, width: 1.2),
         ),
         child: Center(
           child: FittedBox(
@@ -171,11 +171,10 @@ class WindDirectionWidget extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.air, color: Colors.orangeAccent, size: 28),
-                const SizedBox(width: 8),
+                const Icon(Icons.air, color: Colors.orangeAccent, size: 32),
+                const SizedBox(width: 6),
                 Column(
                   mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
@@ -190,8 +189,9 @@ class WindDirectionWidget extends StatelessWidget {
                       '${speedKmH.toStringAsFixed(0)} km/h @ ${directionDegrees.toInt()}°',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'monospace',
                       ),
                     ),
                   ],

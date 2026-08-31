@@ -76,3 +76,45 @@ The primary application Settings panel SHALL be scoped strictly to global concer
 #### Scenario: Accessing global settings
 - **WHEN** the pilot opens the main application Settings screen
 - **THEN** only global system, sensor, screen-list, and integration settings SHALL be presented
+
+### Requirement: Fullscreen Edge-to-Edge Flight Screen Canvas
+The application SHALL render the active flight screen (including map, thermal view, and instrument widgets) across 100% of the display viewport edge-to-edge without static AppBars, card margins, or permanent list containers.
+
+#### Scenario: Fullscreen flight rendering without static AppBars
+- **WHEN** the pilot is in active flight, simulated flight, or replay mode
+- **THEN** the flight layout canvas SHALL span the full display width and height
+- **AND** no permanent top AppBar or static session card SHALL occupy screen space.
+
+#### Scenario: Dynamic viewport scaling for layout strategies
+- **WHEN** a flight screen is rendered in any layout strategy (Freeform HUD, Snap-to-Grid, or Sidebar Dashboard)
+- **THEN** the grid layout SHALL dynamically scale to fill the entire available display viewport
+- **AND** background map or thermal widgets placed at full dimensions SHALL render edge-to-edge without gaps or borders.
+
+### Requirement: On-Demand Gesture-Driven Top Navigation Overlay
+The main navigation drawer and application controls SHALL remain hidden during flight and SHALL slide down on demand as a temporary overlay when triggered by a swipe-down gesture or top edge grab handle.
+
+#### Scenario: Swipe down from top screen edge reveals navigation overlay
+- **WHEN** the pilot swipes down from the top edge of the screen (or taps the top grab handle)
+- **THEN** the top navigation overlay SHALL slide smoothly into view over the flight canvas
+- **AND** provide access to screen switching, edit mode, flights logbook, and settings.
+
+#### Scenario: Dismissing top navigation overlay
+- **WHEN** the pilot swipes up on the open navigation overlay or taps the backdrop area outside the drawer
+- **THEN** the navigation overlay SHALL slide back up and hide, returning 100% of the screen to the flight instruments.
+
+### Requirement: High-Density Zero-Dead-Space Instrument Widgets
+Instrument widgets SHALL minimize internal padding and margins and dynamically scale typography and graphic indicators to maximize data density and readability within their allocated grid bounding box.
+
+#### Scenario: Numeric instrument widget typography maximization
+- **WHEN** a numeric instrument widget (Altitude, Speed, Glide, HAG) is placed on a screen
+- **THEN** the widget SHALL minimize internal padding (<= 4px) and expand numerical digits to fill the bounding box with maximum legibility
+- **AND** align the label and unit cleanly without leaving unused dead space.
+
+#### Scenario: Responsive vario bar expansion within allocated bounds
+- **WHEN** the vario lift/sink bar widget is rendered on a screen
+- **THEN** the indicator bar and numerical climb/sink text SHALL dynamically scale to fill the full height and width of the widget cell.
+
+#### Scenario: Responsive sparkline and wind widget rendering
+- **WHEN** altitude sparkline charts or wind direction indicators are rendered
+- **THEN** graph canvases, compass roses, and wind vector arrows SHALL utilize the maximum available bounding area with minimal label padding.
+

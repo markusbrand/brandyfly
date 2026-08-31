@@ -28,24 +28,22 @@ class AltitudeSparklineChart extends StatelessWidget {
   Widget _buildMinimalSparkline(BuildContext context) {
     return SizedBox.expand(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.black45,
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.black.withAlpha(160),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white24, width: 1),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'ALTITUDE HISTORY (SPARKLINE)',
-                style: TextStyle(color: Colors.white54, fontSize: 9),
-              ),
+            const Text(
+              'ALTITUDE HISTORY (SPARKLINE)',
+              style: TextStyle(color: Colors.white60, fontSize: 8.5, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Expanded(
               child: CustomPaint(
                 painter: _SparklinePainter(
@@ -66,29 +64,26 @@ class AltitudeSparklineChart extends StatelessWidget {
   Widget _buildFilledAreaGraph(BuildContext context) {
     return SizedBox.expand(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
           color: Colors.blueGrey.shade900,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.cyan.withAlpha(80)),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.cyan.withAlpha(80), width: 1),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'ALTITUDE PROFILE (AREA)',
-                style: TextStyle(
-                  color: Colors.cyanAccent,
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                ),
+            const Text(
+              'ALTITUDE PROFILE (AREA)',
+              style: TextStyle(
+                color: Colors.cyanAccent,
+                fontSize: 8.5,
+                fontWeight: FontWeight.bold,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Expanded(
               child: CustomPaint(
                 painter: _SparklinePainter(
@@ -109,25 +104,27 @@ class AltitudeSparklineChart extends StatelessWidget {
   Widget _buildDetailedGrid(BuildContext context) {
     return SizedBox.expand(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
           color: Colors.black,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.greenAccent.shade400),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.greenAccent.shade400, width: 1),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               'ALTITUDE / TIME GRID',
               style: TextStyle(
                 color: Colors.greenAccent.shade400,
-                fontSize: 9,
+                fontSize: 8.5,
                 fontFamily: 'monospace',
+                fontWeight: FontWeight.bold,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Expanded(
               child: CustomPaint(
                 painter: _SparklinePainter(
