@@ -74,16 +74,18 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
         children: [
           widget.child,
 
-          // Invisible drag trigger handle at top of screen for swipe down
+          // Drag & tap trigger handle at top of screen for swipe down
           if (!widget.screenManager.isNavBarVisible &&
               !widget.screenManager.isEditMode)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              height: 32,
+              height: 36,
               child: GestureDetector(
+                key: const Key('top_nav_grab_handle'),
                 behavior: HitTestBehavior.translucent,
+                onTap: () => widget.screenManager.toggleNavBar(true),
                 onVerticalDragUpdate: (details) {
                   if (details.primaryDelta != null &&
                       details.primaryDelta! > 4) {
@@ -92,12 +94,12 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                 },
                 child: Center(
                   child: Container(
-                    width: 48,
-                    height: 4,
-                    margin: const EdgeInsets.only(top: 6),
+                    width: 56,
+                    height: 5,
+                    margin: const EdgeInsets.only(top: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(80),
-                      borderRadius: BorderRadius.circular(2),
+                      color: Colors.white.withAlpha(100),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                 ),

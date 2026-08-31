@@ -329,45 +329,69 @@ class _LiveFlightView extends StatelessWidget {
           };
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('BrandyFly'),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          tooltip: 'Open Navigation Menu',
-          onPressed: () => screenManager.toggleNavBar(true),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_note),
-            tooltip: 'Enable Edit Mode',
-            onPressed: () => screenManager.toggleEditMode(true),
-          ),
-          _ModeChip(
-            label: isReplaying ? 'REPLAY' : 'LIVE',
-            color: isReplaying ? Colors.cyanAccent : Colors.green,
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: isReplaying ? 140 : 16,
-        ),
+      body: Stack(
         children: [
-          if (!isReplaying) ...[
-            _SectionCard(
-              title: 'Native platform',
-              child: Text('Running on: $platformVersion'),
-            ),
-            const SizedBox(height: 16),
-          ],
-          SizedBox(
-            height: 480,
+          // Full-screen Flight Screen & Instrument Layout
+          Positioned.fill(
             child: LayoutStrategyContainer(
               screenManager: screenManager,
               telemetryData: telemetry,
+            ),
+          ),
+
+          // Floating Top-Right Mode & Platform Status Overlay
+          Positioned(
+            top: 8,
+            right: 8,
+            child: SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(180),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isReplaying
+                        ? Colors.cyanAccent.withAlpha(120)
+                        : Colors.greenAccent.withAlpha(120),
+                    width: 1,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black54,
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'BrandyFly',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _ModeChip(
+                      label: isReplaying ? 'REPLAY' : 'LIVE',
+                      color: isReplaying ? Colors.cyanAccent : Colors.green,
+                    ),
+                    if (!isReplaying) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        'Running on: $platformVersion',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -418,134 +442,210 @@ class _MockFlightViewState extends State<_MockFlightView> {
           };
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('BrandyFly'),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          tooltip: 'Open Navigation Menu',
-          onPressed: () => widget.screenManager.toggleNavBar(true),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_note),
-            tooltip: 'Enable Edit Mode',
-            onPressed: () => widget.screenManager.toggleEditMode(true),
-          ),
-          _ModeChip(
-            label: isReplaying ? 'REPLAY' : 'SIMULATED',
-            color: isReplaying ? Colors.cyanAccent : Colors.orange,
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: isReplaying ? 140 : 16,
-        ),
+      body: Stack(
         children: [
-          if (!isReplaying) ...[
-            if (_isSessionMinimized)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.flight_takeoff, size: 18, color: Colors.orangeAccent),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Mock flight session (${widget.config.sessionLabel})',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.skip_next, size: 18),
-                        tooltip: 'Advance scenario',
-                        onPressed: widget.onNext,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.restart_alt, size: 18),
-                        tooltip: 'Reset replay',
-                        onPressed: widget.onReset,
-                      ),
-                      IconButton(
-                        key: const Key('btn_expand_mock_session'),
-                        icon: const Icon(Icons.expand_more),
-                        tooltip: 'Expand mock flight session',
-                        onPressed: () => setState(() => _isSessionMinimized = false),
-                      ),
-                    ],
+          // Full-screen Flight Screen & Instrument Layout
+          Positioned.fill(
+            child: LayoutStrategyContainer(
+              screenManager: widget.screenManager,
+              telemetryData: telemetry,
+            ),
+          ),
+
+          // Floating Top-Right Mock Flight Session & Mode Controller Overlay
+          Positioned(
+            top: 8,
+            right: 8,
+            child: SafeArea(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 360),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey.shade900.withAlpha(220),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isReplaying
+                        ? Colors.cyanAccent.withAlpha(140)
+                        : Colors.orangeAccent.withAlpha(140),
+                    width: 1.2,
                   ),
-                ),
-              )
-            else ...[
-              _SectionCard(
-                title: 'Mock flight session',
-                trailing: IconButton(
-                  key: const Key('btn_minimize_mock_session'),
-                  icon: const Icon(Icons.expand_less),
-                  tooltip: 'Minimize mock flight session',
-                  onPressed: () => setState(() => _isSessionMinimized = true),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black54,
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('Fixture: ${widget.config.fixtureVersion}'),
-                    Text('Seed: ${widget.config.seed}'),
-                    Text(
-                      'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'BrandyFly',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          _ModeChip(
+                            label: isReplaying ? 'REPLAY' : 'SIMULATED',
+                            color: isReplaying ? Colors.cyanAccent : Colors.orange,
+                          ),
+                          if (!isReplaying) ...[
+                            IconButton(
+                              icon: const Icon(
+                                Icons.skip_next,
+                                size: 16,
+                                color: Colors.orangeAccent,
+                              ),
+                              padding: const EdgeInsets.all(2),
+                              constraints: const BoxConstraints(),
+                              tooltip: 'Advance scenario',
+                              onPressed: widget.onNext,
+                            ),
+                            const SizedBox(width: 2),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.restart_alt,
+                                size: 16,
+                                color: Colors.white70,
+                              ),
+                              padding: const EdgeInsets.all(2),
+                              constraints: const BoxConstraints(),
+                              tooltip: 'Reset replay',
+                              onPressed: widget.onReset,
+                            ),
+                            const SizedBox(width: 2),
+                            IconButton(
+                              key: Key(
+                                _isSessionMinimized
+                                    ? 'btn_expand_mock_session'
+                                    : 'btn_minimize_mock_session',
+                              ),
+                              icon: Icon(
+                                _isSessionMinimized
+                                    ? Icons.expand_more
+                                    : Icons.expand_less,
+                                size: 18,
+                                color: Colors.white70,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              tooltip: _isSessionMinimized
+                                  ? 'Expand mock flight session'
+                                  : 'Minimize mock flight session',
+                              onPressed: () => setState(
+                                () => _isSessionMinimized = !_isSessionMinimized,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                    Text('Provenance: ${widget.config.provenance}'),
-                    Text('Session label: ${widget.config.sessionLabel}'),
-                    Text('Replay hash: ${widget.replay.canonicalReplayHash}'),
-                    Text('Marker: ${frame.sessionMarker}'),
+                    if (!isReplaying && _isSessionMinimized) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Mock flight session (${widget.config.sessionLabel})',
+                        style: const TextStyle(
+                          color: Colors.orangeAccent,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                    if (!isReplaying && !_isSessionMinimized) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Mock flight session (${widget.config.sessionLabel})',
+                              style: const TextStyle(
+                                color: Colors.orangeAccent,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Fixture: ${widget.config.fixtureVersion}',
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            Text(
+                              'Seed: ${widget.config.seed}',
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            Text(
+                              'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            Text(
+                              'Provenance: ${widget.config.provenance}',
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            Text(
+                              'Session label: ${widget.config.sessionLabel}',
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            Text(
+                              'Replay hash: ${widget.replay.canonicalReplayHash}',
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            Text(
+                              'Marker: ${frame.sessionMarker}',
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            Text(
+                              frame.title,
+                              style: const TextStyle(
+                                fontSize: 8.5,
+                                color: Colors.cyanAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: widget.onNext,
-                    child: const Text('Advance scenario'),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton(
-                    onPressed: widget.onReset,
-                    child: const Text('Reset replay'),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 16),
-          ],
-          _SectionCard(
-            title: isReplaying
-                ? 'Replaying: ${widget.replayService.flight?.title ?? "Flight"}'
-                : frame.title,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isReplaying) ...[
-                  _FeatureLine(
-                    label: 'Telemetry',
-                    value: frame.telemetrySummary,
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                SizedBox(
-                  height: _isSessionMinimized ? 520 : 380,
-                  child: LayoutStrategyContainer(
-                    screenManager: widget.screenManager,
-                    telemetryData: telemetry,
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -562,64 +662,22 @@ class _ModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: Chip(
-        label: Text(label),
-        side: BorderSide(color: color),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withAlpha(40),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color, width: 1),
       ),
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.child,
-    this.trailing,
-  });
-
-  final String title;
-  final Widget child;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-                ),
-                ?trailing,
-              ],
-            ),
-            const SizedBox(height: 12),
-            child,
-          ],
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 }
 
-class _FeatureLine extends StatelessWidget {
-  const _FeatureLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text('$label: $value'),
-    );
-  }
-}
