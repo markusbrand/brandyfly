@@ -662,22 +662,24 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                           ),
                         ),
                         // Configure Dialog Button
-                        InkWell(
+                        IconButton(
                           key: Key('btn_config_$id'),
-                          onTap: () => _showConfigDialog(context),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 2),
-                            child: Icon(Icons.tune, size: 14, color: Colors.white70),
-                          ),
+                          onPressed: () => _showConfigDialog(context),
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          constraints: const BoxConstraints(),
+                          iconSize: 14,
+                          tooltip: 'Configure Widget',
+                          icon: const Icon(Icons.tune, color: Colors.white70),
                         ),
                         // Delete Button
-                        InkWell(
+                        IconButton(
                           key: Key('btn_delete_$id'),
-                          onTap: () => widget.screenManager.removeWidget(id),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 2),
-                            child: Icon(Icons.close, size: 14, color: Colors.redAccent),
-                          ),
+                          onPressed: () => widget.screenManager.removeWidget(id),
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          constraints: const BoxConstraints(),
+                          iconSize: 14,
+                          tooltip: 'Remove Widget',
+                          icon: const Icon(Icons.close, color: Colors.redAccent),
                         ),
                       ],
                     ),
@@ -864,19 +866,16 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     required bool enabled,
     required VoidCallback onPressed,
   }) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        key: key,
-        onTap: enabled ? onPressed : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          child: Icon(
-            icon,
-            size: 15,
-            color: enabled ? Colors.cyanAccent : Colors.white24,
-          ),
-        ),
+    return IconButton(
+      key: key,
+      onPressed: enabled ? onPressed : null,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      constraints: const BoxConstraints(),
+      iconSize: 15,
+      tooltip: tooltip,
+      icon: Icon(
+        icon,
+        color: enabled ? Colors.cyanAccent : Colors.white24,
       ),
     );
   }
