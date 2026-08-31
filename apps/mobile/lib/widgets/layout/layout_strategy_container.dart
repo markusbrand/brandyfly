@@ -982,6 +982,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.remove, size: 18),
+                                        tooltip: 'Decrease X position',
                                         onPressed: curX > 0
                                             ? () => setDialogState(() => curX--)
                                             : null,
@@ -989,6 +990,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                       Text('$curX', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
+                                        tooltip: 'Increase X position',
                                         onPressed: curX + curW < 4
                                             ? () => setDialogState(() => curX++)
                                             : null,
@@ -1005,6 +1007,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.remove, size: 18),
+                                        tooltip: 'Decrease Y position',
                                         onPressed: curY > 0
                                             ? () => setDialogState(() => curY--)
                                             : null,
@@ -1012,6 +1015,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                       Text('$curY', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
+                                        tooltip: 'Increase Y position',
                                         onPressed: () => setDialogState(() => curY++),
                                       ),
                                     ],
@@ -1026,6 +1030,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.remove, size: 18),
+                                        tooltip: 'Decrease width',
                                         onPressed: curW > 1
                                             ? () => setDialogState(() => curW--)
                                             : null,
@@ -1033,6 +1038,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                       Text('$curW', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
+                                        tooltip: 'Increase width',
                                         onPressed: curX + curW < 4
                                             ? () => setDialogState(() => curW++)
                                             : null,
@@ -1049,6 +1055,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.remove, size: 18),
+                                        tooltip: 'Decrease height',
                                         onPressed: curH > 1
                                             ? () => setDialogState(() => curH--)
                                             : null,
@@ -1056,6 +1063,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                       Text('$curH', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
+                                        tooltip: 'Increase height',
                                         onPressed: curH < 6
                                             ? () => setDialogState(() => curH++)
                                             : null,
@@ -1272,6 +1280,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                         IconButton(
                                           key: const Key('btn_config_zoom_decrease'),
                                           icon: const Icon(Icons.remove, size: 18),
+                                          tooltip: 'Decrease map zoom',
                                           onPressed: curMapZoomLevel > 3.0
                                               ? () => setDialogState(() => curMapZoomLevel = (curMapZoomLevel - 0.5).clamp(3.0, 18.0))
                                               : null,
@@ -1279,6 +1288,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                         IconButton(
                                           key: const Key('btn_config_zoom_increase'),
                                           icon: const Icon(Icons.add, size: 18),
+                                          tooltip: 'Increase map zoom',
                                           onPressed: curMapZoomLevel < 18.0
                                               ? () => setDialogState(() => curMapZoomLevel = (curMapZoomLevel + 0.5).clamp(3.0, 18.0))
                                               : null,
