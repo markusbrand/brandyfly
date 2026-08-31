@@ -632,28 +632,29 @@ class _MapWidgetState extends State<MapWidget> {
     required VoidCallback onPressed,
     bool active = false,
   }) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        key: key,
-        onTap: onPressed,
-        child: Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: active ? Colors.cyan.shade800 : Colors.black.withAlpha(200),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: active ? Colors.cyanAccent : Colors.white24,
-              width: 1,
-            ),
-          ),
-          child: Icon(
-            icon,
-            size: 16,
-            color: active ? Colors.white : Colors.white70,
-          ),
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: active ? Colors.cyan.shade800 : Colors.black.withAlpha(200),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: active ? Colors.cyanAccent : Colors.white24,
+          width: 1,
         ),
+      ),
+      child: IconButton(
+        key: key,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+        icon: Icon(
+          icon,
+          size: 16,
+          color: active ? Colors.white : Colors.white70,
+        ),
+        tooltip: tooltip,
+        splashRadius: 14,
+        onPressed: onPressed,
       ),
     );
   }
