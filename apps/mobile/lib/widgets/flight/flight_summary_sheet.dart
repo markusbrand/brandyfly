@@ -144,6 +144,7 @@ class _FlightSummarySheetState extends State<FlightSummarySheet> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white70),
+                  tooltip: 'Close',
                   onPressed: widget.onDismiss,
                 ),
               ],
