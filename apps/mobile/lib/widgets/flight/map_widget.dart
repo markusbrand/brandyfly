@@ -660,6 +660,15 @@ class _MapWidgetState extends State<MapWidget> {
 }
 
 class _PilotArrowPainter extends CustomPainter {
+  final Paint _outlinePaint = Paint()
+    ..color = Colors.black87
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.5;
+
+  final Paint _bodyPaint = Paint()
+    ..color = Colors.cyanAccent
+    ..style = PaintingStyle.fill;
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
@@ -671,21 +680,10 @@ class _PilotArrowPainter extends CustomPainter {
     path.close();
 
     // Outline
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.black87
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5,
-    );
+    canvas.drawPath(path, _outlinePaint);
 
     // Body
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.cyanAccent
-        ..style = PaintingStyle.fill,
-    );
+    canvas.drawPath(path, _bodyPaint);
   }
 
   @override
