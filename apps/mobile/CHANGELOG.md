@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.2.0...brandyfly-v0.3.0) (2026-08-31)
+
+
+### Features
+
+* replace InkWell with IconButton for better accessibility and tooltips ([#109](https://github.com/markusbrand/brandyfly/issues/109)) ([01c2300](https://github.com/markusbrand/brandyfly/commit/01c23005bcbeb7abf025577617138c51d7aae2c2))
+
+
+### Bug Fixes
+
+* **mobile:** initialize WidgetsFlutterBinding before SemanticsBinding on startup ([#110](https://github.com/markusbrand/brandyfly/issues/110)) ([714271e](https://github.com/markusbrand/brandyfly/commit/714271ecf0da0c9e4e1df7b48dcf93597a5ff804))
+
 ## [0.2.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.1.0...brandyfly-v0.2.0) (2026-08-26)
 
 

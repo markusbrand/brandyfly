@@ -90,7 +90,6 @@ class LayoutStrategyContainer extends StatelessWidget {
       builder: (ctx, constraints) {
         final totalWidth = constraints.maxWidth;
         final cellWidth = totalWidth / 4;
-        const cellHeight = 110.0;
 
         // Calculate minimum canvas height to accommodate all widgets
         int maxBottomGrid = 4;
@@ -100,9 +99,13 @@ class LayoutStrategyContainer extends StatelessWidget {
             maxBottomGrid = bottom;
           }
         }
+        final dynamicCellHeight = (constraints.maxHeight > 0)
+            ? (constraints.maxHeight / math.max(maxBottomGrid, 4))
+            : 110.0;
+        final cellHeight = math.max(dynamicCellHeight, 90.0);
         final contentHeight = math.max(
           constraints.maxHeight,
-          (maxBottomGrid * cellHeight) + (isEditMode ? 100.0 : 40.0),
+          (maxBottomGrid * cellHeight) + (isEditMode ? 100.0 : 0.0),
         );
 
         switch (strategy) {
@@ -553,9 +556,11 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
   @override
   Widget build(BuildContext context) {
     if (!widget.isEditMode) {
-      final isMap = widget.model.type == WidgetType.map;
+      final isMapOrThermal =
+          widget.model.type == WidgetType.map ||
+          widget.model.type == WidgetType.thermalMap;
       return Padding(
-        padding: isMap ? EdgeInsets.zero : const EdgeInsets.all(4.0),
+        padding: isMapOrThermal ? EdgeInsets.zero : const EdgeInsets.all(1.5),
         child: SizedBox.expand(
           child: widget.child,
         ),
