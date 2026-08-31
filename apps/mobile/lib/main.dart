@@ -22,6 +22,7 @@ import 'widgets/navigation/top_nav_bar.dart';
 import 'widgets/settings/ui_settings_panel.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   SemanticsBinding.instance.ensureSemantics();
   final config = MockFlightModeConfig.fromEnvironment();
   final effectiveConfig = config.copyWith(
