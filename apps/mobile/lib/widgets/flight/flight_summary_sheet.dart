@@ -354,6 +354,14 @@ class _MiniTrackPainter extends CustomPainter {
 
   final List<FlightPoint> points;
 
+  // ⚡ Bolt: Cache Paint objects statically to avoid per-frame GC allocations
+  static final Paint _trackPaint = Paint()
+    ..color = Colors.cyanAccent
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.5
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (points.length < 2) return;
@@ -374,12 +382,6 @@ class _MiniTrackPainter extends CustomPainter {
     final lonSpan = (maxLon - minLon).clamp(0.0001, 100.0);
 
     final path = Path();
-    final paint = Paint()
-      ..color = Colors.cyanAccent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
 
     for (var i = 0; i < points.length; i++) {
       final p = points[i];
@@ -393,7 +395,7 @@ class _MiniTrackPainter extends CustomPainter {
       }
     }
 
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, _trackPaint);
   }
 
   @override
