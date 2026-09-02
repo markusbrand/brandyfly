@@ -354,7 +354,7 @@ class _MiniTrackPainter extends CustomPainter {
 
   final List<FlightPoint> points;
 
-  // ⚡ Bolt: Cache Paint objects statically to avoid per-frame GC allocations
+  // ⚡ Bolt: Cache Paint objects statically to avoid per-frame allocations without breaking const constructor
   static final Paint _trackPaint = Paint()
     ..color = Colors.cyanAccent
     ..style = PaintingStyle.stroke
