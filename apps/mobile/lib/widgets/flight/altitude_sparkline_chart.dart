@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../models/ui_config.dart';
 
 class AltitudeSparklineChart extends StatelessWidget {
@@ -39,7 +38,11 @@ class AltitudeSparklineChart extends StatelessWidget {
           children: [
             const Text(
               'ALTITUDE HISTORY (SPARKLINE)',
-              style: TextStyle(color: Colors.white60, fontSize: 8.5, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white60,
+                fontSize: 8.5,
+                fontWeight: FontWeight.bold,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
