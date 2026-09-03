@@ -1,5 +1,4 @@
 import os
-import time
 from playwright.sync_api import sync_playwright, expect
 
 def run_test_suite():
