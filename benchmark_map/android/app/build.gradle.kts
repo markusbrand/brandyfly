@@ -1,7 +1,21 @@
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    try {
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    } catch (e: FileNotFoundException) {
+        // Handle exception if needed
+    }
 }
 
 android {
@@ -24,18 +38,32 @@ android {
         versionName = flutter.versionName
     }
 
+    if (keystoreProperties.isNotEmpty()) {
+        signingConfigs {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String?
+                keyPassword = keystoreProperties["keyPassword"] as String?
+                (keystoreProperties["storeFile"] as String?)?.let { storeFile = file(it) }
+                storePassword = keystoreProperties["storePassword"] as String?
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (keystoreProperties.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Fallback to debug keys if key.properties is absent
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
 
 kotlin {
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
