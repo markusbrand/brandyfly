@@ -104,7 +104,8 @@ class MaplibreAdapter implements MapEngineAdapter {
 ''';
   }
 
-  void _onMapCreated(MapController controller) {
+  @visibleForTesting
+  void onMapCreated(MapController controller) {
     _controller = controller;
     if (_pendingOverlays != null) {
       _applyOverlays(_pendingOverlays!);
@@ -179,7 +180,7 @@ class _MaplibreAdapterWidgetState extends State<_MaplibreAdapterWidget> {
         initZoom: 13.5,
         initStyle: _styleJson!,
       ),
-      onMapCreated: widget.adapter._onMapCreated,
+      onMapCreated: widget.adapter.onMapCreated,
     );
   }
 }

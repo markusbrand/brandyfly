@@ -136,6 +136,8 @@ class _FlightsScreenState extends State<FlightsScreen>
                 padding: const EdgeInsets.all(12),
                 child: TextField(
                   controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Search by title, pilot, site, date...',

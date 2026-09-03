@@ -437,6 +437,24 @@ mod tests {
     use super::*;
     use brandyfly_contracts::{NATIVE_PIPELINE_SCHEMA_VERSION, SensorQualityFlags, SensorSourceId};
 
+    #[test]
+    fn bounded_flight_pipeline_initialization_defaults() {
+        let mut pipeline = BoundedFlightPipeline::new(10, OverflowPolicy::DropOldest, 100_000_000);
+
+        let counters = pipeline.counters();
+        assert_eq!(counters, PipelineCounters::default());
+        assert_eq!(counters.received_count, 0);
+        assert_eq!(counters.processed_count, 0);
+        assert_eq!(counters.dropped_overflow_count, 0);
+        assert_eq!(counters.rejected_malformed_count, 0);
+        assert_eq!(counters.replaced_count, 0);
+        assert_eq!(counters.stale_count, 0);
+
+        assert!(pipeline.traces().is_empty());
+        assert_eq!(pipeline.latest_audio_command(), AudioToneCommand::default());
+        assert_eq!(pipeline.poll_kpi_snapshot(), None);
+    }
+
     fn make_test_event(seq: u64, pressure: f64) -> SensorEvent {
         SensorEvent {
             schema_version: NATIVE_PIPELINE_SCHEMA_VERSION,

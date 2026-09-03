@@ -122,7 +122,7 @@ class BrandyFlyTileCacheService implements MapCachingProvider {
 
   /// Calculates a stable disk filename based on the tile URL.
   String getFilenameForUrl(String url) {
-    final digest = md5.convert(utf8.encode(url));
+    final digest = sha256.convert(utf8.encode(url));
     return '$digest.tile';
   }
 
