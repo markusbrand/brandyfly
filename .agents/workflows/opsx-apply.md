@@ -96,18 +96,11 @@ Implement tasks from an OpenSpec change.
    - Error or blocker encountered → report and wait for guidance
    - User interrupts
 
-   **GitHub Issue Synchronization (Automatic):**
-   If the change originates from or is linked to a GitHub Issue (`spec-driven-github` schema, issue reference in input/proposal, or `gh issue` in context):
-   - Synchronize completed task checkboxes (`- [ ]` → `- [x]`) to the remote GitHub issue body using `gh issue edit <issue-number> --body-file <temp-file>`.
-   - Update metadata lifecycle field to `lifecycle: implemented`.
-   - Record test / verification evidence directly in the `<!-- openspec:section:verification:start -->` section of the GitHub issue.
-
 7. **On completion or pause, show status**
 
    Display:
    - Tasks completed this session
    - Overall progress: "N/M tasks complete"
-   - If linked to a GitHub issue: confirm issue sync status (e.g., "GitHub Issue #N updated with completed tasks")
    - If all done: suggest archive
    - If paused: explain why and wait for guidance
 
