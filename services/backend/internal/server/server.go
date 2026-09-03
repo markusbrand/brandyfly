@@ -18,18 +18,22 @@ const shutdownTimeout = 10 * time.Second
 func NewHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(response http.ResponseWriter, request *http.Request) {
-		if expectedToken := os.Getenv("BRANDYFLY_HEALTH_TOKEN"); expectedToken != "" {
-			expectedAuth := "Bearer " + expectedToken
-			actualAuth := request.Header.Get("Authorization")
+		expectedToken := os.Getenv("BRANDYFLY_HEALTH_TOKEN")
+		if expectedToken == "" {
+			http.Error(response, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 
-			// Hash tokens before comparison to prevent length leakage during ConstantTimeCompare
-			expectedHash := sha256.Sum256([]byte(expectedAuth))
-			actualHash := sha256.Sum256([]byte(actualAuth))
+		expectedAuth := "Bearer " + expectedToken
+		actualAuth := request.Header.Get("Authorization")
 
-			if subtle.ConstantTimeCompare(actualHash[:], expectedHash[:]) != 1 {
-				http.Error(response, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
+		// Hash tokens before comparison to prevent length leakage during ConstantTimeCompare
+		expectedHash := sha256.Sum256([]byte(expectedAuth))
+		actualHash := sha256.Sum256([]byte(actualAuth))
+
+		if subtle.ConstantTimeCompare(actualHash[:], expectedHash[:]) != 1 {
+			http.Error(response, "Unauthorized", http.StatusUnauthorized)
+			return
 		}
 		response.Header().Set("X-Content-Type-Options", "nosniff")
 		response.Header().Set("Content-Type", "application/json")

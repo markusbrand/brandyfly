@@ -7,3 +7,8 @@
 **Vulnerability:** Comparing authentication tokens directly with `crypto/subtle.ConstantTimeCompare` leaks the length of the expected token because the function returns immediately if the lengths of the two inputs differ.
 **Learning:** While `ConstantTimeCompare` protects against timing attacks during the actual byte comparison, it is not constant time when the lengths differ. This leaks information about the expected string's length, which is a vulnerability for secrets.
 **Prevention:** Before using `crypto/subtle.ConstantTimeCompare`, hash both the expected and actual tokens (e.g., using `crypto/sha256.Sum256`). This ensures both inputs to `ConstantTimeCompare` are always exactly the same length, preventing length leakage.
+
+## 2026-08-25 - Unauthenticated Access to Health Endpoint
+**Vulnerability:** The healthcheck endpoint `/healthz` conditionally skipped token authentication if `BRANDYFLY_HEALTH_TOKEN` environment variable was empty or missing, leaving the endpoint open to unauthenticated access by default.
+**Learning:** Default-open or conditionally optional security checks can unintentionally expose endpoints when configuration variables are missing or unconfigured in runtime environments.
+**Prevention:** Enforce mandatory authentication by default unless explicitly designed as a public endpoint. Fail closed (return 401 Unauthorized) when required authentication configuration tokens or credentials are missing.
