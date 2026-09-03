@@ -847,7 +847,9 @@ mod tests {
 
         // NMEA sentence without coordinate direction markers (redacted/anonymized)
         assert_eq!(
-            sanitize_skydrop_payload(b"$GPGGA,123519,REDACTED,REDACTED,1,08,0.9,545.4,M,46.9,M,,*47"),
+            sanitize_skydrop_payload(
+                b"$GPGGA,123519,REDACTED,REDACTED,1,08,0.9,545.4,M,46.9,M,,*47"
+            ),
             Ok(())
         );
     }
