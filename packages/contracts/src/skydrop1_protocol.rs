@@ -795,4 +795,91 @@ mod tests {
             0x47
         );
     }
+
+    #[test]
+    fn sanitize_rejects_non_utf8_binary_payload() {
+        let invalid_utf8 = &[0xFF, 0xFE, 0xFD];
+        assert_eq!(
+            sanitize_skydrop_payload(invalid_utf8),
+            Err(SkyDrop1ParseError::SanitizationViolation(
+                "non_utf8_binary_payload"
+            ))
+        );
+    }
+
+    #[test]
+    fn sanitize_rejects_forbidden_secret_markers() {
+        let markers = [
+            "pin=",
+            "password=",
+            "secret=",
+            "bearer ",
+            "auth=",
+            "token=",
+            "passkey",
+            "private_key",
+        ];
+
+        for marker in &markers {
+            let payload = format!("$LK8EX1,101325,{:*^10}*00", marker.to_uppercase());
+            assert_eq!(
+                sanitize_skydrop_payload(payload.as_bytes()),
+                Err(SkyDrop1ParseError::SanitizationViolation(
+                    "forbidden_credential_detected"
+                )),
+                "failed to reject marker: {}",
+                marker
+            );
+        }
+    }
+
+    #[test]
+    fn sanitize_rejects_unredacted_gps_coordinates() {
+        let sentences = ["$GPGGA", "$GPRMC", "$GNGGA"];
+        let directions = [",N,", ",S,", ",E,", ",W,"];
+
+        for sentence in &sentences {
+            for dir in &directions {
+                let payload = format!("{},123519,4807.038{}01131.000*00", sentence, dir);
+                assert_eq!(
+                    sanitize_skydrop_payload(payload.as_bytes()),
+                    Err(SkyDrop1ParseError::SanitizationViolation(
+                        "unredacted_private_coordinates_detected"
+                    )),
+                    "failed to reject sentence {} with direction {}",
+                    sentence,
+                    dir
+                );
+
+                // Lowercase check
+                let lower_payload = payload.to_lowercase();
+                assert_eq!(
+                    sanitize_skydrop_payload(lower_payload.as_bytes()),
+                    Err(SkyDrop1ParseError::SanitizationViolation(
+                        "unredacted_private_coordinates_detected"
+                    ))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn sanitize_accepts_valid_and_redacted_payloads() {
+        // Empty payload
+        assert_eq!(sanitize_skydrop_payload(b""), Ok(()));
+
+        // Nominal LK8EX1 sentence
+        assert_eq!(
+            sanitize_skydrop_payload(b"$LK8EX1,101325,1500,150,21,95*3B"),
+            Ok(())
+        );
+
+        // NMEA sentence without coordinate direction markers (redacted/anonymized)
+        assert_eq!(
+            sanitize_skydrop_payload(
+                b"$GPGGA,123519,REDACTED,REDACTED,1,08,0.9,545.4,M,46.9,M,,*47"
+            ),
+            Ok(())
+        );
+    }
 }
