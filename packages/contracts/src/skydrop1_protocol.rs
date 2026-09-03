@@ -531,6 +531,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn calculate_nmea_checksum_computes_correct_xor() {
+        // Empty payload
+        assert_eq!(calculate_nmea_checksum(""), 0x00);
+
+        // Single character payload
+        assert_eq!(calculate_nmea_checksum("A"), 0x41);
+
+        // Standard LK8EX1 sentence body
+        let lk8ex1_body = "LK8EX1,101325,1500,150,21,95";
+        assert_eq!(calculate_nmea_checksum(lk8ex1_body), 0x04);
+
+        // Standard GPGGA sentence body
+        let gpgga_body = "GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,";
+        assert_eq!(calculate_nmea_checksum(gpgga_body), 0x47);
+
+        // Self-inverse property of XOR: x ^ x = 0
+        assert_eq!(calculate_nmea_checksum("AA"), 0x00);
+        assert_eq!(calculate_nmea_checksum("ABCABC"), 0x00);
+    }
+
+    #[test]
     fn authoritative_support_record_classifies_platforms_correctly() {
         let record = SkyDrop1PlatformSupportRecord::authoritative();
         assert_eq!(record.schema_version, 1);
