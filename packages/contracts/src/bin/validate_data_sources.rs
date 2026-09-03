@@ -7,26 +7,23 @@ use std::fs;
 use std::process;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
     let mut manifest_path: Option<String> = None;
     let mut current_date: Option<String> = None;
 
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
+    let mut args = env::args().skip(1);
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
             "--manifest" => {
-                if i + 1 < args.len() {
-                    manifest_path = Some(args[i + 1].clone());
-                    i += 2;
+                if let Some(val) = args.next() {
+                    manifest_path = Some(val);
                 } else {
                     eprintln!("Error: --manifest requires a file path argument");
                     process::exit(2);
                 }
             }
             "--current-date" => {
-                if i + 1 < args.len() {
-                    current_date = Some(args[i + 1].clone());
-                    i += 2;
+                if let Some(val) = args.next() {
+                    current_date = Some(val);
                 } else {
                     eprintln!("Error: --current-date requires YYYY-MM-DD");
                     process::exit(2);
