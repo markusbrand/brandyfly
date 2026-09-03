@@ -766,4 +766,33 @@ mod tests {
             Err(SkyDrop1ParseError::BlockedUnverifiedField(_))
         ));
     }
+
+    #[test]
+    fn calculate_nmea_checksum_works_for_various_inputs() {
+        // Test empty payload
+        assert_eq!(calculate_nmea_checksum(""), 0);
+
+        // Test single character ASCII 'A' (ASCII value 65 / 0x41)
+        assert_eq!(calculate_nmea_checksum("A"), 0x41);
+
+        // Test double characters canceling out: 'A' ^ 'A' == 0
+        assert_eq!(calculate_nmea_checksum("AA"), 0);
+
+        // Test XOR combination: 'A' (0x41) ^ 'B' (0x42) = 0x03
+        assert_eq!(calculate_nmea_checksum("AB"), 0x03);
+
+        // Test standard LK8EX1 sentence payload
+        assert_eq!(
+            calculate_nmea_checksum("LK8EX1,101325,1500,150,21,95"),
+            0x04
+        );
+
+        // Test standard GPGGA sentence payload
+        assert_eq!(
+            calculate_nmea_checksum(
+                "GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"
+            ),
+            0x47
+        );
+    }
 }
