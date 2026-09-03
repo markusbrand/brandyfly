@@ -537,6 +537,7 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
               const Divider(color: Colors.white12),
               TextField(
                 controller: _userController,
+                textInputAction: TextInputAction.next,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'XContest Username',
@@ -552,6 +553,8 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
               const SizedBox(height: 8),
               TextField(
                 controller: _passController,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
                 obscureText: true,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
