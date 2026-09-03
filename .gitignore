@@ -3,6 +3,7 @@
 *.iml
 *.swp
 *.log
+.gemini/
 
 .env
 .env.*

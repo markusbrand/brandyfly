@@ -19,11 +19,12 @@ Run the following command to start the Flutter mobile app in local mock flight m
 - If the user actively closes the application window, the command execution task will finish.
 - **DO NOT** restart the application automatically upon window closure/exit unless explicitly requested by the user.
 
-## OpenSpec & GitHub Issue Workflow Guidelines
+## OpenSpec Workflow Guidelines
 
-In this repository, GitHub issues are the sole authoritative change store for all OpenSpec operations (see `openspec/specs/github-issue-change-management/spec.md`).
+In this repository, follow the standard OpenSpec specification-driven change management workflow:
 
-- **ALWAYS** use the `./tools/openspec-issue/openspec-issue.sh` adapter script for all OpenSpec change lifecycle actions (propose, list, read, update, set-lifecycle, complete).
-- **NEVER** write or commit local per-change markdown directories under `openspec/changes/`.
-- When creating or capturing a new change proposal, ALWAYS create the corresponding GitHub issue directly via `./tools/openspec-issue/openspec-issue.sh create`.
+- Use `openspec` / `npx openspec` CLI for managing changes and specifications under `openspec/changes/<change-name>/`.
+- Create and validate planning artifacts (`proposal.md`, `specs/`, `design.md`, `tasks.md`) before implementation.
+- Validate specs and changes with `npx openspec validate --all --strict`.
+- Archive completed changes with `npx openspec archive <change-name>`.
 

@@ -22,10 +22,6 @@ jobs:
         env:
           OPENSPEC_TELEMETRY: "0"
           OPENSPEC_NO_UPDATE_CHECK: "1"
-      - name: OpenSpec issue adapter tests (fixture-backed, no network)
-        run: bash tools/openspec-issue/test/run.sh
-      - name: Guard against per-change Markdown storage
-        run: tools/openspec-issue/check-local-change-storage.sh
 
   rust:
     runs-on: ubuntu-latest
