@@ -8,19 +8,34 @@ pub const RECORDER_MAGIC: [u8; 4] = *b"BFR1";
 /// Maximum permitted payload size for an append record (64 KB).
 pub const MAX_RECORD_PAYLOAD_SIZE: usize = 65536;
 
-/// Calculate IEEE 802.3 CRC32 checksum without external dependencies.
-#[must_use]
-pub fn calculate_crc32(data: &[u8]) -> u32 {
-    let mut crc: u32 = 0xFFFF_FFFF;
-    for &byte in data {
-        crc ^= u32::from(byte);
-        for _ in 0..8 {
+/// Precomputed IEEE 802.3 CRC32 lookup table (256 entries).
+const CRC32_TABLE: [u32; 256] = {
+    let mut table = [0u32; 256];
+    let mut i = 0usize;
+    while i < 256 {
+        let mut crc = i as u32;
+        let mut j = 0;
+        while j < 8 {
             if (crc & 1) != 0 {
                 crc = (crc >> 1) ^ 0xEDB8_8320;
             } else {
                 crc >>= 1;
             }
+            j += 1;
         }
+        table[i] = crc;
+        i += 1;
+    }
+    table
+};
+
+/// Calculate IEEE 802.3 CRC32 checksum without external dependencies.
+#[must_use]
+pub fn calculate_crc32(data: &[u8]) -> u32 {
+    let mut crc: u32 = 0xFFFF_FFFF;
+    for &byte in data {
+        let index = ((crc ^ u32::from(byte)) & 0xFF) as usize;
+        crc = (crc >> 8) ^ CRC32_TABLE[index];
     }
     !crc
 }
