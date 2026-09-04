@@ -1,3 +1,15 @@
+---
+id: SPEC-FLIGHT-TRACKING-REPLAY
+type: sub-spec
+parent: EPIC-01-CORE
+title: Flight Tracking Logbook and Replay
+issue_number: 61
+status: closed
+labels:
+  - spec
+  - openspec
+---
+
 # flight-tracking-logbook-and-replay Specification
 
 ## Purpose

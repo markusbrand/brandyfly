@@ -1,3 +1,15 @@
+---
+id: SPEC-DATA-SOURCE-GOVERNANCE
+type: sub-spec
+parent: EPIC-01-CORE
+title: Data Source Governance
+issue_number: 16
+status: closed
+labels:
+  - spec
+  - openspec
+---
+
 # data-source-governance Specification
 
 ## Purpose

@@ -1,3 +1,15 @@
+---
+id: SPEC-THERMALING-LIFT-SINK-MAP
+type: sub-spec
+parent: EPIC-01-CORE
+title: Thermaling Screen Lift-Sink Map
+issue_number: 64
+status: closed
+labels:
+  - spec
+  - openspec
+---
+
 # thermaling-screen-lift-sink-map Specification
 
 ## Purpose

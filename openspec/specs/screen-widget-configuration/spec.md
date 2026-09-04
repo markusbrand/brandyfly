@@ -1,3 +1,15 @@
+---
+id: SPEC-SCREEN-WIDGET-CONFIGURATION
+type: sub-spec
+parent: EPIC-01-CORE
+title: Screen Widget Configuration
+issue_number: 62
+status: closed
+labels:
+  - spec
+  - openspec
+---
+
 # screen-widget-configuration Specification
 
 ## Purpose
@@ -117,4 +129,3 @@ Instrument widgets SHALL minimize internal padding and margins and dynamically s
 #### Scenario: Responsive sparkline and wind widget rendering
 - **WHEN** altitude sparkline charts or wind direction indicators are rendered
 - **THEN** graph canvases, compass roses, and wind vector arrows SHALL utilize the maximum available bounding area with minimal label padding.
-

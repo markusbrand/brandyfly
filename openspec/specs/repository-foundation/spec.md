@@ -1,3 +1,15 @@
+---
+id: SPEC-REPOSITORY-FOUNDATION
+type: sub-spec
+parent: EPIC-01-CORE
+title: Repository Foundation
+issue_number: 21
+status: closed
+labels:
+  - spec
+  - openspec
+---
+
 # repository-foundation Specification
 
 ## Purpose
