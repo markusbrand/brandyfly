@@ -1,3 +1,15 @@
+---
+id: SPEC-CONTINUOUS-VALIDATION
+type: sub-spec
+parent: EPIC-01-CORE
+title: Continuous Validation
+issue_number: 134
+status: open
+labels:
+  - spec
+  - openspec
+---
+
 # continuous-validation Specification
 
 ## Purpose

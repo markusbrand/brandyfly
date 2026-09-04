@@ -159,10 +159,10 @@ class ScreenManagerService extends ChangeNotifier {
 
   void updateWidgetPlacement(WidgetPlacementModel placement) {
     final currentActive = activeScreen;
-    final clampedW = placement.w.clamp(1, 4);
-    final clampedH = placement.h.clamp(1, 6);
-    final clampedX = placement.x.clamp(0, (4 - clampedW).clamp(0, 3));
-    final clampedY = placement.y.clamp(0, 10);
+    final clampedW = placement.w.clamp(1, 8);
+    final clampedH = placement.h.clamp(1, 16);
+    final clampedX = placement.x.clamp(0, (8 - clampedW).clamp(0, 7));
+    final clampedY = placement.y.clamp(0, 20);
 
     final sanitized = placement.copyWith(
       x: clampedX,
@@ -229,8 +229,8 @@ class ScreenManagerService extends ChangeNotifier {
       type: type,
       x: 0,
       y: 0,
-      w: isMapLike ? 4 : 2,
-      h: isMapLike ? 4 : 1,
+      w: isMapLike ? 8 : 4,
+      h: isMapLike ? 8 : 2,
       numericStyle: NumericWidgetStyle.minimalistText,
       windStyle: WindWidgetStyle.relativeArrow,
       varioStyle: LiftSinkBarStyle.verticalEdgeBar,

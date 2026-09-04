@@ -1,3 +1,15 @@
+---
+id: SPEC-SKYDROP1-TRANSPORT
+type: sub-spec
+parent: EPIC-01-CORE
+title: SkyDrop 1 Transport Validation
+issue_number: 20
+status: closed
+labels:
+  - spec
+  - openspec
+---
+
 # skydrop1-transport-validation Specification
 
 ## Purpose

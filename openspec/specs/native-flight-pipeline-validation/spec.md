@@ -1,3 +1,15 @@
+---
+id: SPEC-NATIVE-FLIGHT-PIPELINE
+type: sub-spec
+parent: EPIC-01-CORE
+title: Native Flight Pipeline Validation
+issue_number: 19
+status: closed
+labels:
+  - spec
+  - openspec
+---
+
 # native-flight-pipeline-validation Specification
 
 ## Purpose

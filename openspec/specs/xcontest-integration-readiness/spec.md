@@ -1,3 +1,15 @@
+---
+id: SPEC-XCONTEST-INTEGRATION
+type: sub-spec
+parent: EPIC-01-CORE
+title: XContest Integration Readiness
+issue_number: 22
+status: closed
+labels:
+  - spec
+  - openspec
+---
+
 # xcontest-integration-readiness Specification
 
 ## Purpose
@@ -57,4 +69,3 @@ not rely indefinitely on stale API or policy evidence.
 #### Scenario: Evidence expires before implementation
 - **WHEN** the revalidation date has passed
 - **THEN** implementation remains blocked until the evidence is renewed
-
