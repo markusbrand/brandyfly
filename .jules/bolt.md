@@ -25,3 +25,7 @@
 ## 2026-03-31 - Table-driven CRC32 calculation in flight recorder
 **Learning:** Naive bit-by-bit CRC32 evaluation loops over every byte 8 times with branching bit-shifts, causing high CPU overhead during high-frequency telemetry recording. A 256-entry lookup table precomputed at compile time replaces the inner 8-iteration loop with single-step byte indexing and table lookup.
 **Action:** Always use a 256-entry lookup table for standard CRC32 checksum calculations to achieve ~3.2x throughput improvement without external dependencies.
+
+## 2026-08-26 - Optimize animating CustomPainter with repaint Listenable
+**Learning:** In Flutter, wrapping a `CustomPaint` widget inside an `AnimatedBuilder` running at 60fps causes the parent widget to rebuild every frame. If the `CustomPainter` allocates `Paint` objects dynamically or during construction, this results in continuous, expensive re-allocations (e.g., 15 `Paint` objects per frame) which defeats the purpose of caching them as instance variables.
+**Action:** When animating a `CustomPainter`, do not use `AnimatedBuilder` to rebuild the widget. Instead, pass the `Animation` (or `Listenable`) directly to the `CustomPainter` constructor, forward it to `super(repaint: animation)`, and read `animation.value` inside the `paint()` method. This avoids re-instantiating the painter and re-allocating `Paint` objects on every tick.
