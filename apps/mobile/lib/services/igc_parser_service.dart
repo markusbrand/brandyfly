@@ -159,17 +159,29 @@ class IGCParserService {
 
       final extMap = extensions ?? const {};
 
-      // Extract IGC extensions if present
-      if (extMap.containsKey('VXA')) {
-        final ext = extMap['VXA']!;
+      bool hasExplicitVario = false;
+      if (extMap.containsKey('VAR')) {
+        final ext = extMap['VAR']!;
         if (line.length >= ext.end) {
           final rawV = int.tryParse(line.substring(ext.start - 1, ext.end));
           if (rawV != null) {
-            // VXA in cm/s or dm/s
+            // VAR in cm/s or dm/s
             vario = (rawV > 500 ? rawV - 1000 : rawV) / 10.0;
+            hasExplicitVario = true;
+          }
+        }
+      } else if (extMap.containsKey('VAS') || extMap.containsKey('SIU')) {
+        final key = extMap.containsKey('VAS') ? 'VAS' : 'SIU';
+        final ext = extMap[key]!;
+        if (line.length >= ext.end) {
+          final rawV = int.tryParse(line.substring(ext.start - 1, ext.end));
+          if (rawV != null) {
+            vario = (rawV > 500 ? rawV - 1000 : rawV) / 10.0;
+            hasExplicitVario = true;
           }
         }
       }
+
       if (extMap.containsKey('GSP')) {
         final ext = extMap['GSP']!;
         if (line.length >= ext.end) {
@@ -189,7 +201,7 @@ class IGCParserService {
       if (previousPoint != null) {
         final dtSec = timestamp.difference(previousPoint.timestamp).inMilliseconds / 1000.0;
         if (dtSec > 0) {
-          if (vario == 0.0) {
+          if (!hasExplicitVario) {
             vario = (pressAlt - previousPoint.altitude) / dtSec;
           }
           if (speed == 0.0) {
@@ -247,8 +259,8 @@ class IGCParserService {
       buffer.writeln('HFSITSITE:${flight.siteName}');
     }
 
-    // Include extension descriptor: FXA (36-38), VXA (39-41), GSP (42-44), HDT (45-47)
-    buffer.writeln('I043638FXA3941VXA4244GSP4547HDT');
+    // Include extension descriptor: FXA (36-38), VAR (39-41), GSP (42-44), HDT (45-47)
+    buffer.writeln('I043638FXA3941VAR4244GSP4547HDT');
 
     for (final pt in flight.points) {
       final t = pt.timestamp.toUtc();
@@ -274,12 +286,12 @@ class IGCParserService {
       final gnssAlt = (pt.gnssAltitude ?? pt.altitude).round().clamp(-1000, 99999).toString().padLeft(5, '0');
 
       final fxa = '000';
-      final vxaRaw = (pt.vario * 10).round();
-      final vxa = (vxaRaw >= 0 ? vxaRaw : 1000 + vxaRaw).toString().padLeft(3, '0');
+      final varRaw = (pt.vario * 10).round();
+      final varStr = (varRaw >= 0 ? varRaw : 1000 + varRaw).toString().padLeft(3, '0');
       final gsp = pt.speed.round().clamp(0, 999).toString().padLeft(3, '0');
       final hdt = pt.heading.round().clamp(0, 359).toString().padLeft(3, '0');
 
-      buffer.writeln('B$timeStr$latStr$lonStr' 'A$pressAlt$gnssAlt$fxa$vxa$gsp$hdt');
+      buffer.writeln('B$timeStr$latStr$lonStr' 'A$pressAlt$gnssAlt$fxa$varStr$gsp$hdt');
     }
 
     buffer.writeln('G00000000000000000000000000000000');

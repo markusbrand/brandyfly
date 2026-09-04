@@ -169,5 +169,24 @@ B1200002254321S04312345WA0050000520
       expect(singlePointStats.maxAltitude, 1500.0);
       expect(singlePointStats.minAltitude, 1500.0);
     });
+
+    test('Computes realistic dynamic vario from altitude deltas when VXA extension is present', () {
+      const igcWithVxaAndClimb = '''AXFH000
+HFDTE150826
+I043638FXA3941VXA4244GSP4547HDT
+B1023004731478N01341504EA0200002000004003004306155
+B1023014731478N01341504EA0200302003004003004306155
+B1023024731478N01341504EA0200102001004003004306155
+G00000000000000000000000000000000
+''';
+      final flight = parser.parseIgc(igcWithVxaAndClimb);
+      expect(flight.points.length, 3);
+      // Point 1 (initial fix)
+      expect(flight.points[0].vario, 0.0);
+      // Point 2 (+3m in 1s -> +3.0 m/s climb)
+      expect(flight.points[1].vario, 3.0);
+      // Point 3 (-2m in 1s -> -2.0 m/s sink)
+      expect(flight.points[2].vario, -2.0);
+    });
   });
 }

@@ -192,7 +192,59 @@ void main() {
       expect(restored.id, 'legacy_screen');
       expect(restored.layoutStrategy, LayoutStrategyStyle.sidebarDashboard);
       expect(restored.autoSwitchTrigger, ScreenAutoSwitchTrigger.manualOnly);
+      expect(restored.gridResolution, 8);
       expect(restored.widgets, isEmpty);
+    });
+
+    test('fromJson migrates legacy 4-column coordinates (gridResolution < 8) by scaling 2x', () {
+      final json = <String, dynamic>{
+        'id': 'legacy_4col_screen',
+        'name': 'Legacy 4Col',
+        'widgets': [
+          {
+            'id': 'w_alt',
+            'type': 'altitude',
+            'x': 1,
+            'y': 2,
+            'w': 2,
+            'h': 1,
+          },
+        ],
+      };
+
+      final restored = FlightScreenModel.fromJson(json);
+      expect(restored.gridResolution, 8);
+      expect(restored.widgets.length, 1);
+      expect(restored.widgets.first.x, 2);
+      expect(restored.widgets.first.y, 4);
+      expect(restored.widgets.first.w, 4);
+      expect(restored.widgets.first.h, 2);
+    });
+
+    test('fromJson does not rescale widgets when gridResolution is already 8', () {
+      final json = <String, dynamic>{
+        'id': 'res8_screen',
+        'name': 'Res8 Screen',
+        'gridResolution': 8,
+        'widgets': [
+          {
+            'id': 'w_alt',
+            'type': 'altitude',
+            'x': 1,
+            'y': 2,
+            'w': 2,
+            'h': 1,
+          },
+        ],
+      };
+
+      final restored = FlightScreenModel.fromJson(json);
+      expect(restored.gridResolution, 8);
+      expect(restored.widgets.length, 1);
+      expect(restored.widgets.first.x, 1);
+      expect(restored.widgets.first.y, 2);
+      expect(restored.widgets.first.w, 2);
+      expect(restored.widgets.first.h, 1);
     });
   });
 
@@ -250,6 +302,9 @@ void main() {
       expect(restored.screens.length, 1);
       expect(restored.screens.first.widgets.first.type, WidgetType.altitude);
       expect(restored.screens.first.widgets.first.effectiveNumericStyle, NumericWidgetStyle.minimalistText);
+      expect(restored.screens.first.widgets.first.x, 0);
+      expect(restored.screens.first.widgets.first.w, 4); // Scaled from 2 to 4 on 8-col grid
+      expect(restored.screens.first.widgets.first.h, 2); // Scaled from 1 to 2 on 8-col grid
     });
   });
 }

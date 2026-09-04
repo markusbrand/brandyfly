@@ -411,4 +411,81 @@ void main() {
       uploadService.dispose();
     });
   });
+
+  group('Compact Dimensions Rendering Tests', () {
+    Widget wrapCompact(Widget child, {double width = 60, double height = 38}) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: child,
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('renders numeric widgets in compact box without overflow', (tester) async {
+      await tester.pumpWidget(
+        wrapCompact(
+          const NumericTextWidget(
+            label: 'Alt',
+            value: '1850',
+            unit: 'm',
+            style: NumericWidgetStyle.minimalistText,
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('ALT'), findsOneWidget);
+      expect(find.text('1850'), findsOneWidget);
+    });
+
+    testWidgets('renders vario bar in compact box without overflow', (tester) async {
+      await tester.pumpWidget(
+        wrapCompact(
+          const VarioLiftSinkBar(
+            climbRateMs: 2.5,
+            style: LiftSinkBarStyle.verticalEdgeBar,
+          ),
+          width: 35,
+          height: 70,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('+2.5'), findsOneWidget);
+    });
+
+    testWidgets('renders wind direction widget in compact box without overflow', (tester) async {
+      await tester.pumpWidget(
+        wrapCompact(
+          const WindDirectionWidget(
+            directionDegrees: 240.0,
+            speedKmH: 15.0,
+            style: WindWidgetStyle.relativeArrow,
+          ),
+          width: 70,
+          height: 38,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('WIND'), findsOneWidget);
+    });
+
+    testWidgets('renders sparkline chart in compact box without overflow', (tester) async {
+      await tester.pumpWidget(
+        wrapCompact(
+          const AltitudeSparklineChart(
+            history: [1200.0, 1300.0, 1400.0],
+            style: AltitudeChartStyle.minimalSparkline,
+          ),
+          width: 80,
+          height: 38,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

@@ -315,6 +315,7 @@ class FlightScreenModel {
     required this.name,
     this.layoutStrategy = LayoutStrategyStyle.sidebarDashboard,
     this.autoSwitchTrigger = ScreenAutoSwitchTrigger.manualOnly,
+    this.gridResolution = 8,
     required this.widgets,
   });
 
@@ -322,6 +323,7 @@ class FlightScreenModel {
   final String name;
   final LayoutStrategyStyle layoutStrategy;
   final ScreenAutoSwitchTrigger autoSwitchTrigger;
+  final int gridResolution;
   final List<WidgetPlacementModel> widgets;
 
   FlightScreenModel copyWith({
@@ -329,6 +331,7 @@ class FlightScreenModel {
     String? name,
     LayoutStrategyStyle? layoutStrategy,
     ScreenAutoSwitchTrigger? autoSwitchTrigger,
+    int? gridResolution,
     List<WidgetPlacementModel>? widgets,
   }) {
     return FlightScreenModel(
@@ -336,6 +339,7 @@ class FlightScreenModel {
       name: name ?? this.name,
       layoutStrategy: layoutStrategy ?? this.layoutStrategy,
       autoSwitchTrigger: autoSwitchTrigger ?? this.autoSwitchTrigger,
+      gridResolution: gridResolution ?? this.gridResolution,
       widgets: widgets ?? this.widgets,
     );
   }
@@ -345,6 +349,7 @@ class FlightScreenModel {
     'name': name,
     'layoutStrategy': layoutStrategy.name,
     'autoSwitchTrigger': autoSwitchTrigger.name,
+    'gridResolution': gridResolution,
     'widgets': widgets.map((w) => w.toJson()).toList(),
   };
 
@@ -367,16 +372,29 @@ class FlightScreenModel {
       } catch (_) {}
     }
 
+    final rawWidgets = (json['widgets'] as List<dynamic>? ?? [])
+        .map(
+          (w) => WidgetPlacementModel.fromJson(w as Map<String, dynamic>),
+        )
+        .toList();
+
+    final gridRes = json['gridResolution'] as int? ?? 4;
+    final migratedWidgets = (gridRes < 8 && rawWidgets.isNotEmpty)
+        ? rawWidgets.map((w) => w.copyWith(
+            x: w.x * 2,
+            y: w.y * 2,
+            w: w.w * 2,
+            h: w.h * 2,
+          )).toList()
+        : rawWidgets;
+
     return FlightScreenModel(
       id: json['id'] as String,
       name: json['name'] as String,
       layoutStrategy: strategy,
       autoSwitchTrigger: trigger,
-      widgets: (json['widgets'] as List<dynamic>? ?? [])
-          .map(
-            (w) => WidgetPlacementModel.fromJson(w as Map<String, dynamic>),
-          )
-          .toList(),
+      gridResolution: 8,
+      widgets: migratedWidgets,
     );
   }
 }
@@ -408,14 +426,15 @@ class UIConfig {
           name: 'Normal Flight Screen',
           layoutStrategy: LayoutStrategyStyle.sidebarDashboard,
           autoSwitchTrigger: ScreenAutoSwitchTrigger.manualOnly,
+          gridResolution: 8,
           widgets: [
             WidgetPlacementModel(
               id: 'w_map',
               type: WidgetType.map,
               x: 0,
               y: 0,
-              w: 4,
-              h: 4,
+              w: 8,
+              h: 8,
               mapStyle: MapWidgetStyle.topoContours,
             ),
             WidgetPlacementModel(
@@ -423,35 +442,35 @@ class UIConfig {
               type: WidgetType.altitude,
               x: 0,
               y: 0,
-              w: 1,
-              h: 1,
+              w: 2,
+              h: 2,
               numericStyle: NumericWidgetStyle.minimalistText,
             ),
             WidgetPlacementModel(
               id: 'w2',
               type: WidgetType.speed,
               x: 0,
-              y: 1,
-              w: 1,
-              h: 1,
+              y: 2,
+              w: 2,
+              h: 2,
               numericStyle: NumericWidgetStyle.minimalistText,
             ),
             WidgetPlacementModel(
               id: 'w3',
               type: WidgetType.varioBar,
               x: 0,
-              y: 2,
-              w: 1,
-              h: 2,
+              y: 4,
+              w: 2,
+              h: 4,
               varioStyle: LiftSinkBarStyle.verticalEdgeBar,
             ),
             WidgetPlacementModel(
               id: 'w4',
               type: WidgetType.windDirection,
-              x: 3,
+              x: 6,
               y: 0,
-              w: 1,
-              h: 1,
+              w: 2,
+              h: 2,
               windStyle: WindWidgetStyle.relativeArrow,
             ),
           ],
@@ -461,14 +480,15 @@ class UIConfig {
           name: 'Alpine Map Screen',
           layoutStrategy: LayoutStrategyStyle.freeformHud,
           autoSwitchTrigger: ScreenAutoSwitchTrigger.manualOnly,
+          gridResolution: 8,
           widgets: [
             WidgetPlacementModel(
               id: 'wm_map',
               type: WidgetType.map,
               x: 0,
               y: 0,
-              w: 4,
-              h: 4,
+              w: 8,
+              h: 8,
               mapStyle: MapWidgetStyle.topoContours,
             ),
             WidgetPlacementModel(
@@ -476,17 +496,17 @@ class UIConfig {
               type: WidgetType.varioBar,
               x: 0,
               y: 0,
-              w: 1,
-              h: 4,
+              w: 2,
+              h: 8,
               varioStyle: LiftSinkBarStyle.verticalEdgeBar,
             ),
             WidgetPlacementModel(
               id: 'wm_alt',
               type: WidgetType.altitude,
-              x: 1,
+              x: 2,
               y: 0,
-              w: 3,
-              h: 1,
+              w: 6,
+              h: 2,
               numericStyle: NumericWidgetStyle.minimalistText,
             ),
           ],
@@ -496,14 +516,15 @@ class UIConfig {
           name: 'Thermaling Screen',
           layoutStrategy: LayoutStrategyStyle.sidebarDashboard,
           autoSwitchTrigger: ScreenAutoSwitchTrigger.onThermalCircling,
+          gridResolution: 8,
           widgets: [
             WidgetPlacementModel(
               id: 'tw_map',
               type: WidgetType.thermalMap,
               x: 0,
               y: 0,
-              w: 4,
-              h: 4,
+              w: 8,
+              h: 8,
               thermalMapStyle: ThermalMapStyle.xctrackBubbles,
             ),
             WidgetPlacementModel(
@@ -511,26 +532,26 @@ class UIConfig {
               type: WidgetType.varioBar,
               x: 0,
               y: 0,
-              w: 1,
-              h: 4,
+              w: 2,
+              h: 8,
               varioStyle: LiftSinkBarStyle.verticalEdgeBar,
             ),
             WidgetPlacementModel(
               id: 'tw2',
               type: WidgetType.windDirection,
-              x: 1,
+              x: 2,
               y: 0,
-              w: 3,
-              h: 3,
+              w: 6,
+              h: 6,
               windStyle: WindWidgetStyle.relativeArrow,
             ),
             WidgetPlacementModel(
               id: 'tw3',
               type: WidgetType.altitude,
-              x: 1,
-              y: 3,
-              w: 3,
-              h: 1,
+              x: 2,
+              y: 6,
+              w: 6,
+              h: 2,
               numericStyle: NumericWidgetStyle.minimalistText,
             ),
           ],

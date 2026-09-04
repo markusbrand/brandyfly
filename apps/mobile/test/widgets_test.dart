@@ -507,8 +507,8 @@ void main() {
 
       final lastWidget = manager.activeScreen.widgets.last;
       expect(lastWidget.type, WidgetType.map);
-      expect(lastWidget.w, 4); // Full screen width
-      expect(lastWidget.h, 4); // Full screen height
+      expect(lastWidget.w, 8); // Full screen width
+      expect(lastWidget.h, 8); // Full screen height
     });
 
     testWidgets('ThermalMapWidget renders Option 1 (XCtrack), Option 2 (Burnair Core), and Option 3 (Navigator Ribbon)', (
@@ -608,8 +608,8 @@ void main() {
 
       final lastWidget = manager.activeScreen.widgets.last;
       expect(lastWidget.type, WidgetType.thermalMap);
-      expect(lastWidget.w, 4); // Full screen width by default
-      expect(lastWidget.h, 4); // Full screen height by default
+      expect(lastWidget.w, 8); // Full screen width by default
+      expect(lastWidget.h, 8); // Full screen height by default
       expect(lastWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
     });
 
@@ -620,8 +620,8 @@ void main() {
       final thermalingScreen = config.screens.firstWhere((s) => s.id == 'thermaling');
 
       final thermalWidget = thermalingScreen.widgets.firstWhere((w) => w.type == WidgetType.thermalMap);
-      expect(thermalWidget.w, 4);
-      expect(thermalWidget.h, 4);
+      expect(thermalWidget.w, 8);
+      expect(thermalWidget.h, 8);
       expect(thermalWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
     });
 

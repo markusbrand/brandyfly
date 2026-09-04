@@ -89,10 +89,10 @@ class LayoutStrategyContainer extends StatelessWidget {
     return LayoutBuilder(
       builder: (ctx, constraints) {
         final totalWidth = constraints.maxWidth;
-        final cellWidth = totalWidth / 4;
+        final cellWidth = totalWidth / 8;
 
         // Calculate minimum canvas height to accommodate all widgets
-        int maxBottomGrid = 4;
+        int maxBottomGrid = 8;
         for (final w in screen.widgets) {
           final bottom = w.y + w.h;
           if (bottom > maxBottomGrid) {
@@ -100,12 +100,12 @@ class LayoutStrategyContainer extends StatelessWidget {
           }
         }
         final dynamicCellHeight = (constraints.maxHeight > 0)
-            ? (constraints.maxHeight / math.max(maxBottomGrid, 4))
-            : 110.0;
-        final cellHeight = math.max(dynamicCellHeight, 90.0);
+            ? (constraints.maxHeight / math.max(maxBottomGrid, 8))
+            : 55.0;
+        final cellHeight = math.max(dynamicCellHeight, 38.0);
         final contentHeight = math.max(
           constraints.maxHeight,
-          (maxBottomGrid * cellHeight) + (isEditMode ? 100.0 : 0.0),
+          (maxBottomGrid * cellHeight) + (isEditMode ? 80.0 : 0.0),
         );
 
         switch (strategy) {
@@ -293,11 +293,11 @@ class LayoutStrategyContainer extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // Sidebar background styling for column 0
+              // Sidebar background styling for left 2 columns
               Positioned(
                 left: 0,
                 top: 0,
-                width: cellWidth,
+                width: cellWidth * 2,
                 height: contentHeight,
                 child: Container(
                   decoration: BoxDecoration(
@@ -384,8 +384,8 @@ class LayoutStrategyContainer extends StatelessWidget {
     double cellHeight,
   ) {
     final guides = <Widget>[];
-    // Vertical column guides (4 columns)
-    for (int col = 1; col < 4; col++) {
+    // Vertical column guides (8 columns)
+    for (int col = 1; col < 8; col++) {
       guides.add(
         Positioned(
           left: col * cellWidth,
@@ -393,7 +393,9 @@ class LayoutStrategyContainer extends StatelessWidget {
           bottom: 0,
           child: Container(
             width: 1,
-            color: Colors.cyanAccent.withAlpha(30),
+            color: (col % 2 == 0)
+                ? Colors.cyanAccent.withAlpha(50)
+                : Colors.cyanAccent.withAlpha(25),
           ),
         ),
       );
@@ -570,14 +572,19 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     final model = widget.model;
     final id = model.id;
     final typeName = model.type.name.toUpperCase();
+    final pixelHeight = model.h * widget.cellHeight;
+    final isCompact = model.w <= 2 || pixelHeight < 65;
+    final headerHeight = isCompact ? 18.0 : 24.0;
+    final bottomBarHeight = isCompact ? 18.0 : 24.0;
+    final dragHandleWidth = isCompact ? 20.0 : 26.0;
 
     return Padding(
-      padding: const EdgeInsets.all(3.0),
+      padding: const EdgeInsets.all(2.0),
       child: Container(
         key: Key('widget_box_$id'),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.cyanAccent, width: 1.5),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           color: Colors.blueGrey.shade900.withAlpha(200),
           boxShadow: const [
             BoxShadow(
@@ -591,10 +598,10 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
           children: [
             // Widget Content (Scales to fill allotted frame space)
             Positioned.fill(
-              top: 26,
-              bottom: 26,
-              left: 4,
-              right: 4,
+              top: headerHeight + 1,
+              bottom: bottomBarHeight + 1,
+              left: 2,
+              right: 2,
               child: ClipRect(
                 child: Opacity(
                   opacity: 0.9,
@@ -610,7 +617,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
               top: 0,
               left: 0,
               right: 0,
-              height: 24,
+              height: headerHeight,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onPanStart: (_) {
@@ -648,19 +655,23 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.cyan.shade900.withAlpha(220),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
                     child: Row(
                       children: [
-                        const Icon(Icons.drag_indicator, size: 14, color: Colors.cyanAccent),
+                        Icon(
+                          Icons.drag_indicator,
+                          size: isCompact ? 11 : 14,
+                          color: Colors.cyanAccent,
+                        ),
                         const SizedBox(width: 2),
                         Expanded(
                           child: Text(
                             '$typeName [${model.x},${model.y} ${model.w}x${model.h}]',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 9,
+                              fontSize: isCompact ? 8 : 9,
                               fontWeight: FontWeight.bold,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -670,9 +681,9 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                         IconButton(
                           key: Key('btn_config_$id'),
                           onPressed: () => _showConfigDialog(context),
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 1),
                           constraints: const BoxConstraints(),
-                          iconSize: 14,
+                          iconSize: isCompact ? 11 : 14,
                           tooltip: 'Configure Widget',
                           icon: const Icon(Icons.tune, color: Colors.white70),
                         ),
@@ -680,9 +691,9 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                         IconButton(
                           key: Key('btn_delete_$id'),
                           onPressed: () => widget.screenManager.removeWidget(id),
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 1),
                           constraints: const BoxConstraints(),
-                          iconSize: 14,
+                          iconSize: isCompact ? 11 : 14,
                           tooltip: 'Remove Widget',
                           icon: const Icon(Icons.close, color: Colors.redAccent),
                         ),
@@ -697,13 +708,13 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
             Positioned(
               bottom: 0,
               left: 0,
-              right: 26,
-              height: 24,
+              right: dragHandleWidth,
+              height: bottomBarHeight,
               child: Container(
                 decoration: const BoxDecoration(
                   color: Colors.black87,
                   borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(8),
+                    bottomLeft: Radius.circular(6),
                   ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -722,13 +733,15 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             icon: Icons.chevron_left,
                             tooltip: 'Move Left',
                             enabled: model.x > 0,
+                            iconSize: isCompact ? 12 : 15,
                             onPressed: () => widget.screenManager.moveWidget(id, -1, 0),
                           ),
                           _miniButton(
                             key: Key('btn_move_right_$id'),
                             icon: Icons.chevron_right,
                             tooltip: 'Move Right',
-                            enabled: model.x + model.w < 4,
+                            enabled: model.x + model.w < 8,
+                            iconSize: isCompact ? 12 : 15,
                             onPressed: () => widget.screenManager.moveWidget(id, 1, 0),
                           ),
                           _miniButton(
@@ -736,6 +749,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             icon: Icons.expand_less,
                             tooltip: 'Move Up',
                             enabled: model.y > 0,
+                            iconSize: isCompact ? 12 : 15,
                             onPressed: () => widget.screenManager.moveWidget(id, 0, -1),
                           ),
                           _miniButton(
@@ -743,6 +757,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             icon: Icons.expand_more,
                             tooltip: 'Move Down',
                             enabled: true,
+                            iconSize: isCompact ? 12 : 15,
                             onPressed: () => widget.screenManager.moveWidget(id, 0, 1),
                           ),
                         ],
@@ -758,13 +773,15 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             label: 'W-',
                             tooltip: 'Decrease Width',
                             enabled: model.w > 1,
+                            fontSize: isCompact ? 8 : 9,
                             onPressed: () => widget.screenManager.resizeWidget(id, -1, 0),
                           ),
                           _textMiniButton(
                             key: Key('btn_inc_width_$id'),
                             label: 'W+',
                             tooltip: 'Increase Width',
-                            enabled: model.x + model.w < 4,
+                            enabled: model.x + model.w < 8,
+                            fontSize: isCompact ? 8 : 9,
                             onPressed: () => widget.screenManager.resizeWidget(id, 1, 0),
                           ),
                           const SizedBox(width: 2),
@@ -774,13 +791,15 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             label: 'H-',
                             tooltip: 'Decrease Height',
                             enabled: model.h > 1,
+                            fontSize: isCompact ? 8 : 9,
                             onPressed: () => widget.screenManager.resizeWidget(id, 0, -1),
                           ),
                           _textMiniButton(
                             key: Key('btn_inc_height_$id'),
                             label: 'H+',
                             tooltip: 'Increase Height',
-                            enabled: model.h < 6,
+                            enabled: model.h < 16,
+                            fontSize: isCompact ? 8 : 9,
                             onPressed: () => widget.screenManager.resizeWidget(id, 0, 1),
                           ),
                         ],
@@ -795,8 +814,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
             Positioned(
               bottom: 0,
               right: 0,
-              width: 26,
-              height: 24,
+              width: dragHandleWidth,
+              height: bottomBarHeight,
               child: MouseRegion(
                 cursor: SystemMouseCursors.resizeDownRight,
                 child: GestureDetector(
@@ -836,20 +855,20 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                     decoration: BoxDecoration(
                       color: Colors.cyan.shade900.withAlpha(220),
                       borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(6),
-                        bottomRight: Radius.circular(8),
+                        topLeft: Radius.circular(4),
+                        bottomRight: Radius.circular(6),
                       ),
                       border: Border.all(
                         color: Colors.cyanAccent.withAlpha(160),
                         width: 1,
                       ),
                     ),
-                    child: const Tooltip(
+                    child: Tooltip(
                       message: 'Drag corner to resize',
                       child: Center(
                         child: Icon(
                           Icons.south_east,
-                          size: 14,
+                          size: isCompact ? 10 : 14,
                           color: Colors.cyanAccent,
                         ),
                       ),
@@ -870,13 +889,14 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     required String tooltip,
     required bool enabled,
     required VoidCallback onPressed,
+    double iconSize = 15,
   }) {
     return IconButton(
       key: key,
       onPressed: enabled ? onPressed : null,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       constraints: const BoxConstraints(),
-      iconSize: 15,
+      iconSize: iconSize,
       tooltip: tooltip,
       icon: Icon(
         icon,
@@ -891,6 +911,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     required String tooltip,
     required bool enabled,
     required VoidCallback onPressed,
+    double fontSize = 9,
   }) {
     return Tooltip(
       message: tooltip,
@@ -898,16 +919,16 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
         key: key,
         onTap: enabled ? onPressed : null,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+          margin: const EdgeInsets.symmetric(horizontal: 1.0),
           decoration: BoxDecoration(
             color: enabled ? Colors.blueGrey.shade800 : Colors.black45,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(3),
           ),
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: fontSize,
               fontWeight: FontWeight.bold,
               color: enabled ? Colors.white : Colors.white24,
             ),
@@ -995,7 +1016,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
                                         tooltip: 'Increase X position',
-                                        onPressed: curX + curW < 4
+                                        onPressed: curX + curW < 8
                                             ? () => setDialogState(() => curX++)
                                             : null,
                                       ),
@@ -1043,7 +1064,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
                                         tooltip: 'Increase width',
-                                        onPressed: curX + curW < 4
+                                        onPressed: curX + curW < 8
                                             ? () => setDialogState(() => curW++)
                                             : null,
                                       ),
@@ -1068,7 +1089,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
                                         tooltip: 'Increase height',
-                                        onPressed: curH < 6
+                                        onPressed: curH < 16
                                             ? () => setDialogState(() => curH++)
                                             : null,
                                       ),

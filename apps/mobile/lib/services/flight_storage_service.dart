@@ -111,7 +111,13 @@ class FlightStorageService extends ChangeNotifier {
   }
 
   Future<void> initializeSampleFlight({String? assetIgcContent}) async {
-    if (_prefs != null && _prefs.getBool(_initializedKey) == true) {
+    final existingSample = _flightsMap['sample_krippenstein_aussee'];
+    final needsRefresh = existingSample == null ||
+        (existingSample.points.isNotEmpty &&
+            existingSample.statistics.maxClimbRate == 0.3 &&
+            existingSample.statistics.maxSinkRate == 0.3);
+
+    if (_prefs != null && _prefs.getBool(_initializedKey) == true && !needsRefresh) {
       return;
     }
     await restoreSampleFlight(assetIgcContent: assetIgcContent);
