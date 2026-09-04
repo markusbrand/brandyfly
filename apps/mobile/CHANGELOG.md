@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.3.0...brandyfly-v0.4.0) (2026-09-04)
+
+
+### Features
+
+* **openspec:** establish two-tier workflow (Epics -&gt; Sub-Specs) synced to GitHub Issues ([#135](https://github.com/markusbrand/brandyfly/issues/135)) ([f148518](https://github.com/markusbrand/brandyfly/commit/f148518d4a11a58eb921aa3e689c837d1705386b))
+
 ## [0.3.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.2.0...brandyfly-v0.3.0) (2026-08-31)
 
 
