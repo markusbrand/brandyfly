@@ -117,27 +117,22 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
                   _centerOnPilot = false;
                 });
               },
-              child: AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, _) {
-                  return CustomPaint(
-                    painter: _ThermalMapPainter(
-                      style: widget.style,
-                      showCore: widget.showCore,
-                      historySeconds: widget.historySeconds,
-                      zoomLevel: _zoomLevel,
-                      panOffset: _panOffset,
-                      altitudeM: widget.altitudeM,
-                      speedKmh: widget.speedKmh,
-                      climbRateMs: widget.climbRateMs,
-                      headingDeg: widget.headingDeg,
-                      windDirDeg: widget.windDirDeg,
-                      windSpeedKmh: widget.windSpeedKmh,
-                      trackPoints: widget.trackPoints,
-                      pulseAnimation: _pulseController.value,
-                    ),
-                  );
-                },
+              child: CustomPaint(
+                painter: _ThermalMapPainter(
+                  style: widget.style,
+                  showCore: widget.showCore,
+                  historySeconds: widget.historySeconds,
+                  zoomLevel: _zoomLevel,
+                  panOffset: _panOffset,
+                  altitudeM: widget.altitudeM,
+                  speedKmh: widget.speedKmh,
+                  climbRateMs: widget.climbRateMs,
+                  headingDeg: widget.headingDeg,
+                  windDirDeg: widget.windDirDeg,
+                  windSpeedKmh: widget.windSpeedKmh,
+                  trackPoints: widget.trackPoints,
+                  pulseAnimation: _pulseController,
+                ),
               ),
             ),
           ),
@@ -272,7 +267,7 @@ class _ThermalMapPainter extends CustomPainter {
     required this.windSpeedKmh,
     required this.trackPoints,
     required this.pulseAnimation,
-  });
+  }) : super(repaint: pulseAnimation);
 
   final ThermalMapStyle style;
   final bool showCore;
@@ -286,7 +281,7 @@ class _ThermalMapPainter extends CustomPainter {
   final double windDirDeg;
   final double windSpeedKmh;
   final List<ThermalPoint>? trackPoints;
-  final double pulseAnimation;
+  final Animation<double> pulseAnimation;
 
   // Cached Paint objects to prevent per-frame allocation
   final Paint _ringPaint = Paint()
@@ -525,8 +520,8 @@ class _ThermalMapPainter extends CustomPainter {
       final coreCenter = Offset(weightedX / totalWeight, weightedY / totalWeight);
 
       // Pulsing concentric rings
-      final pulseRadius = 24.0 + (pulseAnimation * 10.0);
-      _pulseRingPaint.color = const Color(0xFFFACC15).withAlpha((180 - pulseAnimation * 80).toInt());
+      final pulseRadius = 24.0 + (pulseAnimation.value * 10.0);
+      _pulseRingPaint.color = const Color(0xFFFACC15).withAlpha((180 - pulseAnimation.value * 80).toInt());
 
       canvas.drawCircle(coreCenter, pulseRadius, _pulseRingPaint);
 
@@ -698,7 +693,6 @@ class _ThermalMapPainter extends CustomPainter {
         oldDelegate.climbRateMs != climbRateMs ||
         oldDelegate.headingDeg != headingDeg ||
         oldDelegate.windDirDeg != windDirDeg ||
-        oldDelegate.trackPoints != trackPoints ||
-        oldDelegate.pulseAnimation != pulseAnimation;
+        oldDelegate.trackPoints != trackPoints;
   }
 }
