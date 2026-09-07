@@ -82,24 +82,28 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
               left: 0,
               right: 0,
               height: 36,
-              child: GestureDetector(
-                key: const Key('top_nav_grab_handle'),
-                behavior: HitTestBehavior.translucent,
-                onTap: () => widget.screenManager.toggleNavBar(true),
-                onVerticalDragUpdate: (details) {
-                  if (details.primaryDelta != null &&
-                      details.primaryDelta! > 4) {
-                    widget.screenManager.toggleNavBar(true);
-                  }
-                },
-                child: Center(
-                  child: Container(
-                    width: 56,
-                    height: 5,
-                    margin: const EdgeInsets.only(top: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(100),
-                      borderRadius: BorderRadius.circular(3),
+              child: Semantics(
+                button: true,
+                label: 'Expand navigation bar',
+                child: GestureDetector(
+                  key: const Key('top_nav_grab_handle'),
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () => widget.screenManager.toggleNavBar(true),
+                  onVerticalDragUpdate: (details) {
+                    if (details.primaryDelta != null &&
+                        details.primaryDelta! > 4) {
+                      widget.screenManager.toggleNavBar(true);
+                    }
+                  },
+                  child: Center(
+                    child: Container(
+                      width: 56,
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
                     ),
                   ),
                 ),

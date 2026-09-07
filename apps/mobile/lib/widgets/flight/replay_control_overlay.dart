@@ -97,20 +97,24 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Grab handle / Drag indicator
-                            GestureDetector(
-                              key: const Key('replay_bottom_grab_handle'),
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () => setState(() => _isExpanded = !_isExpanded),
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.only(top: 2, bottom: 4),
-                                child: Center(
-                                  child: Container(
-                                    width: 40,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.cyanAccent.withAlpha(120),
-                                      borderRadius: BorderRadius.circular(2),
+                            Semantics(
+                              button: true,
+                              label: 'Expand or minimize replay controls',
+                              child: GestureDetector(
+                                key: const Key('replay_bottom_grab_handle'),
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.only(top: 2, bottom: 4),
+                                  child: Center(
+                                    child: Container(
+                                      width: 40,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.cyanAccent.withAlpha(120),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
                                     ),
                                   ),
                                 ),
