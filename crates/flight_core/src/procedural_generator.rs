@@ -380,6 +380,35 @@ mod tests {
     }
 
     #[test]
+    fn altitude_to_pressure_hpa_matches_standard_barometric_formula() {
+        // Sea level (0m) must equal standard sea-level pressure (1013.25 hPa)
+        let sea_level_p = ProceduralFlightGenerator::altitude_to_pressure_hpa(0.0);
+        assert!((sea_level_p - 1013.25).abs() < 1e-6);
+
+        // Pressure must monotonically decrease as altitude increases
+        let p_0 = ProceduralFlightGenerator::altitude_to_pressure_hpa(0.0);
+        let p_1000 = ProceduralFlightGenerator::altitude_to_pressure_hpa(1000.0);
+        let p_2000 = ProceduralFlightGenerator::altitude_to_pressure_hpa(2000.0);
+        let p_5000 = ProceduralFlightGenerator::altitude_to_pressure_hpa(5000.0);
+        let p_10000 = ProceduralFlightGenerator::altitude_to_pressure_hpa(10000.0);
+
+        assert!(p_0 > p_1000);
+        assert!(p_1000 > p_2000);
+        assert!(p_2000 > p_5000);
+        assert!(p_5000 > p_10000);
+
+        // Spot-check known approximate ISA standard barometric values
+        // At 1000m: ~898.7 hPa
+        assert!((p_1000 - 898.7).abs() < 1.0);
+        // At 2000m: ~794.9 hPa
+        assert!((p_2000 - 795.0).abs() < 1.0);
+
+        // Below sea level (-500m) should yield higher pressure than sea level
+        let p_below_sea = ProceduralFlightGenerator::altitude_to_pressure_hpa(-500.0);
+        assert!(p_below_sea > p_0);
+    }
+
+    #[test]
     fn telemetry_source_trait_integration_works() {
         let mut generator = ProceduralFlightGenerator::new(42, 1_000_000_000);
         assert_eq!(generator.name(), "ProceduralFlightGenerator::SteadyGlide");
