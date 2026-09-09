@@ -13,17 +13,17 @@ void main() {
           timestamp: DateTime.now(),
           latitude: 46.5,
           longitude: 8.5,
-          altitudeMeters: 1000,
-          speedKmh: 30,
-          climbRateMs: 1.5,
+          altitude: 1000,
+          speed: 30,
+          vario: 1.5,
         ),
         FlightPoint(
           timestamp: DateTime.now().add(const Duration(seconds: 10)),
           latitude: 46.6,
           longitude: 8.6,
-          altitudeMeters: 1200,
-          speedKmh: 35,
-          climbRateMs: 2.0,
+          altitude: 1200,
+          speed: 35,
+          vario: 2.0,
         ),
       ];
 
@@ -48,9 +48,9 @@ void main() {
           timestamp: DateTime.now(),
           latitude: 46.5,
           longitude: 8.5,
-          altitudeMeters: 1000,
-          speedKmh: 30,
-          climbRateMs: 1.5,
+          altitude: 1000,
+          speed: 30,
+          vario: 1.5,
         ),
       ];
 
@@ -59,9 +59,9 @@ void main() {
           timestamp: DateTime.now(),
           latitude: 46.5,
           longitude: 8.5,
-          altitudeMeters: 1000,
-          speedKmh: 30,
-          climbRateMs: 1.5,
+          altitude: 1000,
+          speed: 30,
+          vario: 1.5,
         ),
       ];
 
