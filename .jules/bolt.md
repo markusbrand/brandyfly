@@ -29,3 +29,7 @@
 ## 2026-09-08 - Use `repaint` Listenable in CustomPainter instead of AnimatedBuilder
 **Learning:** In Flutter, wrapping a `CustomPaint` widget inside an `AnimatedBuilder` to force it to redraw during animations causes the entire `CustomPaint` widget to be rebuilt and the `CustomPainter` to be re-allocated on every single frame.
 **Action:** Always pass the `Animation` or `Listenable` directly to the `CustomPainter`'s constructor and forward it to `super(repaint: animation)`. The painter will automatically trigger canvas redraws when the animation ticks without needing the parent widget to rebuild. Ensure you then access the animation's `.value` directly inside the `paint()` method.
+
+## 2026-09-09 - Zero-allocation ASCII case-insensitive search in protocol parsing
+**Learning:** In Rust protocol parsing hot paths, calling `.to_lowercase()` on string/byte payloads allocates a new heap `String` on every incoming frame. When matching against ASCII markers (e.g. credential tokens or NMEA sentence headers), checking slices directly with `as_bytes().windows().any(|w| w.eq_ignore_ascii_case(needle.as_bytes()))` eliminates all heap allocations and avoids Unicode conversion overhead.
+**Action:** Never use `.to_lowercase()` to perform case-insensitive ASCII pattern matching on incoming byte streams. Use zero-allocation slice windows with `.eq_ignore_ascii_case()` instead.

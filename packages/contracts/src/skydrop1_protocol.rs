@@ -259,6 +259,19 @@ pub fn calculate_nmea_checksum(payload: &str) -> u8 {
     checksum
 }
 
+#[inline]
+#[must_use]
+fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
+    let needle_bytes = needle.as_bytes();
+    if needle_bytes.is_empty() {
+        return true;
+    }
+    haystack
+        .as_bytes()
+        .windows(needle_bytes.len())
+        .any(|window| window.eq_ignore_ascii_case(needle_bytes))
+}
+
 /// Validates that a raw buffer contains no secrets, private tokens, or unsanitized precise coordinates.
 pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseError> {
     let text = match std::str::from_utf8(raw_bytes) {
@@ -269,8 +282,6 @@ pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseErr
             ));
         }
     };
-
-    let lower = text.to_lowercase();
 
     // Check for secrets / private credentials / auth tokens / pins
     let forbidden_secret_markers = [
@@ -284,7 +295,7 @@ pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseErr
         "private_key",
     ];
     for marker in &forbidden_secret_markers {
-        if lower.contains(marker) {
+        if contains_ignore_ascii_case(text, marker) {
             return Err(SkyDrop1ParseError::SanitizationViolation(
                 "forbidden_credential_detected",
             ));
@@ -292,15 +303,21 @@ pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseErr
     }
 
     // Check for unredacted NMEA GPS coordinates (GPGGA, GPRMC, GNGGA sentences with actual coordinates)
-    if (lower.contains("$gpgga") || lower.contains("$gprmc") || lower.contains("$gngga"))
-        && (lower.contains(",n,")
-            || lower.contains(",s,")
-            || lower.contains(",e,")
-            || lower.contains(",w,"))
-    {
-        return Err(SkyDrop1ParseError::SanitizationViolation(
-            "unredacted_private_coordinates_detected",
-        ));
+    let has_nmea_header = contains_ignore_ascii_case(text, "$gpgga")
+        || contains_ignore_ascii_case(text, "$gprmc")
+        || contains_ignore_ascii_case(text, "$gngga");
+
+    if has_nmea_header {
+        let has_coord_dir = contains_ignore_ascii_case(text, ",n,")
+            || contains_ignore_ascii_case(text, ",s,")
+            || contains_ignore_ascii_case(text, ",e,")
+            || contains_ignore_ascii_case(text, ",w,");
+
+        if has_coord_dir {
+            return Err(SkyDrop1ParseError::SanitizationViolation(
+                "unredacted_private_coordinates_detected",
+            ));
+        }
     }
 
     Ok(())
@@ -880,6 +897,25 @@ mod tests {
                 b"$GPGGA,123519,REDACTED,REDACTED,1,08,0.9,545.4,M,46.9,M,,*47"
             ),
             Ok(())
+        );
+    }
+
+    #[test]
+    fn benchmark_sanitize_skydrop_payload() {
+        let nominal_payload = b"$LK8EX1,101325,1500,150,21,95*3B\r\n";
+        let iterations = 100_000;
+
+        let start = std::time::Instant::now();
+        for _ in 0..iterations {
+            let res = sanitize_skydrop_payload(nominal_payload);
+            assert!(res.is_ok());
+        }
+        let elapsed = start.elapsed();
+        println!(
+            "Sanitized {} payloads in {:?} ({:.2} ns/op)",
+            iterations,
+            elapsed,
+            elapsed.as_nanos() as f64 / iterations as f64
         );
     }
 }
