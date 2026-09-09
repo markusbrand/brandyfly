@@ -12,3 +12,6 @@
 ## 2024-05-18 - Keyboard Accessibility in TextFields
 **Learning:** In Flutter, `TextField` widgets do not natively configure the on-screen keyboard's action button (like "Done" or "Next") or define what happens when it is pressed, which can disrupt form flow for users navigating with a virtual keyboard.
 **Action:** Always configure `TextField` widgets used in forms with `textInputAction` (e.g., `TextInputAction.next` or `TextInputAction.done`). For the final submission field, bind `onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus()` to ensure the keyboard is natively dismissed when the user completes the form.
+## 2024-09-08 - Required Semantics for Custom Grab Handles
+**Learning:** Custom interactive regions in Flutter, like drag/grab handles implemented purely with `GestureDetector` and basic `Container` shapes, are completely invisible and un-actionable to screen readers by default.
+**Action:** When implementing custom grab handles or toggles using `GestureDetector`, always wrap them in a `Semantics(button: true, label: '...')` widget to ensure they are properly identified and described to screen reader users.
