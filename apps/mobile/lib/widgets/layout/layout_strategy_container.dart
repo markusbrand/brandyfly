@@ -185,7 +185,12 @@ class LayoutStrategyContainer extends StatelessWidget {
                     ),
                   ),
                 ),
-                ..._buildGridGuides(totalWidth, contentHeight, cellWidth, cellHeight),
+                ..._buildGridGuides(
+                  totalWidth,
+                  contentHeight,
+                  cellWidth,
+                  cellHeight,
+                ),
               ],
               ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
                 final left = widgetModel.x * cellWidth;
@@ -243,7 +248,12 @@ class LayoutStrategyContainer extends StatelessWidget {
                     subdivisions: 2,
                   ),
                 ),
-                ..._buildGridGuides(totalWidth, contentHeight, cellWidth, cellHeight),
+                ..._buildGridGuides(
+                  totalWidth,
+                  contentHeight,
+                  cellWidth,
+                  cellHeight,
+                ),
               ],
               ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
                 final left = widgetModel.x * cellWidth;
@@ -332,7 +342,12 @@ class LayoutStrategyContainer extends StatelessWidget {
               ),
 
               if (isEditMode) ...[
-                ..._buildGridGuides(totalWidth, contentHeight, cellWidth, cellHeight),
+                ..._buildGridGuides(
+                  totalWidth,
+                  contentHeight,
+                  cellWidth,
+                  cellHeight,
+                ),
               ],
 
               ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
@@ -364,7 +379,9 @@ class LayoutStrategyContainer extends StatelessWidget {
     );
   }
 
-  List<WidgetPlacementModel> _getOrderedWidgets(List<WidgetPlacementModel> widgets) {
+  List<WidgetPlacementModel> _getOrderedWidgets(
+    List<WidgetPlacementModel> widgets,
+  ) {
     final list = List<WidgetPlacementModel>.from(widgets);
     list.sort((a, b) {
       int layerOf(WidgetType t) {
@@ -372,6 +389,7 @@ class LayoutStrategyContainer extends StatelessWidget {
         if (t == WidgetType.thermalMap) return 1;
         return 2;
       }
+
       return layerOf(a.type).compareTo(layerOf(b.type));
     });
     return list;
@@ -408,10 +426,7 @@ class LayoutStrategyContainer extends StatelessWidget {
           left: 0,
           right: 0,
           top: row * cellHeight,
-          child: Container(
-            height: 1,
-            color: Colors.cyanAccent.withAlpha(30),
-          ),
+          child: Container(height: 1, color: Colors.cyanAccent.withAlpha(30)),
         ),
       );
     }
@@ -549,11 +564,8 @@ class _WidgetEditFrame extends StatefulWidget {
 }
 
 class _WidgetEditFrameState extends State<_WidgetEditFrame> {
-  double _dragAccumX = 0;
-  double _dragAccumY = 0;
-
-  double _resizeAccumX = 0;
-  double _resizeAccumY = 0;
+  Offset _dragAccum = Offset.zero;
+  Offset _resizeAccum = Offset.zero;
 
   @override
   Widget build(BuildContext context) {
@@ -563,9 +575,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
           widget.model.type == WidgetType.thermalMap;
       return Padding(
         padding: isMapOrThermal ? EdgeInsets.zero : const EdgeInsets.all(1.5),
-        child: SizedBox.expand(
-          child: widget.child,
-        ),
+        child: SizedBox.expand(child: widget.child),
       );
     }
 
@@ -605,9 +615,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
               child: ClipRect(
                 child: Opacity(
                   opacity: 0.9,
-                  child: SizedBox.expand(
-                    child: widget.child,
-                  ),
+                  child: SizedBox.expand(child: widget.child),
                 ),
               ),
             ),
@@ -621,29 +629,27 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onPanStart: (_) {
-                  _dragAccumX = 0;
-                  _dragAccumY = 0;
+                  _dragAccum = Offset.zero;
                 },
                 onPanUpdate: (details) {
-                  _dragAccumX += details.delta.dx;
-                  _dragAccumY += details.delta.dy;
+                  _dragAccum += details.delta;
 
                   int dx = 0;
                   int dy = 0;
-                  if (_dragAccumX > widget.cellWidth * 0.4) {
+                  if (_dragAccum.dx > widget.cellWidth * 0.4) {
                     dx = 1;
-                    _dragAccumX = 0;
-                  } else if (_dragAccumX < -widget.cellWidth * 0.4) {
+                    _dragAccum = Offset(0, _dragAccum.dy);
+                  } else if (_dragAccum.dx < -widget.cellWidth * 0.4) {
                     dx = -1;
-                    _dragAccumX = 0;
+                    _dragAccum = Offset(0, _dragAccum.dy);
                   }
 
-                  if (_dragAccumY > widget.cellHeight * 0.4) {
+                  if (_dragAccum.dy > widget.cellHeight * 0.4) {
                     dy = 1;
-                    _dragAccumY = 0;
-                  } else if (_dragAccumY < -widget.cellHeight * 0.4) {
+                    _dragAccum = Offset(_dragAccum.dx, 0);
+                  } else if (_dragAccum.dy < -widget.cellHeight * 0.4) {
                     dy = -1;
-                    _dragAccumY = 0;
+                    _dragAccum = Offset(_dragAccum.dx, 0);
                   }
 
                   if (dx != 0 || dy != 0) {
@@ -655,7 +661,9 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.cyan.shade900.withAlpha(220),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(6),
+                      ),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 2),
                     child: Row(
@@ -690,12 +698,16 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                         // Delete Button
                         IconButton(
                           key: Key('btn_delete_$id'),
-                          onPressed: () => widget.screenManager.removeWidget(id),
+                          onPressed: () =>
+                              widget.screenManager.removeWidget(id),
                           padding: const EdgeInsets.symmetric(horizontal: 1),
                           constraints: const BoxConstraints(),
                           iconSize: isCompact ? 11 : 14,
                           tooltip: 'Remove Widget',
-                          icon: const Icon(Icons.close, color: Colors.redAccent),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.redAccent,
+                          ),
                         ),
                       ],
                     ),
@@ -734,7 +746,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             tooltip: 'Move Left',
                             enabled: model.x > 0,
                             iconSize: isCompact ? 12 : 15,
-                            onPressed: () => widget.screenManager.moveWidget(id, -1, 0),
+                            onPressed: () =>
+                                widget.screenManager.moveWidget(id, -1, 0),
                           ),
                           _miniButton(
                             key: Key('btn_move_right_$id'),
@@ -742,7 +755,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             tooltip: 'Move Right',
                             enabled: model.x + model.w < 8,
                             iconSize: isCompact ? 12 : 15,
-                            onPressed: () => widget.screenManager.moveWidget(id, 1, 0),
+                            onPressed: () =>
+                                widget.screenManager.moveWidget(id, 1, 0),
                           ),
                           _miniButton(
                             key: Key('btn_move_up_$id'),
@@ -750,7 +764,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             tooltip: 'Move Up',
                             enabled: model.y > 0,
                             iconSize: isCompact ? 12 : 15,
-                            onPressed: () => widget.screenManager.moveWidget(id, 0, -1),
+                            onPressed: () =>
+                                widget.screenManager.moveWidget(id, 0, -1),
                           ),
                           _miniButton(
                             key: Key('btn_move_down_$id'),
@@ -758,7 +773,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             tooltip: 'Move Down',
                             enabled: true,
                             iconSize: isCompact ? 12 : 15,
-                            onPressed: () => widget.screenManager.moveWidget(id, 0, 1),
+                            onPressed: () =>
+                                widget.screenManager.moveWidget(id, 0, 1),
                           ),
                         ],
                       ),
@@ -774,7 +790,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             tooltip: 'Decrease Width',
                             enabled: model.w > 1,
                             fontSize: isCompact ? 8 : 9,
-                            onPressed: () => widget.screenManager.resizeWidget(id, -1, 0),
+                            onPressed: () =>
+                                widget.screenManager.resizeWidget(id, -1, 0),
                           ),
                           _textMiniButton(
                             key: Key('btn_inc_width_$id'),
@@ -782,7 +799,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             tooltip: 'Increase Width',
                             enabled: model.x + model.w < 8,
                             fontSize: isCompact ? 8 : 9,
-                            onPressed: () => widget.screenManager.resizeWidget(id, 1, 0),
+                            onPressed: () =>
+                                widget.screenManager.resizeWidget(id, 1, 0),
                           ),
                           const SizedBox(width: 2),
                           // Height dec/inc
@@ -792,7 +810,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             tooltip: 'Decrease Height',
                             enabled: model.h > 1,
                             fontSize: isCompact ? 8 : 9,
-                            onPressed: () => widget.screenManager.resizeWidget(id, 0, -1),
+                            onPressed: () =>
+                                widget.screenManager.resizeWidget(id, 0, -1),
                           ),
                           _textMiniButton(
                             key: Key('btn_inc_height_$id'),
@@ -800,7 +819,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             tooltip: 'Increase Height',
                             enabled: model.h < 16,
                             fontSize: isCompact ? 8 : 9,
-                            onPressed: () => widget.screenManager.resizeWidget(id, 0, 1),
+                            onPressed: () =>
+                                widget.screenManager.resizeWidget(id, 0, 1),
                           ),
                         ],
                       ),
@@ -822,29 +842,27 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                   key: Key('resize_handle_$id'),
                   behavior: HitTestBehavior.opaque,
                   onPanStart: (_) {
-                    _resizeAccumX = 0;
-                    _resizeAccumY = 0;
+                    _resizeAccum = Offset.zero;
                   },
                   onPanUpdate: (details) {
-                    _resizeAccumX += details.delta.dx;
-                    _resizeAccumY += details.delta.dy;
+                    _resizeAccum += details.delta;
 
                     int dw = 0;
                     int dh = 0;
-                    if (_resizeAccumX > widget.cellWidth * 0.3) {
+                    if (_resizeAccum.dx > widget.cellWidth * 0.3) {
                       dw = 1;
-                      _resizeAccumX = 0;
-                    } else if (_resizeAccumX < -widget.cellWidth * 0.3) {
+                      _resizeAccum = Offset(0, _resizeAccum.dy);
+                    } else if (_resizeAccum.dx < -widget.cellWidth * 0.3) {
                       dw = -1;
-                      _resizeAccumX = 0;
+                      _resizeAccum = Offset(0, _resizeAccum.dy);
                     }
 
-                    if (_resizeAccumY > widget.cellHeight * 0.3) {
+                    if (_resizeAccum.dy > widget.cellHeight * 0.3) {
                       dh = 1;
-                      _resizeAccumY = 0;
-                    } else if (_resizeAccumY < -widget.cellHeight * 0.3) {
+                      _resizeAccum = Offset(_resizeAccum.dx, 0);
+                    } else if (_resizeAccum.dy < -widget.cellHeight * 0.3) {
                       dh = -1;
-                      _resizeAccumY = 0;
+                      _resizeAccum = Offset(_resizeAccum.dx, 0);
                     }
 
                     if (dw != 0 || dh != 0) {
@@ -898,10 +916,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
       constraints: const BoxConstraints(),
       iconSize: iconSize,
       tooltip: tooltip,
-      icon: Icon(
-        icon,
-        color: enabled ? Colors.cyanAccent : Colors.white24,
-      ),
+      icon: Icon(icon, color: enabled ? Colors.cyanAccent : Colors.white24),
     );
   }
 
@@ -948,7 +963,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     NumericWidgetStyle curNumericStyle = model.effectiveNumericStyle;
     WindWidgetStyle curWindStyle = model.effectiveWindStyle;
     LiftSinkBarStyle curVarioStyle = model.effectiveVarioStyle;
-    AltitudeChartStyle curAltitudeChartStyle = model.effectiveAltitudeChartStyle;
+    AltitudeChartStyle curAltitudeChartStyle =
+        model.effectiveAltitudeChartStyle;
     MapWidgetStyle curMapStyle = model.effectiveMapStyle;
     MapOrientation curMapOrientation = model.effectiveMapOrientation;
     bool curMapAirspace = model.effectiveMapShowAirspace;
@@ -967,7 +983,9 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: Colors.blueGrey.shade900,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Row(
                 children: [
                   const Icon(Icons.tune, color: Colors.cyanAccent, size: 20),
@@ -996,23 +1014,39 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                       Card(
                         color: Colors.black38,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           child: Column(
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('Position X:', style: TextStyle(color: Colors.white70)),
+                                  const Text(
+                                    'Position X:',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
                                   Row(
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.remove, size: 18),
+                                        icon: const Icon(
+                                          Icons.remove,
+                                          size: 18,
+                                        ),
                                         tooltip: 'Decrease X position',
                                         onPressed: curX > 0
                                             ? () => setDialogState(() => curX--)
                                             : null,
                                       ),
-                                      Text('$curX', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                      Text(
+                                        '$curX',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
                                         tooltip: 'Increase X position',
@@ -1025,42 +1059,69 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                 ],
                               ),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('Position Y:', style: TextStyle(color: Colors.white70)),
+                                  const Text(
+                                    'Position Y:',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
                                   Row(
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.remove, size: 18),
+                                        icon: const Icon(
+                                          Icons.remove,
+                                          size: 18,
+                                        ),
                                         tooltip: 'Decrease Y position',
                                         onPressed: curY > 0
                                             ? () => setDialogState(() => curY--)
                                             : null,
                                       ),
-                                      Text('$curY', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                      Text(
+                                        '$curY',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
                                         tooltip: 'Increase Y position',
-                                        onPressed: () => setDialogState(() => curY++),
+                                        onPressed: () =>
+                                            setDialogState(() => curY++),
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('Width:', style: TextStyle(color: Colors.white70)),
+                                  const Text(
+                                    'Width:',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
                                   Row(
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.remove, size: 18),
+                                        icon: const Icon(
+                                          Icons.remove,
+                                          size: 18,
+                                        ),
                                         tooltip: 'Decrease width',
                                         onPressed: curW > 1
                                             ? () => setDialogState(() => curW--)
                                             : null,
                                       ),
-                                      Text('$curW', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                      Text(
+                                        '$curW',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
                                         tooltip: 'Increase width',
@@ -1073,19 +1134,32 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                 ],
                               ),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('Height:', style: TextStyle(color: Colors.white70)),
+                                  const Text(
+                                    'Height:',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
                                   Row(
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.remove, size: 18),
+                                        icon: const Icon(
+                                          Icons.remove,
+                                          size: 18,
+                                        ),
                                         tooltip: 'Decrease height',
                                         onPressed: curH > 1
                                             ? () => setDialogState(() => curH--)
                                             : null,
                                       ),
-                                      Text('$curH', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                      Text(
+                                        '$curH',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                       IconButton(
                                         icon: const Icon(Icons.add, size: 18),
                                         tooltip: 'Increase height',
@@ -1122,25 +1196,33 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   label: 'Minimalist',
                                   value: NumericWidgetStyle.minimalistText,
                                   selectedValue: curNumericStyle,
-                                  onSelected: (val) => setDialogState(() => curNumericStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curNumericStyle = val,
+                                  ),
                                 ),
                                 _styleChip<NumericWidgetStyle>(
                                   label: 'High Contrast',
                                   value: NumericWidgetStyle.highContrastBox,
                                   selectedValue: curNumericStyle,
-                                  onSelected: (val) => setDialogState(() => curNumericStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curNumericStyle = val,
+                                  ),
                                 ),
                                 _styleChip<NumericWidgetStyle>(
                                   label: 'Circular Gauge',
                                   value: NumericWidgetStyle.circularGauge,
                                   selectedValue: curNumericStyle,
-                                  onSelected: (val) => setDialogState(() => curNumericStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curNumericStyle = val,
+                                  ),
                                 ),
                                 _styleChip<NumericWidgetStyle>(
                                   label: 'Retro Digital',
                                   value: NumericWidgetStyle.retroDigital,
                                   selectedValue: curNumericStyle,
-                                  onSelected: (val) => setDialogState(() => curNumericStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curNumericStyle = val,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1160,19 +1242,22 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   label: 'Relative Arrow',
                                   value: WindWidgetStyle.relativeArrow,
                                   selectedValue: curWindStyle,
-                                  onSelected: (val) => setDialogState(() => curWindStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curWindStyle = val),
                                 ),
                                 _styleChip<WindWidgetStyle>(
                                   label: 'Compass Rose',
                                   value: WindWidgetStyle.miniCompassRose,
                                   selectedValue: curWindStyle,
-                                  onSelected: (val) => setDialogState(() => curWindStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curWindStyle = val),
                                 ),
                                 _styleChip<WindWidgetStyle>(
                                   label: 'Windsock',
                                   value: WindWidgetStyle.windsockIndicator,
                                   selectedValue: curWindStyle,
-                                  onSelected: (val) => setDialogState(() => curWindStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curWindStyle = val),
                                 ),
                               ],
                             ),
@@ -1192,19 +1277,22 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   label: 'Vertical Edge Bar',
                                   value: LiftSinkBarStyle.verticalEdgeBar,
                                   selectedValue: curVarioStyle,
-                                  onSelected: (val) => setDialogState(() => curVarioStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curVarioStyle = val),
                                 ),
                                 _styleChip<LiftSinkBarStyle>(
                                   label: 'Analog Dial',
                                   value: LiftSinkBarStyle.analogDial,
                                   selectedValue: curVarioStyle,
-                                  onSelected: (val) => setDialogState(() => curVarioStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curVarioStyle = val),
                                 ),
                                 _styleChip<LiftSinkBarStyle>(
                                   label: 'Edge Glow',
                                   value: LiftSinkBarStyle.screenEdgeGlow,
                                   selectedValue: curVarioStyle,
-                                  onSelected: (val) => setDialogState(() => curVarioStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curVarioStyle = val),
                                 ),
                               ],
                             ),
@@ -1224,19 +1312,25 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   label: 'Sparkline',
                                   value: AltitudeChartStyle.minimalSparkline,
                                   selectedValue: curAltitudeChartStyle,
-                                  onSelected: (val) => setDialogState(() => curAltitudeChartStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curAltitudeChartStyle = val,
+                                  ),
                                 ),
                                 _styleChip<AltitudeChartStyle>(
                                   label: 'Filled Area',
                                   value: AltitudeChartStyle.filledAreaGraph,
                                   selectedValue: curAltitudeChartStyle,
-                                  onSelected: (val) => setDialogState(() => curAltitudeChartStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curAltitudeChartStyle = val,
+                                  ),
                                 ),
                                 _styleChip<AltitudeChartStyle>(
                                   label: 'Detailed Grid',
                                   value: AltitudeChartStyle.detailedGrid,
                                   selectedValue: curAltitudeChartStyle,
-                                  onSelected: (val) => setDialogState(() => curAltitudeChartStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curAltitudeChartStyle = val,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1256,25 +1350,29 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   label: 'Alpine Topo',
                                   value: MapWidgetStyle.topoContours,
                                   selectedValue: curMapStyle,
-                                  onSelected: (val) => setDialogState(() => curMapStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curMapStyle = val),
                                 ),
                                 _styleChip<MapWidgetStyle>(
                                   label: 'Vector HUD',
                                   value: MapWidgetStyle.minimalVector,
                                   selectedValue: curMapStyle,
-                                  onSelected: (val) => setDialogState(() => curMapStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curMapStyle = val),
                                 ),
                                 _styleChip<MapWidgetStyle>(
                                   label: 'Thermal Radar',
                                   value: MapWidgetStyle.thermalHeatmap,
                                   selectedValue: curMapStyle,
-                                  onSelected: (val) => setDialogState(() => curMapStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curMapStyle = val),
                                 ),
                                 _styleChip<MapWidgetStyle>(
                                   label: 'Shaded Relief',
                                   value: MapWidgetStyle.satelliteTerrain,
                                   selectedValue: curMapStyle,
-                                  onSelected: (val) => setDialogState(() => curMapStyle = val),
+                                  onSelected: (val) =>
+                                      setDialogState(() => curMapStyle = val),
                                 ),
                               ],
                             ),
@@ -1290,7 +1388,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Zoom: ${curMapZoomLevel.toStringAsFixed(1)}x',
@@ -1303,19 +1402,34 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                     Row(
                                       children: [
                                         IconButton(
-                                          key: const Key('btn_config_zoom_decrease'),
-                                          icon: const Icon(Icons.remove, size: 18),
+                                          key: const Key(
+                                            'btn_config_zoom_decrease',
+                                          ),
+                                          icon: const Icon(
+                                            Icons.remove,
+                                            size: 18,
+                                          ),
                                           tooltip: 'Decrease map zoom',
                                           onPressed: curMapZoomLevel > 3.0
-                                              ? () => setDialogState(() => curMapZoomLevel = (curMapZoomLevel - 0.5).clamp(3.0, 18.0))
+                                              ? () => setDialogState(
+                                                  () => curMapZoomLevel =
+                                                      (curMapZoomLevel - 0.5)
+                                                          .clamp(3.0, 18.0),
+                                                )
                                               : null,
                                         ),
                                         IconButton(
-                                          key: const Key('btn_config_zoom_increase'),
+                                          key: const Key(
+                                            'btn_config_zoom_increase',
+                                          ),
                                           icon: const Icon(Icons.add, size: 18),
                                           tooltip: 'Increase map zoom',
                                           onPressed: curMapZoomLevel < 18.0
-                                              ? () => setDialogState(() => curMapZoomLevel = (curMapZoomLevel + 0.5).clamp(3.0, 18.0))
+                                              ? () => setDialogState(
+                                                  () => curMapZoomLevel =
+                                                      (curMapZoomLevel + 0.5)
+                                                          .clamp(3.0, 18.0),
+                                                )
                                               : null,
                                         ),
                                       ],
@@ -1328,14 +1442,20 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   min: 3.0,
                                   max: 18.0,
                                   divisions: 30,
-                                  label: '${curMapZoomLevel.toStringAsFixed(1)}x',
+                                  label:
+                                      '${curMapZoomLevel.toStringAsFixed(1)}x',
                                   activeColor: Colors.cyanAccent,
-                                  onChanged: (val) => setDialogState(() => curMapZoomLevel = val),
+                                  onChanged: (val) => setDialogState(
+                                    () => curMapZoomLevel = val,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 const Text(
                                   'Presets:',
-                                  style: TextStyle(color: Colors.white60, fontSize: 11),
+                                  style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 11,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Wrap(
@@ -1343,24 +1463,56 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   runSpacing: 4,
                                   children: [
                                     ActionChip(
-                                      label: const Text('Overview (10.0x)', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                                      label: const Text(
+                                        'Overview (10.0x)',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
                                       backgroundColor: Colors.black45,
-                                      onPressed: () => setDialogState(() => curMapZoomLevel = 10.0),
+                                      onPressed: () => setDialogState(
+                                        () => curMapZoomLevel = 10.0,
+                                      ),
                                     ),
                                     ActionChip(
-                                      label: const Text('XC Cruise (13.5x)', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                                      label: const Text(
+                                        'XC Cruise (13.5x)',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
                                       backgroundColor: Colors.black45,
-                                      onPressed: () => setDialogState(() => curMapZoomLevel = 13.5),
+                                      onPressed: () => setDialogState(
+                                        () => curMapZoomLevel = 13.5,
+                                      ),
                                     ),
                                     ActionChip(
-                                      label: const Text('Thermal (15.5x)', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                                      label: const Text(
+                                        'Thermal (15.5x)',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
                                       backgroundColor: Colors.black45,
-                                      onPressed: () => setDialogState(() => curMapZoomLevel = 15.5),
+                                      onPressed: () => setDialogState(
+                                        () => curMapZoomLevel = 15.5,
+                                      ),
                                     ),
                                     ActionChip(
-                                      label: const Text('LZ Final (16.5x)', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                                      label: const Text(
+                                        'LZ Final (16.5x)',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
                                       backgroundColor: Colors.black45,
-                                      onPressed: () => setDialogState(() => curMapZoomLevel = 16.5),
+                                      onPressed: () => setDialogState(
+                                        () => curMapZoomLevel = 16.5,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -1382,19 +1534,25 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   label: 'Track Up',
                                   value: MapOrientation.trackUp,
                                   selectedValue: curMapOrientation,
-                                  onSelected: (val) => setDialogState(() => curMapOrientation = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curMapOrientation = val,
+                                  ),
                                 ),
                                 _styleChip<MapOrientation>(
                                   label: 'North Up',
                                   value: MapOrientation.northUp,
                                   selectedValue: curMapOrientation,
-                                  onSelected: (val) => setDialogState(() => curMapOrientation = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curMapOrientation = val,
+                                  ),
                                 ),
                                 _styleChip<MapOrientation>(
                                   label: 'Heading Up',
                                   value: MapOrientation.headingUp,
                                   selectedValue: curMapOrientation,
-                                  onSelected: (val) => setDialogState(() => curMapOrientation = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curMapOrientation = val,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1407,32 +1565,68 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                           child: Column(
                             children: [
                               SwitchListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                title: const Text('Airspaces (CTR / TMA)', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                title: const Text(
+                                  'Airspaces (CTR / TMA)',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 value: curMapAirspace,
                                 activeThumbColor: Colors.cyanAccent,
-                                onChanged: (val) => setDialogState(() => curMapAirspace = val),
+                                onChanged: (val) =>
+                                    setDialogState(() => curMapAirspace = val),
                               ),
                               SwitchListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                title: const Text('Thermal Updraft Hotspots', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                title: const Text(
+                                  'Thermal Updraft Hotspots',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 value: curMapThermals,
                                 activeThumbColor: Colors.cyanAccent,
-                                onChanged: (val) => setDialogState(() => curMapThermals = val),
+                                onChanged: (val) =>
+                                    setDialogState(() => curMapThermals = val),
                               ),
                               SwitchListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                title: const Text('Flight Trail / Breadcrumbs', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                title: const Text(
+                                  'Flight Trail / Breadcrumbs',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 value: curMapTrack,
                                 activeThumbColor: Colors.cyanAccent,
-                                onChanged: (val) => setDialogState(() => curMapTrack = val),
+                                onChanged: (val) =>
+                                    setDialogState(() => curMapTrack = val),
                               ),
                               SwitchListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                title: const Text('Topographic Contours', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                title: const Text(
+                                  'Topographic Contours',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 value: curMapContours,
                                 activeThumbColor: Colors.cyanAccent,
-                                onChanged: (val) => setDialogState(() => curMapContours = val),
+                                onChanged: (val) =>
+                                    setDialogState(() => curMapContours = val),
                               ),
                             ],
                           ),
@@ -1451,19 +1645,25 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   label: 'Option 1: XCtrack Bubbles',
                                   value: ThermalMapStyle.xctrackBubbles,
                                   selectedValue: curThermalMapStyle,
-                                  onSelected: (val) => setDialogState(() => curThermalMapStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curThermalMapStyle = val,
+                                  ),
                                 ),
                                 _styleChip<ThermalMapStyle>(
                                   label: 'Option 2: Burnair Core Assist',
                                   value: ThermalMapStyle.burnairCore,
                                   selectedValue: curThermalMapStyle,
-                                  onSelected: (val) => setDialogState(() => curThermalMapStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curThermalMapStyle = val,
+                                  ),
                                 ),
                                 _styleChip<ThermalMapStyle>(
                                   label: 'Option 3: Navigator Ribbon',
                                   value: ThermalMapStyle.navigatorRibbon,
                                   selectedValue: curThermalMapStyle,
-                                  onSelected: (val) => setDialogState(() => curThermalMapStyle = val),
+                                  onSelected: (val) => setDialogState(
+                                    () => curThermalMapStyle = val,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1474,12 +1674,28 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                         Card(
                           color: Colors.black38,
                           child: SwitchListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                            title: const Text('Show Thermal Core Center & Drift', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                            subtitle: const Text('Draws estimated lift core centroid with wind vector', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
+                            title: const Text(
+                              'Show Thermal Core Center & Drift',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Draws estimated lift core centroid with wind vector',
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 11,
+                              ),
+                            ),
                             value: curThermalMapShowCore,
                             activeThumbColor: Colors.cyanAccent,
-                            onChanged: (val) => setDialogState(() => curThermalMapShowCore = val),
+                            onChanged: (val) => setDialogState(
+                              () => curThermalMapShowCore = val,
+                            ),
                           ),
                         ),
                       ],
@@ -1490,10 +1706,15 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan.shade700),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.cyan.shade700,
+                  ),
                   onPressed: () {
                     final updated = model.copyWith(
                       x: curX,
@@ -1518,7 +1739,13 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                     widget.screenManager.updateWidgetPlacement(updated);
                     Navigator.pop(ctx);
                   },
-                  child: const Text('Apply', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Apply',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             );
