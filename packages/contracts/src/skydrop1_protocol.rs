@@ -398,31 +398,21 @@ fn parse_lk8ex1_sentence<'a>(
     // field 4 = temperature in C (e.g. 21 or 9999 for invalid)
     // field 5 = battery percentage or mV (e.g. 98 or 999 for invalid)
 
-    let raw_pressure = parts
-        .next()
-        .ok_or(SkyDrop1ParseError::MalformedFraming(
-            "lk8ex1_insufficient_fields",
-        ))?;
-    let raw_altitude = parts
-        .next()
-        .ok_or(SkyDrop1ParseError::MalformedFraming(
-            "lk8ex1_insufficient_fields",
-        ))?;
-    let raw_vario = parts
-        .next()
-        .ok_or(SkyDrop1ParseError::MalformedFraming(
-            "lk8ex1_insufficient_fields",
-        ))?;
-    let raw_temp = parts
-        .next()
-        .ok_or(SkyDrop1ParseError::MalformedFraming(
-            "lk8ex1_insufficient_fields",
-        ))?;
-    let raw_battery = parts
-        .next()
-        .ok_or(SkyDrop1ParseError::MalformedFraming(
-            "lk8ex1_insufficient_fields",
-        ))?;
+    let raw_pressure = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
+    let raw_altitude = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
+    let raw_vario = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
+    let raw_temp = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
+    let raw_battery = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
 
     let pressure_hpa = parse_pressure_field(raw_pressure)?;
     let altitude_m = parse_altitude_field(raw_altitude)?;
