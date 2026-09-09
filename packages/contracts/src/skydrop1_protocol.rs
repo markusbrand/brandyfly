@@ -311,7 +311,9 @@ pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseErr
     }
 
     // Check for unredacted NMEA GPS coordinates (GPGGA, GPRMC, GNGGA sentences with actual coordinates)
-    if (lower_str.contains("$gpgga") || lower_str.contains("$gprmc") || lower_str.contains("$gngga"))
+    if (lower_str.contains("$gpgga")
+        || lower_str.contains("$gprmc")
+        || lower_str.contains("$gngga"))
         && (lower_str.contains(",n,")
             || lower_str.contains(",s,")
             || lower_str.contains(",e,")
