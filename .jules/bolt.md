@@ -29,3 +29,7 @@
 ## 2026-09-08 - Use `repaint` Listenable in CustomPainter instead of AnimatedBuilder
 **Learning:** In Flutter, wrapping a `CustomPaint` widget inside an `AnimatedBuilder` to force it to redraw during animations causes the entire `CustomPaint` widget to be rebuilt and the `CustomPainter` to be re-allocated on every single frame.
 **Action:** Always pass the `Animation` or `Listenable` directly to the `CustomPainter`'s constructor and forward it to `super(repaint: animation)`. The painter will automatically trigger canvas redraws when the animation ticks without needing the parent widget to rebuild. Ensure you then access the animation's `.value` directly inside the `paint()` method.
+
+## 2026-09-09 - Use stack buffer for short telemetry frame lowercasing
+**Learning:** Calling `text.to_lowercase()` on incoming raw telemetry frames allocates a new heap `String` on every frame parsing invocation. In high-frequency telemetry parsers where frames are short (e.g. NMEA frames <= 128 bytes), these allocations trigger unnecessary heap fragmentation and GC pressure.
+**Action:** Use a fixed-size stack buffer (e.g. `[u8; 128]`) with `make_ascii_lowercase()` for small payloads, falling back to heap allocation only when raw byte length exceeds the buffer capacity.

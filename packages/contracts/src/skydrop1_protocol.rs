@@ -261,7 +261,28 @@ pub fn calculate_nmea_checksum(payload: &str) -> u8 {
 
 /// Validates that a raw buffer contains no secrets, private tokens, or unsanitized precise coordinates.
 pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseError> {
-    let text = match std::str::from_utf8(raw_bytes) {
+    // Fast path: NMEA payloads are strictly ASCII.
+    if !raw_bytes.is_ascii() && std::str::from_utf8(raw_bytes).is_err() {
+        return Err(SkyDrop1ParseError::SanitizationViolation(
+            "non_utf8_binary_payload",
+        ));
+    }
+
+    // NMEA / SkyDrop sentences are short (typically <= 82 bytes, max 128 bytes).
+    // Use a small stack buffer to perform ASCII lowercasing without allocating a heap String on the hot path.
+    let mut stack_buf = [0u8; 128];
+    let heap_buf;
+    let lower_bytes: &[u8] = if raw_bytes.len() <= stack_buf.len() {
+        let buf = &mut stack_buf[..raw_bytes.len()];
+        buf.copy_from_slice(raw_bytes);
+        buf.make_ascii_lowercase();
+        buf
+    } else {
+        heap_buf = raw_bytes.to_ascii_lowercase();
+        &heap_buf
+    };
+
+    let lower_str = match std::str::from_utf8(lower_bytes) {
         Ok(s) => s,
         Err(_) => {
             return Err(SkyDrop1ParseError::SanitizationViolation(
@@ -269,8 +290,6 @@ pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseErr
             ));
         }
     };
-
-    let lower = text.to_lowercase();
 
     // Check for secrets / private credentials / auth tokens / pins
     let forbidden_secret_markers = [
@@ -284,7 +303,7 @@ pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseErr
         "private_key",
     ];
     for marker in &forbidden_secret_markers {
-        if lower.contains(marker) {
+        if lower_str.contains(marker) {
             return Err(SkyDrop1ParseError::SanitizationViolation(
                 "forbidden_credential_detected",
             ));
@@ -292,11 +311,11 @@ pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseErr
     }
 
     // Check for unredacted NMEA GPS coordinates (GPGGA, GPRMC, GNGGA sentences with actual coordinates)
-    if (lower.contains("$gpgga") || lower.contains("$gprmc") || lower.contains("$gngga"))
-        && (lower.contains(",n,")
-            || lower.contains(",s,")
-            || lower.contains(",e,")
-            || lower.contains(",w,"))
+    if (lower_str.contains("$gpgga") || lower_str.contains("$gprmc") || lower_str.contains("$gngga"))
+        && (lower_str.contains(",n,")
+            || lower_str.contains(",s,")
+            || lower_str.contains(",e,")
+            || lower_str.contains(",w,"))
     {
         return Err(SkyDrop1ParseError::SanitizationViolation(
             "unredacted_private_coordinates_detected",
