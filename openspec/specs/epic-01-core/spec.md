@@ -3,7 +3,7 @@ id: EPIC-01-CORE
 type: epic
 title: Core Monorepo and Flight Pipeline Architecture
 issue_number: 133
-status: open
+status: closed
 labels:
   - epic
   - openspec
@@ -27,7 +27,7 @@ and mapping subsystems behind distinct, verifiable boundaries.
 - **THEN** each foundational subsystem has an unambiguous specification, clear boundaries, and isolated tests
 
 ## Sub-Specs
-- [ ] `SPEC-CONTINUOUS-VALIDATION` - Continuous Validation
+- [x] `SPEC-CONTINUOUS-VALIDATION` - Continuous Validation
 - [x] `SPEC-REPOSITORY-FOUNDATION` - Repository Foundation
 - [x] `SPEC-NATIVE-FLIGHT-PIPELINE` - Native Flight Pipeline Validation
 - [x] `SPEC-SKYDROP1-TRANSPORT` - SkyDrop 1 Transport Validation
