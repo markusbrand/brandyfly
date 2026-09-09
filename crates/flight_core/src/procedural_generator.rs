@@ -429,10 +429,7 @@ mod tests {
 
         // Theoretical troposphere limit altitude (44330m) should result in 0 hPa
         let p_top = ProceduralFlightGenerator::altitude_to_pressure_hpa(44330.0);
-        assert!(
-            p_top.abs() < 1e-6,
-            "Expected ~0 hPa at 44330m, got {p_top}"
-        );
+        assert!(p_top.abs() < 1e-6, "Expected ~0 hPa at 44330m, got {p_top}");
 
         // Verify monotonicity: pressure decreases as altitude increases
         let altitudes = [-500.0, 0.0, 500.0, 1000.0, 1500.0, 3000.0, 5000.0];
