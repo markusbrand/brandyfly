@@ -4,7 +4,7 @@ type: sub-spec
 parent: EPIC-01-CORE
 title: Continuous Validation
 issue_number: 134
-status: open
+status: closed
 labels:
   - spec
   - openspec
