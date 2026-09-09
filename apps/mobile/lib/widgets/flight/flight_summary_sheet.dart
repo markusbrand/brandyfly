@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/flight_model.dart';
 import '../../services/flight_storage_service.dart';
 import '../../services/xcontest_upload_service.dart';
+import 'mini_track_painter.dart';
 
 class FlightSummarySheet extends StatefulWidget {
   const FlightSummarySheet({
@@ -77,7 +78,8 @@ class _FlightSummarySheetState extends State<FlightSummarySheet> {
       } else if (!widget.uploadService.isOnline) {
         _uploadMessage = 'Offline: Flight queued for automatic upload.';
       } else {
-        _uploadMessage = 'Upload failed. Check XContest credentials in Settings.';
+        _uploadMessage =
+            'Upload failed. Check XContest credentials in Settings.';
       }
     });
   }
@@ -117,7 +119,11 @@ class _FlightSummarySheetState extends State<FlightSummarySheet> {
             // Header: Title & Landing badge
             Row(
               children: [
-                const Icon(Icons.flight_land, color: Colors.greenAccent, size: 28),
+                const Icon(
+                  Icons.flight_land,
+                  color: Colors.greenAccent,
+                  size: 28,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -162,7 +168,7 @@ class _FlightSummarySheetState extends State<FlightSummarySheet> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: CustomPaint(
-                  painter: _MiniTrackPainter(widget.flight.points),
+                  painter: MiniTrackPainter(widget.flight.points),
                   child: const Center(
                     child: Text(
                       'Track Preview',
@@ -278,7 +284,9 @@ class _FlightSummarySheetState extends State<FlightSummarySheet> {
                       ),
                     )
                   : const Icon(Icons.cloud_upload),
-              label: Text(_isUploading ? 'Uploading...' : 'Upload to XContest.org'),
+              label: Text(
+                _isUploading ? 'Uploading...' : 'Upload to XContest.org',
+              ),
               onPressed: _isUploading ? null : _handleUpload,
             ),
             const SizedBox(height: 8),
@@ -347,57 +355,4 @@ class _StatCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MiniTrackPainter extends CustomPainter {
-  const _MiniTrackPainter(this.points);
-
-  final List<FlightPoint> points;
-
-  // ⚡ Bolt: Cache Paint objects statically to avoid per-frame allocations without breaking const constructor
-  static final Paint _trackPaint = Paint()
-    ..color = Colors.cyanAccent
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 2.5
-    ..strokeCap = StrokeCap.round
-    ..strokeJoin = StrokeJoin.round;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 2) return;
-
-    var minLat = points.first.latitude;
-    var maxLat = points.first.latitude;
-    var minLon = points.first.longitude;
-    var maxLon = points.first.longitude;
-
-    for (final p in points) {
-      if (p.latitude < minLat) minLat = p.latitude;
-      if (p.latitude > maxLat) maxLat = p.latitude;
-      if (p.longitude < minLon) minLon = p.longitude;
-      if (p.longitude > maxLon) maxLon = p.longitude;
-    }
-
-    final latSpan = (maxLat - minLat).clamp(0.0001, 100.0);
-    final lonSpan = (maxLon - minLon).clamp(0.0001, 100.0);
-
-    final path = Path();
-
-    for (var i = 0; i < points.length; i++) {
-      final p = points[i];
-      final x = 20.0 + ((p.longitude - minLon) / lonSpan) * (size.width - 40.0);
-      final y = size.height - 20.0 - (((p.latitude - minLat) / latSpan) * (size.height - 40.0));
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    canvas.drawPath(path, _trackPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _MiniTrackPainter oldDelegate) => oldDelegate.points != points;
 }
