@@ -74,7 +74,7 @@ class MaplibreAdapter implements MapEngineAdapter {
     debugPrint('[maplibre adapter] overlays ready for injection');
   }
 
-  String _buildStyleJson(String basePath) {
+  String buildStyleJson(String basePath) {
     // Offline style using local PMTiles via pmtiles:// scheme.
     return '''
 {
@@ -151,7 +151,7 @@ class _MaplibreAdapterWidgetState extends State<_MaplibreAdapterWidget> {
       }
       if (mounted) {
         setState(() {
-          _styleJson = widget.adapter._buildStyleJson(basePath);
+          _styleJson = widget.adapter.buildStyleJson(basePath);
         });
         SchedulerBinding.instance.addPostFrameCallback((_) {
           widget.harness.onFirstFrame();
@@ -160,7 +160,7 @@ class _MaplibreAdapterWidgetState extends State<_MaplibreAdapterWidget> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _styleJson = widget.adapter._buildStyleJson('/data/user/0/rocks.brandstaetter.benchmark_map/files');
+          _styleJson = widget.adapter.buildStyleJson('/data/user/0/rocks.brandstaetter.benchmark_map/files');
         });
         SchedulerBinding.instance.addPostFrameCallback((_) {
           widget.harness.onFirstFrame();
