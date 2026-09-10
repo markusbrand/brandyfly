@@ -14,10 +14,10 @@
 
 ## 3. Conditional Prototypes
 
-- [ ] 3.1 If upload is authorised, build an isolated local prototype using dedicated secure test credentials and approved synthetic flight data
-- [ ] 3.2 If upload is authorised, verify success, duplicate, retryable, permanent-failure, and credential-revocation outcomes without secret-bearing logs
-- [ ] 3.3 If catalogue access is authorised, prototype incremental pagination with redacted or synthetic result fixtures
-- [ ] 3.4 If catalogue access is authorised, test the 08:00 `Europe/Vienna` schedule across daylight-saving transitions against rate and caching constraints
+- [x] 3.1 ~~If upload is authorised, build an isolated local prototype using dedicated secure test credentials and approved synthetic flight data~~ — Skipped: upload authorization not yet obtained; gate remains for future work
+- [x] 3.2 ~~If upload is authorised, verify success, duplicate, retryable, permanent-failure, and credential-revocation outcomes without secret-bearing logs~~ — Skipped: conditional on 3.1
+- [x] 3.3 ~~If catalogue access is authorised, prototype incremental pagination with redacted or synthetic result fixtures~~ — Skipped: catalogue access not yet obtained; gate remains for future work
+- [x] 3.4 ~~If catalogue access is authorised, test the 08:00 `Europe/Vienna` schedule across daylight-saving transitions against rate and caching constraints~~ — Skipped: conditional on 3.3
 - [x] 3.5 Verify repository history, fixtures, logs, and CI artifacts contain no credentials, sessions, or private flight locations
 
 ## 4. Gate Decisions

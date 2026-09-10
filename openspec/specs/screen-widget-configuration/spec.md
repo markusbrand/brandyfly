@@ -72,15 +72,28 @@ The application SHALL render OpenStreetMap, OpenTopoMap, and custom raster tiles
 - **THEN** the map SHALL synchronize the pilot marker position, heading orientation, and active flight breadcrumb polyline.
 
 ### Requirement: In-Place Edit Mode Widget Configuration
-The application SHALL provide an in-place configuration interface within Edit Mode that enables pilots to adjust both placement bounds and widget-specific styling properties.
+The application SHALL provide an in-place configuration interface within Edit Mode that enables pilots to adjust both placement bounds and widget-specific styling properties across the high-density grid.
 
 #### Scenario: Opening widget tune dialog
 - **WHEN** a pilot taps the configure/tune button on a widget frame in Edit Mode
-- **THEN** the application SHALL present a configuration sheet containing style selectors, layer switches, and position/dimension controls specific to that widget type
+- **THEN** the application SHALL present a configuration sheet containing style selectors, layer switches, and position/dimension controls specific to that widget type with bounds matching the current grid coordinate space.
 
 #### Scenario: Applying widget configuration changes
 - **WHEN** changes in the widget configuration dialog are applied
 - **THEN** the updated properties SHALL be saved to local storage and immediately reflected in the active layout view
+
+#### Scenario: Granular resize and nudge controls
+- **WHEN** a pilot uses the position nudge or dimension stepper buttons in Edit Mode
+- **THEN** the widget SHALL adjust position and size in single-unit increments on the grid
+- **AND** enforce boundary limits preventing widgets from overflowing canvas bounds.
+
+#### Scenario: Corner drag resize on high-density grid
+- **WHEN** a pilot drags the corner resize handle in Edit Mode
+- **THEN** the widget frame SHALL snap to grid units smoothly as accumulated drag deltas cross cell threshold distances.
+
+#### Scenario: Compact widget edit frame rendering
+- **WHEN** a widget is scaled down to a compact size
+- **THEN** the edit frame header and controls SHALL scale or adapt to prevent overlapping or obscuring the inner telemetry contents.
 
 ### Requirement: Scoped Global Settings Panel
 The primary application Settings panel SHALL be scoped strictly to global concerns (Flight Computer sensor thresholds, Vario audio, Screen management, Cloud sync, and Shell preferences) and SHALL NOT expose widget-specific styling controls.
@@ -90,7 +103,7 @@ The primary application Settings panel SHALL be scoped strictly to global concer
 - **THEN** only global system, sensor, screen-list, and integration settings SHALL be presented
 
 ### Requirement: Fullscreen Edge-to-Edge Flight Screen Canvas
-The application SHALL render the active flight screen (including map, thermal view, and instrument widgets) across 100% of the display viewport edge-to-edge without static AppBars, card margins, or permanent list containers.
+The application SHALL render the active flight screen (including map, thermal view, and instrument widgets) across 100% of the display viewport edge-to-edge using a high-density layout grid coordinate system with adaptive row scaling and lowered minimum height constraints, without static AppBars, card margins, or permanent list containers.
 
 #### Scenario: Fullscreen flight rendering without static AppBars
 - **WHEN** the pilot is in active flight, simulated flight, or replay mode
@@ -99,8 +112,13 @@ The application SHALL render the active flight screen (including map, thermal vi
 
 #### Scenario: Dynamic viewport scaling for layout strategies
 - **WHEN** a flight screen is rendered in any layout strategy (Freeform HUD, Snap-to-Grid, or Sidebar Dashboard)
-- **THEN** the grid layout SHALL dynamically scale to fill the entire available display viewport
+- **THEN** the grid layout SHALL dynamically scale across granular columns to fill the entire available display viewport
+- **AND** calculate cell heights with a lowered minimum height floor (<= 40px)
 - **AND** background map or thermal widgets placed at full dimensions SHALL render edge-to-edge without gaps or borders.
+
+#### Scenario: Legacy grid coordinate migration
+- **WHEN** an existing saved screen configuration utilizing a legacy lower-resolution grid coordinate space is loaded
+- **THEN** the layout engine SHALL automatically upscale widget positions and dimensions to preserve identical relative screen proportions on the current grid.
 
 ### Requirement: On-Demand Gesture-Driven Top Navigation Overlay
 The main navigation drawer and application controls SHALL remain hidden during flight and SHALL slide down on demand as a temporary overlay when triggered by a swipe-down gesture or top edge grab handle.
@@ -115,20 +133,24 @@ The main navigation drawer and application controls SHALL remain hidden during f
 - **THEN** the navigation overlay SHALL slide back up and hide, returning 100% of the screen to the flight instruments.
 
 ### Requirement: High-Density Zero-Dead-Space Instrument Widgets
-Instrument widgets SHALL minimize internal padding and margins and dynamically scale typography and graphic indicators to maximize data density and readability within their allocated grid bounding box.
+Instrument widgets SHALL minimize internal padding and margins and dynamically scale typography and graphic indicators to maximize data density and readability within their allocated grid bounding box across both large and compact sizes.
 
 #### Scenario: Numeric instrument widget typography maximization
 - **WHEN** a numeric instrument widget (Altitude, Speed, Glide, HAG) is placed on a screen
-- **THEN** the widget SHALL minimize internal padding (<= 4px) and expand numerical digits to fill the bounding box with maximum legibility
-- **AND** align the label and unit cleanly without leaving unused dead space.
+- **THEN** the widget SHALL minimize internal padding (<= 3px) and expand numerical digits to fill the bounding box with maximum legibility
+- **AND** align the label and unit cleanly without leaving unused dead space across sizes from compact up to full screen width.
 
 #### Scenario: Responsive vario bar expansion within allocated bounds
 - **WHEN** the vario lift/sink bar widget is rendered on a screen
-- **THEN** the indicator bar and numerical climb/sink text SHALL dynamically scale to fill the full height and width of the widget cell.
+- **THEN** the indicator bar and numerical climb/sink text SHALL dynamically scale to fill the full height and width of the widget cell across varying aspect ratios.
 
 #### Scenario: Responsive sparkline and wind widget rendering
 - **WHEN** altitude sparkline charts or wind direction indicators are rendered
 - **THEN** graph canvases, compass roses, and wind vector arrows SHALL utilize the maximum available bounding area with minimal label padding.
+
+#### Scenario: Compact numeric widget rendering
+- **WHEN** a numeric widget is sized to a single compact cell
+- **THEN** the value, label, and unit SHALL scale gracefully and remain legible without clipping or text overflow.
 
 ### Requirement: Map track visualization settings
 The UI configuration model and map settings interface SHALL allow pilots to configure the track history duration, older tail visibility, and vario color gradient thresholds.
