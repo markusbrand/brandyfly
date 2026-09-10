@@ -108,6 +108,8 @@ class WidgetPlacementModel {
     this.thermalMapStyle,
     this.thermalMapShowCore,
     this.thermalMapHistorySeconds,
+    this.mapTrackHistoryMinutes,
+    this.mapTrackShowOlderTail,
   });
 
   final String id;
@@ -132,6 +134,8 @@ class WidgetPlacementModel {
   final ThermalMapStyle? thermalMapStyle;
   final bool? thermalMapShowCore;
   final int? thermalMapHistorySeconds;
+  final int? mapTrackHistoryMinutes;
+  final bool? mapTrackShowOlderTail;
 
   // Fallback defaults
   NumericWidgetStyle get effectiveNumericStyle =>
@@ -156,6 +160,10 @@ class WidgetPlacementModel {
   bool get effectiveThermalMapShowCore => thermalMapShowCore ?? true;
   int get effectiveThermalMapHistorySeconds =>
       thermalMapHistorySeconds ?? 90;
+  int get effectiveMapTrackHistoryMinutes =>
+      mapTrackHistoryMinutes ?? 10; // 0 = full flight
+  bool get effectiveMapTrackShowOlderTail =>
+      mapTrackShowOlderTail ?? true;
 
   WidgetPlacementModel copyWith({
     String? id,
@@ -178,6 +186,8 @@ class WidgetPlacementModel {
     ThermalMapStyle? thermalMapStyle,
     bool? thermalMapShowCore,
     int? thermalMapHistorySeconds,
+    int? mapTrackHistoryMinutes,
+    bool? mapTrackShowOlderTail,
   }) {
     return WidgetPlacementModel(
       id: id ?? this.id,
@@ -201,6 +211,10 @@ class WidgetPlacementModel {
       thermalMapShowCore: thermalMapShowCore ?? this.thermalMapShowCore,
       thermalMapHistorySeconds:
           thermalMapHistorySeconds ?? this.thermalMapHistorySeconds,
+      mapTrackHistoryMinutes:
+          mapTrackHistoryMinutes ?? this.mapTrackHistoryMinutes,
+      mapTrackShowOlderTail:
+          mapTrackShowOlderTail ?? this.mapTrackShowOlderTail,
     );
   }
 
@@ -227,6 +241,10 @@ class WidgetPlacementModel {
     if (thermalMapShowCore != null) 'thermalMapShowCore': thermalMapShowCore,
     if (thermalMapHistorySeconds != null)
       'thermalMapHistorySeconds': thermalMapHistorySeconds,
+    if (mapTrackHistoryMinutes != null)
+      'mapTrackHistoryMinutes': mapTrackHistoryMinutes,
+    if (mapTrackShowOlderTail != null)
+      'mapTrackShowOlderTail': mapTrackShowOlderTail,
   };
 
   factory WidgetPlacementModel.fromJson(Map<String, dynamic> json) {
@@ -305,6 +323,8 @@ class WidgetPlacementModel {
       thermalMapStyle: tStyle,
       thermalMapShowCore: json['thermalMapShowCore'] as bool?,
       thermalMapHistorySeconds: json['thermalMapHistorySeconds'] as int?,
+      mapTrackHistoryMinutes: json['mapTrackHistoryMinutes'] as int?,
+      mapTrackShowOlderTail: json['mapTrackShowOlderTail'] as bool?,
     );
   }
 }

@@ -30,6 +30,8 @@ void main() {
       expect(model.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
       expect(model.effectiveThermalMapShowCore, isTrue);
       expect(model.effectiveThermalMapHistorySeconds, 90);
+      expect(model.effectiveMapTrackHistoryMinutes, 10);
+      expect(model.effectiveMapTrackShowOlderTail, isTrue);
     });
 
     test('roundtrip serialization preserves thermal map style and configuration', () {
@@ -56,6 +58,64 @@ void main() {
       expect(restored.effectiveThermalMapShowCore, isFalse);
       expect(restored.thermalMapHistorySeconds, 120);
       expect(restored.effectiveThermalMapHistorySeconds, 120);
+    });
+
+    test('roundtrip serialization preserves map track history settings', () {
+      const model = WidgetPlacementModel(
+        id: 'w_map_track',
+        type: WidgetType.map,
+        x: 2,
+        y: 1,
+        w: 4,
+        h: 4,
+        mapTrackHistoryMinutes: 30,
+        mapTrackShowOlderTail: false,
+      );
+
+      final json = model.toJson();
+      final restored = WidgetPlacementModel.fromJson(json);
+
+      expect(restored.id, 'w_map_track');
+      expect(restored.mapTrackHistoryMinutes, 30);
+      expect(restored.effectiveMapTrackHistoryMinutes, 30);
+      expect(restored.mapTrackShowOlderTail, isFalse);
+      expect(restored.effectiveMapTrackShowOlderTail, isFalse);
+    });
+
+    test('fromJson gracefully handles missing map track fields', () {
+      final json = <String, dynamic>{
+        'id': 'w_map_no_track_settings',
+        'type': 'map',
+        'x': 0,
+        'y': 0,
+        'w': 8,
+        'h': 8,
+      };
+
+      final restored = WidgetPlacementModel.fromJson(json);
+      expect(restored.mapTrackHistoryMinutes, isNull);
+      expect(restored.effectiveMapTrackHistoryMinutes, 10);
+      expect(restored.mapTrackShowOlderTail, isNull);
+      expect(restored.effectiveMapTrackShowOlderTail, isTrue);
+    });
+
+    test('copyWith preserves and overrides map track settings', () {
+      const model = WidgetPlacementModel(
+        id: 'w_map_copy',
+        type: WidgetType.map,
+        x: 0,
+        y: 0,
+        w: 8,
+        h: 8,
+        mapTrackHistoryMinutes: 5,
+        mapTrackShowOlderTail: false,
+      );
+
+      final updated = model.copyWith(mapTrackHistoryMinutes: 15);
+      expect(updated.mapTrackHistoryMinutes, 15);
+      expect(updated.effectiveMapTrackHistoryMinutes, 15);
+      expect(updated.mapTrackShowOlderTail, isFalse);
+      expect(updated.effectiveMapTrackShowOlderTail, isFalse);
     });
 
     test('roundtrip serialization preserves widget-specific styles and layers', () {

@@ -77,6 +77,11 @@ class FlightReplayService extends ChangeNotifier {
             .toList() ??
         <LatLng>[];
 
+    final fullFlightPoints = _flight?.points
+            .take(_currentIndex + 1)
+            .toList() ??
+        <FlightPoint>[];
+
     return {
       'altitude': pt.altitude,
       'speed': pt.speed,
@@ -89,6 +94,7 @@ class FlightReplayService extends ChangeNotifier {
       'longitude': pt.longitude,
       'heading': pt.heading,
       'trackPoints': track,
+      'flightPoints': fullFlightPoints,
       'history': List<double>.from(_altitudeHistory),
     };
   }

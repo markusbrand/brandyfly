@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 
+import '../../models/flight_model.dart';
 import '../../models/ui_config.dart';
 import '../../services/map_tile_service.dart';
 
@@ -25,6 +26,9 @@ class MapWidget extends StatefulWidget {
     this.initialZoom = 13.5,
     this.pilotPosition,
     this.trackPoints,
+    this.flightPoints,
+    this.mapTrackHistoryMinutes = 10,
+    this.mapTrackShowOlderTail = true,
     this.onZoomIn,
     this.onZoomOut,
     this.onZoomChanged,
@@ -44,9 +48,54 @@ class MapWidget extends StatefulWidget {
   final double initialZoom;
   final LatLng? pilotPosition;
   final List<LatLng>? trackPoints;
+  final List<FlightPoint>? flightPoints;
+  final int mapTrackHistoryMinutes;
+  final bool mapTrackShowOlderTail;
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
   final ValueChanged<double>? onZoomChanged;
+
+  /// Continuous piecewise color interpolation for the vario gradient flight
+  /// track. Maps vertical speed (m/s) to a lift/sink colour stop.
+  static Color getVarioTrackColor(double vario) {
+    if (vario <= -3.0) return const Color(0xFF991B1B); // Deep Dark Red
+    if (vario < -1.5) {
+      final t = (vario - (-3.0)) / (-1.5 - (-3.0));
+      return Color.lerp(
+        const Color(0xFF991B1B),
+        const Color(0xFFEF4444),
+        t,
+      )!;
+    }
+    if (vario < -0.5) {
+      final t = (vario - (-1.5)) / (-0.5 - (-1.5));
+      return Color.lerp(
+        const Color(0xFFEF4444),
+        const Color(0xFFFCA5A5),
+        t,
+      )!;
+    }
+    if (vario <= 0.5) {
+      return const Color(0xFF94A3B8); // Neutral Slate Grey
+    }
+    if (vario < 1.5) {
+      final t = (vario - 0.5) / (1.5 - 0.5);
+      return Color.lerp(
+        const Color(0xFF86EFAC),
+        const Color(0xFF22C55E),
+        t,
+      )!;
+    }
+    if (vario < 3.5) {
+      final t = (vario - 1.5) / (3.5 - 1.5);
+      return Color.lerp(
+        const Color(0xFF22C55E),
+        const Color(0xFF15803D),
+        t,
+      )!;
+    }
+    return const Color(0xFF15803D); // Dark Emerald Green
+  }
 
   @override
   State<MapWidget> createState() => _MapWidgetState();
@@ -76,6 +125,13 @@ class _MapWidgetState extends State<MapWidget> {
       LatLng(p.latitude - 0.001, p.longitude - 0.001),
       p,
     ];
+  }
+
+  List<FlightPoint> get _effectiveFlightPoints {
+    if (widget.flightPoints != null && widget.flightPoints!.isNotEmpty) {
+      return widget.flightPoints!;
+    }
+    return _buildMockFlightPoints(_effectivePilotPosition);
   }
 
   late final BrandyFlyTileProvider _tileProvider = BrandyFlyTileProvider();
@@ -234,15 +290,7 @@ class _MapWidgetState extends State<MapWidget> {
                 // GPS Breadcrumb Flight Track
                 if (widget.showTrack)
                   PolylineLayer(
-                    polylines: [
-                      Polyline(
-                        points: _effectiveTrackPoints,
-                        color: _getTrackColor(widget.climbRateMs),
-                        strokeWidth: 3.5,
-                        borderColor: Colors.black87,
-                        borderStrokeWidth: 1.5,
-                      ),
-                    ],
+                    polylines: _buildTrackPolylines(),
                   ),
 
                 // Thermal Updraft Markers
@@ -374,6 +422,174 @@ class _MapWidgetState extends State<MapWidget> {
       return const Color(0xFFEF4444); // Red (Sink)
     }
     return const Color(0xFFEAB308); // Yellow (Glide)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Vario color-graded gradient flight track (tasks 3.1-3.5)
+  // ---------------------------------------------------------------------------
+
+  /// Builds the flight-track polylines.
+  ///
+  /// Uses vario-attributed time-windowed [FlightPoint] data when available to
+  /// render continuous color-graded, batched segments. Falls back to a single
+  /// uniform-color polyline based on instantaneous climb rate otherwise.
+  List<Polyline> _buildTrackPolylines() {
+    final points = _effectiveFlightPoints;
+    if (points.isEmpty) {
+      return [
+        Polyline(
+          points: _effectiveTrackPoints,
+          color: _getTrackColor(widget.climbRateMs),
+          strokeWidth: 3.5,
+          borderColor: Colors.black87,
+          borderStrokeWidth: 1.5,
+        ),
+      ];
+    }
+    return _buildGradientPolylines(points);
+  }
+
+  /// Partitions [points] into an active time window and a historical baseline,
+  /// then batches contiguous points with near-identical colors into polyline
+  /// segments for [PolylineLayer] performance.
+  List<Polyline> _buildGradientPolylines(List<FlightPoint> points) {
+    final polylines = <Polyline>[];
+
+    final trimmed = points.length > 1
+        ? points.sublist(math.max(0, points.length - 600))
+        : points;
+    if (trimmed.isEmpty) return polylines;
+
+    // Determine the active time window (0 minutes = full flight).
+    final minutes = widget.mapTrackHistoryMinutes;
+    final cutoff =
+        minutes > 0 ? trimmed.last.timestamp.subtract(Duration(minutes: minutes)) : trimmed.first.timestamp;
+
+    final activePoints = <FlightPoint>[];
+    final oldPoints = <FlightPoint>[];
+    for (final fp in trimmed) {
+      if (minutes > 0 && fp.timestamp.isBefore(cutoff)) {
+        oldPoints.add(fp);
+      } else {
+        activePoints.add(fp);
+      }
+    }
+
+    // Muted/neutral baseline for points older than the active window.
+    if (widget.mapTrackShowOlderTail && oldPoints.length > 1) {
+      polylines.add(
+        Polyline(
+          points: oldPoints.map((fp) => LatLng(fp.latitude, fp.longitude)).toList(),
+          color: const Color(0xFF94A3B8).withAlpha(90),
+          strokeWidth: 1.4,
+          borderColor: Colors.black54,
+          borderStrokeWidth: 0.8,
+        ),
+      );
+    }
+
+    // High-contrast gradient segments for the active time window.
+    polylines.addAll(_segmentAndBatch(activePoints));
+    return polylines;
+  }
+
+  /// Batches contiguous [FlightPoint]s whose vario-derived color is within the
+  /// configured delta into a single [Polyline]. Adjacent segments share their
+  /// boundary point so the trail renders as one visually connected line.
+  List<Polyline> _segmentAndBatch(List<FlightPoint> points) {
+    if (points.isEmpty) return const [];
+    if (points.length == 1) {
+      return [
+        Polyline(
+          points: [LatLng(points.first.latitude, points.first.longitude)],
+          color: MapWidget.getVarioTrackColor(points.first.vario),
+          strokeWidth: 3.5,
+          borderColor: Colors.black87,
+          borderStrokeWidth: 1.5,
+        ),
+      ];
+    }
+
+    const deltaThreshold = 0.0075;
+    final polylines = <Polyline>[];
+    var segmentStart = 0;
+    var segmentColor = MapWidget.getVarioTrackColor(points.first.vario);
+
+    for (var i = 1; i < points.length; i++) {
+      final prevColor = MapWidget.getVarioTrackColor(points[i - 1].vario);
+      final curColor = MapWidget.getVarioTrackColor(points[i].vario);
+      final isSplit = _colorDistance(prevColor, curColor) > deltaThreshold;
+
+      if (isSplit) {
+        polylines.add(
+          Polyline(
+            points: List.generate(
+              i - segmentStart + 1,
+              (j) => LatLng(
+                points[segmentStart + j].latitude,
+                points[segmentStart + j].longitude,
+              ),
+            ),
+            color: segmentColor,
+            strokeWidth: 3.5,
+            borderColor: Colors.black87,
+            borderStrokeWidth: 1.5,
+          ),
+        );
+        segmentStart = i - 1;
+        segmentColor = curColor;
+      }
+    }
+
+    polylines.add(
+      Polyline(
+        points: List.generate(
+          points.length - segmentStart,
+          (j) => LatLng(
+            points[segmentStart + j].latitude,
+            points[segmentStart + j].longitude,
+          ),
+        ),
+        color: segmentColor,
+        strokeWidth: 3.5,
+        borderColor: Colors.black87,
+        borderStrokeWidth: 1.5,
+      ),
+    );
+
+    return polylines;
+  }
+
+  double _colorDistance(Color a, Color b) {
+    final dr = a.r - b.r;
+    final dg = a.g - b.g;
+    final db = a.b - b.b;
+    return math.sqrt(dr * dr + dg * dg + db * db);
+  }
+
+  /// Generates deterministic mock vario-attributed flight points along the
+  /// pilot's track for local simulation and preview when no telemetry exists.
+  List<FlightPoint> _buildMockFlightPoints(LatLng p) {
+    final now = DateTime.now();
+    final latSteps = [0.015, 0.010, 0.006, 0.003, 0.001, 0.0];
+    final lngSteps = [0.018, 0.012, 0.008, 0.003, 0.001, 0.0];
+
+    // Simulate a thermal/glide cycle: strong lift -> neutral -> sink -> lift.
+    final varioProfile = [3.2, 2.4, 1.6, 0.8, 0.2, -0.3, -0.8, -1.6, -2.4, 0.5, 1.2, 2.8];
+
+    final mock = <FlightPoint>[];
+    for (var i = 0; i < latSteps.length; i++) {
+      mock.add(
+        FlightPoint(
+          timestamp: now.subtract(Duration(minutes: (latSteps.length - i - 1) * 1)),
+          latitude: p.latitude - latSteps[i],
+          longitude: p.longitude - lngSteps[i],
+          altitude: 1450.0 + (i * 12),
+          vario: varioProfile[(i * 3) % varioProfile.length],
+        ),
+      );
+    }
+    return mock;
   }
 
   List<Polygon> _buildAirspaces(LatLng center) {

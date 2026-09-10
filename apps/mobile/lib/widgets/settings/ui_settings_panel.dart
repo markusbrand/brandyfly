@@ -78,6 +78,8 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
           const Divider(color: Colors.white24, height: 32),
           ..._buildScreenManagementSection(cfg),
           const Divider(color: Colors.white24, height: 32),
+          ..._buildMapDisplaySection(cfg),
+          const Divider(color: Colors.white24, height: 32),
           ..._buildFlightTrackingSection(),
           const Divider(color: Colors.white24, height: 32),
           ..._buildXContestSection(),
@@ -201,6 +203,101 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
                 onChanged: (val) {
                   screenManager.setScreenAutoSwitchTrigger(activeScreen.id, val);
                   setState(() {});
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildMapDisplaySection(UIConfig cfg) {
+    final activeScreen = screenManager.activeScreen;
+    final mapWidget = activeScreen.widgets.cast<WidgetPlacementModel?>().firstWhere(
+      (w) => w?.type == WidgetType.map,
+      orElse: () => null,
+    );
+
+    return [
+      _buildCategoryHeader('Map Display'),
+      Card(
+        color: Colors.grey.shade900,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Colorized Flight Track',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'History Window',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DropdownButton<int>(
+                      value: mapWidget?.effectiveMapTrackHistoryMinutes ?? 10,
+                      dropdownColor: Colors.blueGrey.shade900,
+                      underline: const SizedBox(),
+                      style: const TextStyle(
+                        color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 2, child: Text('2 min')),
+                        DropdownMenuItem(value: 5, child: Text('5 min')),
+                        DropdownMenuItem(value: 10, child: Text('10 min')),
+                        DropdownMenuItem(value: 15, child: Text('15 min')),
+                        DropdownMenuItem(value: 30, child: Text('30 min')),
+                        DropdownMenuItem(value: 0, child: Text('All')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null && mapWidget != null) {
+                          screenManager.updateWidgetPlacement(
+                            mapWidget.copyWith(
+                              mapTrackHistoryMinutes: val,
+                            ),
+                          );
+                          setState(() {});
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Show Older Tail',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                subtitle: const Text(
+                  'Muted trail behind the active window',
+                  style: TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+                value: mapWidget?.effectiveMapTrackShowOlderTail ?? true,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) {
+                  if (mapWidget != null) {
+                    screenManager.updateWidgetPlacement(
+                      mapWidget.copyWith(mapTrackShowOlderTail: val),
+                    );
+                    setState(() {});
+                  }
                 },
               ),
             ],
