@@ -30,6 +30,10 @@
 **Learning:** In Flutter, wrapping a `CustomPaint` widget inside an `AnimatedBuilder` to force it to redraw during animations causes the entire `CustomPaint` widget to be rebuilt and the `CustomPainter` to be re-allocated on every single frame.
 **Action:** Always pass the `Animation` or `Listenable` directly to the `CustomPainter`'s constructor and forward it to `super(repaint: animation)`. The painter will automatically trigger canvas redraws when the animation ticks without needing the parent widget to rebuild. Ensure you then access the animation's `.value` directly inside the `paint()` method.
 
-## 2026-09-09 - Use stack buffer for short telemetry frame lowercasing
-**Learning:** Calling `text.to_lowercase()` on incoming raw telemetry frames allocates a new heap `String` on every frame parsing invocation. In high-frequency telemetry parsers where frames are short (e.g. NMEA frames <= 128 bytes), these allocations trigger unnecessary heap fragmentation and GC pressure.
-**Action:** Use a fixed-size stack buffer (e.g. `[u8; 128]`) with `make_ascii_lowercase()` for small payloads, falling back to heap allocation only when raw byte length exceeds the buffer capacity.
+## 2026-09-09 - Avoid vector allocations for string splitting in Rust frame parsers
+**Learning:** Calling `.split(',').collect::<Vec<&str>>()` when parsing frame payloads creates heap allocations per packet. In high-frequency frame parsing hot-paths (e.g. 20-100Hz telemetry feeds), this creates unnecessary heap allocation overhead.
+**Action:** Use string split iterators (`str::split(',')`) directly with `impl Iterator<Item = &str>` parameter signatures and `.next()`, eliminating heap vector allocations and boosting parsing throughput.
+
+## 2026-09-09 - Zero-allocation ASCII case-insensitive search in protocol parsing
+**Learning:** In Rust protocol parsing hot paths, calling `.to_lowercase()` on string/byte payloads allocates a new heap `String` on every incoming frame. When matching against ASCII markers (e.g. credential tokens or NMEA sentence headers), checking slices directly with `as_bytes().windows().any(|w| w.eq_ignore_ascii_case(needle.as_bytes()))` eliminates all heap allocations and avoids Unicode conversion overhead.
+**Action:** Never use `.to_lowercase()` to perform case-insensitive ASCII pattern matching on incoming byte streams. Use zero-allocation slice windows with `.eq_ignore_ascii_case()` instead.
