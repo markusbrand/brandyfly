@@ -34,6 +34,10 @@
 **Learning:** Calling `.split(',').collect::<Vec<&str>>()` when parsing frame payloads creates heap allocations per packet. In high-frequency frame parsing hot-paths (e.g. 20-100Hz telemetry feeds), this creates unnecessary heap allocation overhead.
 **Action:** Use string split iterators (`str::split(',')`) directly with `impl Iterator<Item = &str>` parameter signatures and `.next()`, eliminating heap vector allocations and boosting parsing throughput.
 
+## 2026-09-09 - Zero-allocation ASCII case-insensitive search in protocol parsing
+**Learning:** In Rust protocol parsing hot paths, calling `.to_lowercase()` on string/byte payloads allocates a new heap `String` on every incoming frame. When matching against ASCII markers (e.g. credential tokens or NMEA sentence headers), checking slices directly with `as_bytes().windows().any(|w| w.eq_ignore_ascii_case(needle.as_bytes()))` eliminates all heap allocations and avoids Unicode conversion overhead.
+**Action:** Never use `.to_lowercase()` to perform case-insensitive ASCII pattern matching on incoming byte streams. Use zero-allocation slice windows with `.eq_ignore_ascii_case()` instead.
+
 ## 2026-09-09 - Avoid `Vec::remove(0)` in Bounded Queue Operations
 **Learning:** Using `Vec::remove(0)` to drop the oldest item or pop elements from the front of a queue shifts every subsequent element in memory, resulting in O(N) operations per push/pop when capacity is reached. Switching the underlying storage to `VecDeque` converts `pop_front()` and `push_back()` into O(1) ring buffer operations.
 **Action:** Always use `std::collections::VecDeque` instead of `Vec` for FIFO queues or bounded buffers where items are inserted at the back and removed from the front.
