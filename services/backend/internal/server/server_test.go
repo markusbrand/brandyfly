@@ -83,3 +83,10 @@ func TestCheckHealthSuccessWithToken(t *testing.T) {
 		t.Fatalf("CheckHealth() unexpected error = %v", err)
 	}
 }
+
+func TestCheckHealthInvalidURL(t *testing.T) {
+	err := CheckHealth(":\x7f", time.Second)
+	if err == nil {
+		t.Fatal("CheckHealth() with invalid URL error = nil, want non-nil")
+	}
+}
