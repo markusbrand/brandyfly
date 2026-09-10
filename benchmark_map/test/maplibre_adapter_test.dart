@@ -48,6 +48,15 @@ void main() {
       expect(adapter.packageVersion, equals('0.3.6'));
     });
 
+    test('buildStyleJson constructs style with given base path', () {
+      const basePath = '/test/path/to/pmtiles';
+      final styleJson = adapter.buildStyleJson(basePath);
+
+      expect(styleJson, contains('pmtiles://$basePath/alpine_overview.pmtiles'));
+      expect(styleJson, contains('pmtiles://$basePath/alpine_terrain.pmtiles'));
+      expect(styleJson, contains('"version": 8'));
+    });
+
     test('executeWaypoint does nothing when controller is null', () async {
       final waypoint = {
         'lat': 47.525,
