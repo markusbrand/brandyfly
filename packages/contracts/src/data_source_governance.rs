@@ -307,7 +307,7 @@ pub struct DataPackageManifest {
     pub review_expiry: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DataPackageManifestInput {
     pub dataset_identifier: String,
     pub provider: String,
