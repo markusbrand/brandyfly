@@ -366,13 +366,13 @@ pub fn parse_skydrop1_frame(
         });
     }
 
-    let parts: Vec<&str> = sentence_body.split(',').collect();
-    if parts.is_empty() {
-        return Err(SkyDrop1ParseError::MalformedFraming("empty_sentence"));
-    }
+    let mut parts = sentence_body.split(',');
+    let sentence_type = parts
+        .next()
+        .ok_or(SkyDrop1ParseError::MalformedFraming("empty_sentence"))?;
 
-    match parts[0] {
-        "LK8EX1" => parse_lk8ex1_sentence(&parts, raw_frame, core_processed_timestamp_ns),
+    match sentence_type {
+        "LK8EX1" => parse_lk8ex1_sentence(parts, raw_frame, core_processed_timestamp_ns),
         "PGRMZ" | "POV" | "DIGIFLY" => {
             // Documented unverified sentence types in SkyDrop scope are explicitly blocked
             Err(SkyDrop1ParseError::BlockedUnverifiedField(
@@ -385,30 +385,40 @@ pub fn parse_skydrop1_frame(
     }
 }
 
-fn parse_lk8ex1_sentence(
-    parts: &[&str],
+fn parse_lk8ex1_sentence<'a>(
+    mut parts: impl Iterator<Item = &'a str>,
     raw_frame: &SkyDrop1RawFrame,
     core_processed_timestamp_ns: u64,
 ) -> Result<SkyDrop1ParsedSample, SkyDrop1ParseError> {
     // Standard format: LK8EX1,pressure,altitude,vario,temperature,battery
-    // parts[0] = "LK8EX1"
-    // parts[1] = raw pressure in Pa (e.g. 101325 or 999999 for invalid)
-    // parts[2] = altitude in meters (e.g. 1500 or 99999 for invalid)
-    // parts[3] = vario in cm/s (e.g. 150 = +1.5 m/s or 9999 for invalid)
-    // parts[4] = temperature in C (e.g. 21 or 9999 for invalid)
-    // parts[5] = battery percentage or mV (e.g. 98 or 999 for invalid)
+    // parts yields fields after "LK8EX1":
+    // field 1 = raw pressure in Pa (e.g. 101325 or 999999 for invalid)
+    // field 2 = altitude in meters (e.g. 1500 or 99999 for invalid)
+    // field 3 = vario in cm/s (e.g. 150 = +1.5 m/s or 9999 for invalid)
+    // field 4 = temperature in C (e.g. 21 or 9999 for invalid)
+    // field 5 = battery percentage or mV (e.g. 98 or 999 for invalid)
 
-    if parts.len() < 6 {
-        return Err(SkyDrop1ParseError::MalformedFraming(
-            "lk8ex1_insufficient_fields",
-        ));
-    }
+    let raw_pressure = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
+    let raw_altitude = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
+    let raw_vario = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
+    let raw_temp = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
+    let raw_battery = parts.next().ok_or(SkyDrop1ParseError::MalformedFraming(
+        "lk8ex1_insufficient_fields",
+    ))?;
 
-    let pressure_hpa = parse_pressure_field(parts[1])?;
-    let altitude_m = parse_altitude_field(parts[2])?;
-    let vario_mps = parse_vario_field(parts[3])?;
-    let temperature_c = parse_temperature_field(parts[4])?;
-    let battery_percent = parse_battery_field(parts[5])?;
+    let pressure_hpa = parse_pressure_field(raw_pressure)?;
+    let altitude_m = parse_altitude_field(raw_altitude)?;
+    let vario_mps = parse_vario_field(raw_vario)?;
+    let temperature_c = parse_temperature_field(raw_temp)?;
+    let battery_percent = parse_battery_field(raw_battery)?;
 
     Ok(SkyDrop1ParsedSample {
         schema_version: SKYDROP1_PROTOCOL_SCHEMA_VERSION,
