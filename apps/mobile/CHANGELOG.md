@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.4.0...brandyfly-v0.5.0) (2026-09-10)
+
+
+### Features
+
+* **flight-screen:** add vario colorized flight track ([#163](https://github.com/markusbrand/brandyfly/issues/163)) ([0361833](https://github.com/markusbrand/brandyfly/commit/0361833071b11fc3f60c55e330dde51c50b99c1e))
+
 ## [0.4.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.3.0...brandyfly-v0.4.0) (2026-09-10)
 
 
