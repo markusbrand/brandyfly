@@ -64,6 +64,26 @@ func TestCheckHealthRejectsUnhealthyResponse(t *testing.T) {
 	}
 }
 
+func TestCheckHealthSuccess(t *testing.T) {
+	t.Setenv("BRANDYFLY_HEALTH_TOKEN", "")
+	testServer := httptest.NewServer(NewHandler())
+	t.Cleanup(testServer.Close)
+
+	if err := CheckHealth(testServer.URL+"/healthz", time.Second); err != nil {
+		t.Fatalf("CheckHealth() unexpected error = %v", err)
+	}
+}
+
+func TestCheckHealthSuccessWithToken(t *testing.T) {
+	t.Setenv("BRANDYFLY_HEALTH_TOKEN", "secret-token")
+	testServer := httptest.NewServer(NewHandler())
+	t.Cleanup(testServer.Close)
+
+	if err := CheckHealth(testServer.URL+"/healthz", time.Second); err != nil {
+		t.Fatalf("CheckHealth() unexpected error = %v", err)
+	}
+}
+
 func TestCheckHealthInvalidURL(t *testing.T) {
 	err := CheckHealth(":\x7f", time.Second)
 	if err == nil {
