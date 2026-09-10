@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+use std::collections::VecDeque;
+
 use brandyfly_contracts::{
     PipelineCounters, SensorEvent, SensorPayload, StageTimestampTrace, validate_sensor_event,
 };
@@ -15,7 +17,7 @@ pub enum OverflowPolicy {
 #[derive(Debug)]
 pub struct BoundedEventQueue {
     capacity: usize,
-    buffer: Vec<SensorEvent>,
+    buffer: VecDeque<SensorEvent>,
     policy: OverflowPolicy,
     dropped_count: u64,
 }
@@ -26,7 +28,7 @@ impl BoundedEventQueue {
         assert!(capacity > 0, "Queue capacity must be positive");
         Self {
             capacity,
-            buffer: Vec::with_capacity(capacity),
+            buffer: VecDeque::with_capacity(capacity),
             policy,
             dropped_count: 0,
         }
@@ -37,24 +39,22 @@ impl BoundedEventQueue {
             self.dropped_count += 1;
             match self.policy {
                 OverflowPolicy::DropOldest => {
-                    self.buffer.remove(0);
-                    self.buffer.push(event);
+                    // O(1) removal of oldest event from ring buffer front
+                    self.buffer.pop_front();
+                    self.buffer.push_back(event);
                 }
                 OverflowPolicy::DropNewest => {
                     // Discard incoming event
                 }
             }
         } else {
-            self.buffer.push(event);
+            self.buffer.push_back(event);
         }
     }
 
     pub fn pop(&mut self) -> Option<SensorEvent> {
-        if self.buffer.is_empty() {
-            None
-        } else {
-            Some(self.buffer.remove(0))
-        }
+        // O(1) dequeue from ring buffer front
+        self.buffer.pop_front()
     }
 
     #[must_use]
@@ -468,6 +468,31 @@ mod tests {
                 temperature_c: Some(15.0),
             },
         }
+    }
+
+    #[test]
+    fn benchmark_queue_push_pop_performance() {
+        let mut queue = BoundedEventQueue::new(1000, OverflowPolicy::DropOldest);
+        let start = std::time::Instant::now();
+        for i in 0..100_000 {
+            queue.push(make_test_event(i, 1013.0));
+        }
+        assert_eq!(queue.len(), 1000);
+        assert_eq!(queue.dropped_count(), 99_000);
+
+        let mut popped_count = 0;
+        while queue.pop().is_some() {
+            popped_count += 1;
+        }
+        assert_eq!(popped_count, 1000);
+        assert!(queue.is_empty());
+
+        let elapsed = start.elapsed();
+        assert!(
+            elapsed.as_millis() < 500,
+            "Queue push/pop took too long: {:?}",
+            elapsed
+        );
     }
 
     #[test]
