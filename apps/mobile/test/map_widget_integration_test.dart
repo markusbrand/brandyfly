@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:brandyfly/models/flight_model.dart';
 import 'package:brandyfly/models/ui_config.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/widgets/flight/map_widget.dart';
 import 'package:brandyfly/widgets/layout/layout_strategy_container.dart';
 import 'package:brandyfly/widgets/layout/widget_picker_sheet.dart';
+
+List<Polyline> _allPolylines(WidgetTester tester) {
+  return tester
+      .widgetList<PolylineLayer>(find.byType(PolylineLayer))
+      .expand((l) => l.polylines)
+      .toList();
+}
 
 void main() {
   group('Map View Autonomous Integration & Behavior Test Suite', () {
@@ -544,6 +552,153 @@ void main() {
         // Verify altitude HUD updated without resetting zoom
         expect(find.textContaining('ALT: 1850m'), findsOneWidget);
         expect(find.textContaining('SPD: 52km/h'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-014: Verifies vario-colorized gradient track generates batched colored polylines with dark borders',
+      (tester) async {
+        final now = DateTime.now();
+        final points = <FlightPoint>[];
+        for (var i = 0; i < 50; i++) {
+          points.add(
+            FlightPoint(
+              timestamp: now.add(Duration(seconds: i * 6)),
+              latitude: 47.50 + (i * 0.001),
+              longitude: 13.68 + (i * 0.001),
+              altitude: 1800.0 + (i * 8),
+              vario: (i % 3 == 0)
+                  ? 2.6
+                  : (i % 3 == 1)
+                      ? 0.1
+                      : -1.8,
+            ),
+          );
+        }
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(
+                  flightPoints: points,
+                  mapTrackHistoryMinutes: 0,
+                  mapTrackShowOlderTail: false,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final polylines = _allPolylines(tester);
+        // Gradient segments carry a dark border for visibility.
+        final gradientLines =
+            polylines.where((p) => p.strokeWidth == 3.5).toList();
+        expect(gradientLines, isNotEmpty);
+        expect(
+          gradientLines.every((p) => p.borderColor == Colors.black87),
+          isTrue,
+        );
+        expect(
+          gradientLines.every((p) => p.borderStrokeWidth == 1.5),
+          isTrue,
+        );
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-015: Verifies time-window filtering renders a muted older baseline tail',
+      (tester) async {
+        final now = DateTime.now();
+        final points = <FlightPoint>[];
+        for (var i = 0; i < 40; i++) {
+          points.add(
+            FlightPoint(
+              timestamp: now.subtract(Duration(minutes: 50 - i)),
+              latitude: 47.50 + (i * 0.001),
+              longitude: 13.68 + (i * 0.001),
+              altitude: 1800.0 + (i * 8),
+              vario: 1.5,
+            ),
+          );
+        }
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(
+                  flightPoints: points,
+                  mapTrackHistoryMinutes: 10,
+                  mapTrackShowOlderTail: true,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final polylines = _allPolylines(tester);
+        final faint = polylines
+            .where((p) => p.strokeWidth == 1.4 && p.borderColor == Colors.black54)
+            .toList();
+        expect(faint, isNotEmpty);
+        expect(faint.first.borderColor, Colors.black54);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-016: Verifies Map config dialog offers track history window and older tail controls',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        final manager = ScreenManagerService();
+        manager.addScreen('Track Config Screen');
+        manager.addWidget(WidgetType.map);
+        manager.toggleEditMode(true);
+
+        final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+        final id = mapWidget.id;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {'altitude': 1500.0},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(Key('btn_config_$id')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('TRACK VISUALIZATION'), findsOneWidget);
+        expect(find.text('Show Older Tail'), findsOneWidget);
+
+        // Select a 5-minute history window.
+        await tester.tap(find.text('5m'));
+        await tester.pumpAndSettle();
+
+        // Toggle older tail off.
+        await tester.tap(find.text('Show Older Tail'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Apply'));
+        await tester.pumpAndSettle();
+
+        final updated = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
+        expect(updated.mapTrackHistoryMinutes, 5);
+        expect(updated.mapTrackShowOlderTail, false);
       },
     );
   });

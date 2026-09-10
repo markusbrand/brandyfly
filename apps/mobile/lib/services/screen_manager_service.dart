@@ -244,6 +244,8 @@ class ScreenManagerService extends ChangeNotifier {
       thermalMapStyle: ThermalMapStyle.xctrackBubbles,
       thermalMapShowCore: true,
       thermalMapHistorySeconds: 90,
+      mapTrackHistoryMinutes: 10,
+      mapTrackShowOlderTail: true,
     );
     final updatedWidgets = [...currentActive.widgets, newPlacement];
     _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));

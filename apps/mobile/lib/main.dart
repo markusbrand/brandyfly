@@ -240,6 +240,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                               replay: _mockReplay!,
                               screenManager: _screenManager,
                               replayService: _replayService,
+                              trackingService: _trackingService,
                               onNext: () => setState(() {
                                 _mockReplay!.advance();
                               }),
@@ -251,6 +252,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                               platformVersion: _platformVersion ?? 'Unknown',
                               screenManager: _screenManager,
                               replayService: _replayService,
+                              trackingService: _trackingService,
                             ),
                     ),
 
@@ -306,18 +308,20 @@ class _LiveFlightView extends StatelessWidget {
     required this.platformVersion,
     required this.screenManager,
     required this.replayService,
+    required this.trackingService,
   });
 
   final String platformVersion;
   final ScreenManagerService screenManager;
   final FlightReplayService replayService;
+  final FlightTrackingService trackingService;
 
   @override
   Widget build(BuildContext context) {
     final isReplaying = screenManager.isReplayActive;
     final telemetry = isReplaying
         ? replayService.currentTelemetry
-        : const <String, dynamic>{
+        : <String, dynamic>{
             'altitude': 1250.0,
             'speed': 38.0,
             'glide': 7.5,
@@ -326,6 +330,7 @@ class _LiveFlightView extends StatelessWidget {
             'windDir': 180.0,
             'windSpeed': 12.0,
             'history': [1200.0, 1220.0, 1235.0, 1250.0],
+            'flightPoints': trackingService.activeFlightPoints,
           };
 
     return Scaffold(
@@ -406,6 +411,7 @@ class _MockFlightView extends StatefulWidget {
     required this.replay,
     required this.screenManager,
     required this.replayService,
+    required this.trackingService,
     required this.onNext,
     required this.onReset,
   });
@@ -414,6 +420,7 @@ class _MockFlightView extends StatefulWidget {
   final MockFlightReplay replay;
   final ScreenManagerService screenManager;
   final FlightReplayService replayService;
+  final FlightTrackingService trackingService;
   final VoidCallback onNext;
   final VoidCallback onReset;
 
@@ -430,7 +437,7 @@ class _MockFlightViewState extends State<_MockFlightView> {
     final isReplaying = widget.screenManager.isReplayActive;
     final telemetry = isReplaying
         ? widget.replayService.currentTelemetry
-        : const <String, dynamic>{
+        : <String, dynamic>{
             'altitude': 1450.0,
             'speed': 42.5,
             'glide': 8.4,
@@ -439,6 +446,7 @@ class _MockFlightViewState extends State<_MockFlightView> {
             'windDir': 220.0,
             'windSpeed': 14.0,
             'history': [1400.0, 1410.0, 1430.0, 1425.0, 1450.0],
+            'flightPoints': widget.trackingService.activeFlightPoints,
           };
 
     return Scaffold(

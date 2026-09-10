@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart' hide Path;
+import '../../models/flight_model.dart';
 import '../../models/ui_config.dart';
 import '../../services/screen_manager_service.dart';
 import '../flight/altitude_sparkline_chart.dart';
@@ -451,6 +452,9 @@ class LayoutStrategyContainer extends StatelessWidget {
     final pilotPos = (lat != null && lng != null) ? LatLng(lat, lng) : null;
     final heading = (telemetryData['heading'] as num?)?.toDouble() ?? windDeg;
     final trackPoints = telemetryData['trackPoints'] as List<LatLng>?;
+    final flightPoints =
+        (telemetryData['flightPoints'] as List<FlightPoint>?) ??
+        (telemetryData['activeFlightPoints'] as List<FlightPoint>?);
 
     switch (model.type) {
       case WidgetType.altitude:
@@ -525,6 +529,9 @@ class LayoutStrategyContainer extends StatelessWidget {
           altitudeHistory: mapHistory,
           pilotPosition: pilotPos,
           trackPoints: trackPoints,
+          flightPoints: flightPoints,
+          mapTrackHistoryMinutes: model.effectiveMapTrackHistoryMinutes,
+          mapTrackShowOlderTail: model.effectiveMapTrackShowOlderTail,
         );
       case WidgetType.thermalMap:
         return ThermalMapWidget(
@@ -980,6 +987,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     bool curMapTrack = model.effectiveMapShowTrack;
     bool curMapContours = model.effectiveMapShowContours;
     double curMapZoomLevel = model.effectiveMapZoomLevel;
+    int curMapTrackHistoryMinutes = model.effectiveMapTrackHistoryMinutes;
+    bool curMapTrackShowOlderTail = model.effectiveMapTrackShowOlderTail;
     ThermalMapStyle curThermalMapStyle = model.effectiveThermalMapStyle;
     bool curThermalMapShowCore = model.effectiveThermalMapShowCore;
     int curThermalMapHistorySeconds = model.effectiveThermalMapHistorySeconds;
@@ -1639,6 +1648,80 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        _buildSectionTitle('Track Visualization'),
+                        Card(
+                          color: Colors.black38,
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Track History Window',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    _durationChip(2, curMapTrackHistoryMinutes,
+                                        setDialogState, (v) {
+                                      curMapTrackHistoryMinutes = v;
+                                    }),
+                                    _durationChip(5, curMapTrackHistoryMinutes,
+                                        setDialogState, (v) {
+                                      curMapTrackHistoryMinutes = v;
+                                    }),
+                                    _durationChip(10, curMapTrackHistoryMinutes,
+                                        setDialogState, (v) {
+                                      curMapTrackHistoryMinutes = v;
+                                    }),
+                                    _durationChip(15, curMapTrackHistoryMinutes,
+                                        setDialogState, (v) {
+                                      curMapTrackHistoryMinutes = v;
+                                    }),
+                                    _durationChip(30, curMapTrackHistoryMinutes,
+                                        setDialogState, (v) {
+                                      curMapTrackHistoryMinutes = v;
+                                    }),
+                                    _durationChip(0, curMapTrackHistoryMinutes,
+                                        setDialogState, (v) {
+                                      curMapTrackHistoryMinutes = v;
+                                    }, label: 'All'),
+                                  ],
+                                ),
+                                const Divider(color: Colors.white12),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text(
+                                    'Show Older Tail',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  subtitle: const Text(
+                                    'Muted faded trail behind the active window',
+                                    style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  value: curMapTrackShowOlderTail,
+                                  activeThumbColor: Colors.cyanAccent,
+                                  onChanged: (val) => setDialogState(
+                                    () => curMapTrackShowOlderTail = val,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ] else if (model.type == WidgetType.thermalMap) ...[
                         _buildSectionTitle('Thermal Map Visual Style'),
                         Card(
@@ -1740,6 +1823,8 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                       mapShowTrack: curMapTrack,
                       mapShowContours: curMapContours,
                       mapZoomLevel: curMapZoomLevel,
+                      mapTrackHistoryMinutes: curMapTrackHistoryMinutes,
+                      mapTrackShowOlderTail: curMapTrackShowOlderTail,
                       thermalMapStyle: curThermalMapStyle,
                       thermalMapShowCore: curThermalMapShowCore,
                       thermalMapHistorySeconds: curThermalMapHistorySeconds,
@@ -1797,6 +1882,32 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
       ),
       onSelected: (sel) {
         if (sel) onSelected(value);
+      },
+    );
+  }
+
+  Widget _durationChip(
+    int value,
+    int currentValue,
+    StateSetter setDialogState,
+    ValueChanged<int> onChanged, {
+    String? label,
+  }) {
+    final isSelected = value == currentValue;
+    return ChoiceChip(
+      label: Text(label ?? '${value}m'),
+      selected: isSelected,
+      selectedColor: Colors.cyan.shade800,
+      backgroundColor: Colors.black54,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.white70,
+        fontSize: 11,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      onSelected: (sel) {
+        if (sel) {
+          setDialogState(() => onChanged(value));
+        }
       },
     );
   }
