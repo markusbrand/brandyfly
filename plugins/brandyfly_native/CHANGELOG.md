@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_native-v0.1.0...brandyfly_native-v0.2.0) (2026-09-10)
+
+
+### Features
+
+* **openspec:** complete SPEC-CONTINUOUS-VALIDATION ([#134](https://github.com/markusbrand/brandyfly/issues/134)) and fix reusable sync workflow ([#137](https://github.com/markusbrand/brandyfly/issues/137)) ([2801173](https://github.com/markusbrand/brandyfly/commit/280117393bb093350ff2bad44ba12c60ce31ecec))
+
 ## [0.1.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_native-v0.0.1...brandyfly_native-v0.1.0) (2026-08-26)
 
 
