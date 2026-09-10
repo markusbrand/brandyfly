@@ -47,7 +47,8 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
         final progress = widget.replayService.progressRatio;
         final isPlaying = widget.replayService.isPlaying;
         final speed = widget.replayService.speedMultiplier;
-        final flightTitle = widget.replayService.flight?.title ?? 'Flight Replay';
+        final flightTitle =
+            widget.replayService.flight?.title ?? 'Flight Replay';
 
         return GestureDetector(
           onVerticalDragUpdate: (details) {
@@ -97,20 +98,30 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Grab handle / Drag indicator
-                            GestureDetector(
-                              key: const Key('replay_bottom_grab_handle'),
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () => setState(() => _isExpanded = !_isExpanded),
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.only(top: 2, bottom: 4),
-                                child: Center(
-                                  child: Container(
-                                    width: 40,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.cyanAccent.withAlpha(120),
-                                      borderRadius: BorderRadius.circular(2),
+                            Semantics(
+                              button: true,
+                              label: _isExpanded
+                                  ? 'Collapse replay controls'
+                                  : 'Expand replay controls',
+                              child: GestureDetector(
+                                key: const Key('replay_bottom_grab_handle'),
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () =>
+                                    setState(() => _isExpanded = !_isExpanded),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.only(
+                                    top: 2,
+                                    bottom: 4,
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      width: 40,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.cyanAccent.withAlpha(120),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -148,14 +159,24 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                                 ),
                                 const SizedBox(width: 6),
                                 IconButton(
-                                  key: Key(_isExpanded ? 'btn_replay_collapse' : 'btn_replay_expand'),
-                                  onPressed: () => setState(() => _isExpanded = !_isExpanded),
+                                  key: Key(
+                                    _isExpanded
+                                        ? 'btn_replay_collapse'
+                                        : 'btn_replay_expand',
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _isExpanded = !_isExpanded,
+                                  ),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
                                   iconSize: 20,
-                                  tooltip: _isExpanded ? 'Minimize controls' : 'Expand controls',
+                                  tooltip: _isExpanded
+                                      ? 'Minimize controls'
+                                      : 'Expand controls',
                                   icon: Icon(
-                                    _isExpanded ? Icons.expand_more : Icons.expand_less,
+                                    _isExpanded
+                                        ? Icons.expand_more
+                                        : Icons.expand_less,
                                     color: Colors.cyanAccent,
                                   ),
                                 ),
@@ -181,8 +202,12 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                               SliderTheme(
                                 data: SliderTheme.of(context).copyWith(
                                   trackHeight: 3,
-                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6,
+                                  ),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 12,
+                                  ),
                                   activeTrackColor: Colors.cyanAccent,
                                   inactiveTrackColor: Colors.white24,
                                   thumbColor: Colors.cyanAccent,
@@ -197,10 +222,14 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
 
                               // Bottom row: Controls (Rewind 10s, Play/Pause, Fast Forward 10s, Speed Multiplier)
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.replay_10, color: Colors.white70),
+                                    icon: const Icon(
+                                      Icons.replay_10,
+                                      color: Colors.white70,
+                                    ),
                                     iconSize: 20,
                                     tooltip: 'Back 10s',
                                     onPressed: () {
@@ -214,7 +243,9 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                                     ),
                                     child: IconButton(
                                       icon: Icon(
-                                        isPlaying ? Icons.pause : Icons.play_arrow,
+                                        isPlaying
+                                            ? Icons.pause
+                                            : Icons.play_arrow,
                                         color: Colors.black,
                                       ),
                                       iconSize: 22,
@@ -225,7 +256,10 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.forward_10, color: Colors.white70),
+                                    icon: const Icon(
+                                      Icons.forward_10,
+                                      color: Colors.white70,
+                                    ),
                                     iconSize: 20,
                                     tooltip: 'Forward 10s',
                                     onPressed: () {
@@ -235,13 +269,20 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                                   OutlinedButton(
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: Colors.cyanAccent,
-                                      side: const BorderSide(color: Colors.cyanAccent),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      side: const BorderSide(
+                                        color: Colors.cyanAccent,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
                                       minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     onPressed: () {
-                                      widget.replayService.cycleSpeedMultiplier();
+                                      widget.replayService
+                                          .cycleSpeedMultiplier();
                                     },
                                     child: Text(
                                       '${speed}x',
