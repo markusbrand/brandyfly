@@ -146,60 +146,106 @@ fn main() {
 }
 
 fn parse_manifest_simple(content: &str) -> DataPackageManifest {
-    let mut dataset_identifier = String::new();
-    let mut provider = String::new();
-    let mut source_version_or_date = String::new();
-    let mut build_time = String::new();
-    let mut license_identifier_or_terms_url = String::new();
-    let mut attribution_text = String::new();
-    let mut attribution_url = None;
-    let mut geographic_coverage = String::new();
-    let mut checksum = String::new();
-    let mut review_expiry = String::new();
+    let mut input = DataPackageManifestInput::default();
 
-    for line in content.lines() {
-        let line = line.trim();
+    for line in content.lines().map(str::trim) {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
         if let Some((k, v)) = line.split_once(':') {
-            let key = k.trim().trim_matches('"');
-            let val = v
-                .trim()
-                .trim_matches('"')
-                .trim_matches(',')
-                .trim()
-                .to_string();
+            let key = k.trim().trim_matches(&['"', ' '][..]);
+            let val = v.trim_matches(&['"', ',', ' '][..]);
             match key {
-                "dataset_identifier" | "dataset_id" => dataset_identifier = val,
-                "provider" | "provider_id" => provider = val,
-                "source_version_or_date" | "source_date" => source_version_or_date = val,
-                "build_time" | "built_at" => build_time = val,
+                "dataset_identifier" | "dataset_id" => input.dataset_identifier = val.to_string(),
+                "provider" | "provider_id" => input.provider = val.to_string(),
+                "source_version_or_date" | "source_date" => {
+                    input.source_version_or_date = val.to_string();
+                }
+                "build_time" | "built_at" => input.build_time = val.to_string(),
                 "license_identifier_or_terms_url" | "license" => {
-                    license_identifier_or_terms_url = val
+                    input.license_identifier_or_terms_url = val.to_string();
                 }
-                "attribution_text" | "attribution" => attribution_text = val,
+                "attribution_text" | "attribution" => input.attribution_text = val.to_string(),
                 "attribution_url" => {
-                    attribution_url = if val.is_empty() { None } else { Some(val) }
+                    input.attribution_url = (!val.is_empty()).then(|| val.to_string());
                 }
-                "geographic_coverage" | "coverage" => geographic_coverage = val,
-                "checksum" | "sha256" => checksum = val,
-                "review_expiry" | "expires" => review_expiry = val,
+                "geographic_coverage" | "coverage" => input.geographic_coverage = val.to_string(),
+                "checksum" | "sha256" => input.checksum = val.to_string(),
+                "review_expiry" | "expires" => input.review_expiry = val.to_string(),
                 _ => {}
             }
         }
     }
 
-    DataPackageManifest::new(DataPackageManifestInput {
-        dataset_identifier,
-        provider,
-        source_version_or_date,
-        build_time,
-        license_identifier_or_terms_url,
-        attribution_text,
-        attribution_url,
-        geographic_coverage,
-        checksum,
-        review_expiry,
-    })
+    DataPackageManifest::new(input)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_manifest_simple_canonical_keys() {
+        let content = r#"
+            # Manifest comment
+            dataset_identifier: "osm-alps-vector-v1"
+            provider: "osm-geofabrik"
+            source_version_or_date: "2026-08-01"
+            build_time: "2026-08-07T12:00:00Z"
+            license_identifier_or_terms_url: "ODbL-1.0"
+            attribution_text: "© OpenStreetMap contributors"
+            attribution_url: "https://www.openstreetmap.org/copyright"
+            geographic_coverage: "Alps (bbox: 5.8,43.7,16.5,48.2)"
+            checksum: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            review_expiry: "2027-08-07"
+        "#;
+
+        let manifest = parse_manifest_simple(content);
+        assert_eq!(manifest.dataset_identifier, "osm-alps-vector-v1");
+        assert_eq!(manifest.provider, "osm-geofabrik");
+        assert_eq!(manifest.source_version_or_date, "2026-08-01");
+        assert_eq!(manifest.build_time, "2026-08-07T12:00:00Z");
+        assert_eq!(manifest.license_identifier_or_terms_url, "ODbL-1.0");
+        assert_eq!(manifest.attribution_text, "© OpenStreetMap contributors");
+        assert_eq!(
+            manifest.attribution_url,
+            Some("https://www.openstreetmap.org/copyright".to_string())
+        );
+        assert_eq!(
+            manifest.geographic_coverage,
+            "Alps (bbox: 5.8,43.7,16.5,48.2)"
+        );
+        assert_eq!(
+            manifest.checksum,
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        assert_eq!(manifest.review_expiry, "2027-08-07");
+    }
+
+    #[test]
+    fn parse_manifest_simple_alias_keys_and_formatting() {
+        let content = r#"
+            dataset_id: "dem-glo-30",
+            provider_id: "copernicus",
+            source_date: "2026-01-01",
+            built_at: "2026-02-01",
+            license: "CC-BY-4.0",
+            attribution: "Copernicus DEM",
+            coverage: "Global",
+            sha256: "abc123hash",
+            expires: "2027-01-01",
+        "#;
+
+        let manifest = parse_manifest_simple(content);
+        assert_eq!(manifest.dataset_identifier, "dem-glo-30");
+        assert_eq!(manifest.provider, "copernicus");
+        assert_eq!(manifest.source_version_or_date, "2026-01-01");
+        assert_eq!(manifest.build_time, "2026-02-01");
+        assert_eq!(manifest.license_identifier_or_terms_url, "CC-BY-4.0");
+        assert_eq!(manifest.attribution_text, "Copernicus DEM");
+        assert_eq!(manifest.attribution_url, None);
+        assert_eq!(manifest.geographic_coverage, "Global");
+        assert_eq!(manifest.checksum, "abc123hash");
+        assert_eq!(manifest.review_expiry, "2027-01-01");
+    }
 }
