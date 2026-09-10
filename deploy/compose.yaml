@@ -1,6 +1,7 @@
 services:
-  backend:
+  brandyfly:
     image: ghcr.io/markusbrand/brandyfly-backend:latest
+    container_name: brandyfly-backend
     restart: unless-stopped
     read_only: true
     tmpfs:
