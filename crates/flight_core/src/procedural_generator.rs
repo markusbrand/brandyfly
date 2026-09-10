@@ -395,4 +395,53 @@ mod tests {
         generator.reset();
         assert_eq!(generator.current_altitude_m(), 1500.0 + 42.0 * 2.0);
     }
+
+    #[test]
+    fn altitude_to_pressure_hpa_converts_standard_atmospheric_altitudes() {
+        // Sea level pressure should equal standard atmospheric pressure 1013.25 hPa
+        let p_sea_level = ProceduralFlightGenerator::altitude_to_pressure_hpa(0.0);
+        assert!(
+            (p_sea_level - 1013.25).abs() < 1e-6,
+            "Expected 1013.25 hPa at sea level, got {p_sea_level}"
+        );
+
+        // Standard altitude tests: 1000m and 1500m
+        let p_1000m = ProceduralFlightGenerator::altitude_to_pressure_hpa(1000.0);
+        let expected_1000m = 1013.25 * (1.0f64 - (1000.0 / 44330.0)).powf(5.25588);
+        assert!(
+            (p_1000m - expected_1000m).abs() < 1e-6,
+            "Expected {expected_1000m} hPa at 1000m, got {p_1000m}"
+        );
+
+        let p_1500m = ProceduralFlightGenerator::altitude_to_pressure_hpa(1500.0);
+        let expected_1500m = 1013.25 * (1.0f64 - (1500.0 / 44330.0)).powf(5.25588);
+        assert!(
+            (p_1500m - expected_1500m).abs() < 1e-6,
+            "Expected {expected_1500m} hPa at 1500m, got {p_1500m}"
+        );
+
+        // Below sea level (-100m) should yield pressure higher than sea level
+        let p_below_sea = ProceduralFlightGenerator::altitude_to_pressure_hpa(-100.0);
+        assert!(
+            p_below_sea > 1013.25,
+            "Expected pressure > 1013.25 hPa below sea level, got {p_below_sea}"
+        );
+
+        // Theoretical troposphere limit altitude (44330m) should result in 0 hPa
+        let p_top = ProceduralFlightGenerator::altitude_to_pressure_hpa(44330.0);
+        assert!(p_top.abs() < 1e-6, "Expected ~0 hPa at 44330m, got {p_top}");
+
+        // Verify monotonicity: pressure decreases as altitude increases
+        let altitudes = [-500.0, 0.0, 500.0, 1000.0, 1500.0, 3000.0, 5000.0];
+        for window in altitudes.windows(2) {
+            let alt1 = window[0];
+            let alt2 = window[1];
+            let p1 = ProceduralFlightGenerator::altitude_to_pressure_hpa(alt1);
+            let p2 = ProceduralFlightGenerator::altitude_to_pressure_hpa(alt2);
+            assert!(
+                p1 > p2,
+                "Expected pressure at {alt1}m ({p1}) to be strictly greater than at {alt2}m ({p2})"
+            );
+        }
+    }
 }
