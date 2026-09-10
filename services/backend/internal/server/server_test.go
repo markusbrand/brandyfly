@@ -63,3 +63,10 @@ func TestCheckHealthRejectsUnhealthyResponse(t *testing.T) {
 		t.Fatal("CheckHealth() error = nil, want non-nil")
 	}
 }
+
+func TestCheckHealthInvalidURL(t *testing.T) {
+	err := CheckHealth(":\x7f", time.Second)
+	if err == nil {
+		t.Fatal("CheckHealth() with invalid URL error = nil, want non-nil")
+	}
+}
