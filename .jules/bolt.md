@@ -30,6 +30,10 @@
 **Learning:** In Flutter, wrapping a `CustomPaint` widget inside an `AnimatedBuilder` to force it to redraw during animations causes the entire `CustomPaint` widget to be rebuilt and the `CustomPainter` to be re-allocated on every single frame.
 **Action:** Always pass the `Animation` or `Listenable` directly to the `CustomPainter`'s constructor and forward it to `super(repaint: animation)`. The painter will automatically trigger canvas redraws when the animation ticks without needing the parent widget to rebuild. Ensure you then access the animation's `.value` directly inside the `paint()` method.
 
+## 2026-09-09 - Avoid vector allocations for string splitting in Rust frame parsers
+**Learning:** Calling `.split(',').collect::<Vec<&str>>()` when parsing frame payloads creates heap allocations per packet. In high-frequency frame parsing hot-paths (e.g. 20-100Hz telemetry feeds), this creates unnecessary heap allocation overhead.
+**Action:** Use string split iterators (`str::split(',')`) directly with `impl Iterator<Item = &str>` parameter signatures and `.next()`, eliminating heap vector allocations and boosting parsing throughput.
+
 ## 2026-09-09 - Avoid `Vec::remove(0)` in Bounded Queue Operations
 **Learning:** Using `Vec::remove(0)` to drop the oldest item or pop elements from the front of a queue shifts every subsequent element in memory, resulting in O(N) operations per push/pop when capacity is reached. Switching the underlying storage to `VecDeque` converts `pop_front()` and `push_back()` into O(1) ring buffer operations.
 **Action:** Always use `std::collections::VecDeque` instead of `Vec` for FIFO queues or bounded buffers where items are inserted at the back and removed from the front.
