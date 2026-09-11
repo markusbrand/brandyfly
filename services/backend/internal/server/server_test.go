@@ -51,6 +51,35 @@ func TestHealthEndpointUnauthorized(t *testing.T) {
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
 	}
+	if nosniff := response.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q, want nosniff", nosniff)
+	}
+	if deny := response.Header().Get("X-Frame-Options"); deny != "DENY" {
+		t.Fatalf("X-Frame-Options = %q, want DENY", deny)
+	}
+	if csp := response.Header().Get("Content-Security-Policy"); csp != "default-src 'none'" {
+		t.Fatalf("Content-Security-Policy = %q, want default-src 'none'", csp)
+	}
+}
+
+func TestNotFoundHasSecurityHeaders(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/doesnotexist", nil)
+	response := httptest.NewRecorder()
+
+	NewHandler().ServeHTTP(response, request)
+
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusNotFound)
+	}
+	if nosniff := response.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q, want nosniff", nosniff)
+	}
+	if deny := response.Header().Get("X-Frame-Options"); deny != "DENY" {
+		t.Fatalf("X-Frame-Options = %q, want DENY", deny)
+	}
+	if csp := response.Header().Get("Content-Security-Policy"); csp != "default-src 'none'" {
+		t.Fatalf("Content-Security-Policy = %q, want default-src 'none'", csp)
+	}
 }
 
 func TestCheckHealthRejectsUnhealthyResponse(t *testing.T) {
