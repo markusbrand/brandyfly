@@ -51,6 +51,15 @@ func TestHealthEndpointUnauthorized(t *testing.T) {
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
 	}
+	if nosniff := response.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q, want nosniff", nosniff)
+	}
+	if frameOptions := response.Header().Get("X-Frame-Options"); frameOptions != "DENY" {
+		t.Fatalf("X-Frame-Options = %q, want DENY", frameOptions)
+	}
+	if csp := response.Header().Get("Content-Security-Policy"); csp != "default-src 'none'" {
+		t.Fatalf("Content-Security-Policy = %q, want default-src 'none'", csp)
+	}
 }
 
 func TestCheckHealthRejectsUnhealthyResponse(t *testing.T) {
