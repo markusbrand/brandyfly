@@ -13,8 +13,11 @@
     },
     "terrain": {
       "type": "raster-dem",
-      "url": "pmtiles://terrain.pmtiles",
+      "tiles": [
+        "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+      ],
       "tileSize": 512,
+      "maxzoom": 15,
       "encoding": "terrarium"
     }
   },
@@ -55,7 +58,7 @@
       "filter": ["in", "kind", "forest", "wood"],
       "paint": {
         "fill-color": "#d2e8cb",
-        "fill-opacity": 0.9
+        "fill-opacity": 0.85
       }
     },
     {
@@ -86,6 +89,18 @@
       "filter": ["in", "kind", "residential", "commercial", "industrial"],
       "paint": {
         "fill-color": "#e8e5df"
+      }
+    },
+    {
+      "id": "terrain-hillshade",
+      "type": "hillshade",
+      "source": "terrain",
+      "paint": {
+        "hillshade-illumination-direction": 315,
+        "hillshade-exaggeration": 0.75,
+        "hillshade-shadow-color": "#2c3e50",
+        "hillshade-highlight-color": "#ffffff",
+        "hillshade-accent-color": "#4a6345"
       }
     },
     {
@@ -422,6 +437,68 @@
         "line-width": 1.0,
         "line-dasharray": [4, 3],
         "line-opacity": 0.6
+      }
+    },
+    {
+      "id": "contour-100m",
+      "type": "line",
+      "source": "contours",
+      "source-layer": "contours",
+      "filter": ["==", ["%", ["to-number", ["get", "elevation"]], 100], 0],
+      "minzoom": 10,
+      "paint": {
+        "line-color": "#8b6c42",
+        "line-opacity": 0.6,
+        "line-width": 1.4
+      }
+    },
+    {
+      "id": "contour-50m",
+      "type": "line",
+      "source": "contours",
+      "source-layer": "contours",
+      "filter": [
+        "all",
+        ["==", ["%", ["to-number", ["get", "elevation"]], 50], 0],
+        ["!=", ["%", ["to-number", ["get", "elevation"]], 100], 0]
+      ],
+      "minzoom": 12,
+      "paint": {
+        "line-color": "#8b6c42",
+        "line-opacity": 0.35,
+        "line-width": 0.9
+      }
+    },
+    {
+      "id": "contour-10m",
+      "type": "line",
+      "source": "contours",
+      "source-layer": "contours",
+      "filter": ["!=", ["%", ["to-number", ["get", "elevation"]], 50], 0],
+      "minzoom": 14,
+      "paint": {
+        "line-color": "#8b6c42",
+        "line-opacity": 0.2,
+        "line-width": 0.6
+      }
+    },
+    {
+      "id": "contour-100m-label",
+      "type": "symbol",
+      "source": "contours",
+      "source-layer": "contours",
+      "filter": ["==", ["%", ["to-number", ["get", "elevation"]], 100], 0],
+      "minzoom": 12,
+      "layout": {
+        "text-field": "{elevation}m",
+        "text-size": 9,
+        "symbol-placement": "line",
+        "text-max-angle": 30
+      },
+      "paint": {
+        "text-color": "#6b5a3e",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1
       }
     },
     {

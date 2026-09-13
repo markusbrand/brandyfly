@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart' hide Marker;
 
@@ -112,7 +114,8 @@ class _MapWidgetState extends State<MapWidget> {
   late double _currentZoom;
   bool _centerOnPilot = true;
   Timer? _recenterTimer;
-  Offset _panOffset = Offset.zero;
+  MapCamera? _mapCamera;
+  MapController? _mapController;
   String? _styleJson;
 
   // Default Alpine launch reference coordinates (Dachstein / Krippenstein)
@@ -198,19 +201,133 @@ class _MapWidgetState extends State<MapWidget> {
     if (widget.orientation != oldWidget.orientation ||
         (widget.orientation == MapOrientation.trackUp &&
             widget.headingDeg != oldWidget.headingDeg)) {
-      _updateCamera();
+      if (_centerOnPilot) {
+        _updateCamera();
+      } else {
+        // When panned away, only update bearing, NEVER reset camera center!
+        _mapController?.moveCamera(
+          bearing: widget.orientation == MapOrientation.trackUp
+              ? widget.headingDeg
+              : 0.0,
+        );
+      }
+    }
+
+    if (widget.showContours != oldWidget.showContours) {
+      _updateContourVisibility(widget.showContours);
+    }
+  }
+
+  void _onStyleLoaded(StyleController style) {
+    _mapService.onStyleLoaded(style);
+    _updateContourVisibility(widget.showContours);
+  }
+
+  /// Toggles the visibility of all contour layers.
+  ///
+  /// Uses [StyleController.removeLayer] to hide and [StyleController.addLayer]
+  /// to re-insert contour layers, since this maplibre version (0.3.6) does not
+  /// yet expose a `setLayerVisibility` API. Silently no-ops when no contour
+  /// data is present (layers were stripped from the style JSON at build time).
+  void _updateContourVisibility(bool visible) {
+    final style = _mapService.styleController;
+    if (style == null) return;
+    if (visible) {
+      // Re-insert contour layers into the live style above the boundary layer.
+      // addLayer is async; fire-and-forget is acceptable for a UI toggle.
+      final contourUrl =
+          '${_mapService.tileServer.baseUrl}/contours/{z}/{x}/{y}.pbf';
+      style
+          .addSource(VectorSource(id: 'contours', tiles: [contourUrl]))
+          .catchError((_) {}); // Source may already exist
+      // Layers are re-added; order matches the style JSON insertion order.
+      _addContourLayers(style);
+    } else {
+      for (final id in const [
+        'contour-100m-label',
+        'contour-10m',
+        'contour-50m',
+        'contour-100m',
+      ]) {
+        style.removeLayer(id).catchError((_) {});
+      }
+    }
+  }
+
+  void _addContourLayers(StyleController style) {
+    // These are added above all existing layers (default behaviour).
+    // The style JSON already has them at the correct position when loaded
+    // initially; here we re-insert after a hide.
+    style.addLayer(
+      const LineStyleLayer(
+        id: 'contour-100m',
+        sourceId: 'contours',
+        sourceLayerId: 'contours',
+      ),
+    ).catchError((_) {});
+    style.addLayer(
+      const LineStyleLayer(
+        id: 'contour-50m',
+        sourceId: 'contours',
+        sourceLayerId: 'contours',
+      ),
+    ).catchError((_) {});
+    style.addLayer(
+      const LineStyleLayer(
+        id: 'contour-10m',
+        sourceId: 'contours',
+        sourceLayerId: 'contours',
+      ),
+    ).catchError((_) {});
+    style.addLayer(
+      const SymbolStyleLayer(
+        id: 'contour-100m-label',
+        sourceId: 'contours',
+        sourceLayerId: 'contours',
+      ),
+    ).catchError((_) {});
+  }
+
+  void _onMapCreated(MapController controller) {
+    _mapController = controller;
+    _mapService.onMapCreated(controller);
+  }
+
+  void _onMapEvent(MapEvent event) {
+    if (event is MapEventMoveCamera) {
+      setState(() {
+        _mapCamera = event.camera;
+        _currentZoom = event.camera.zoom;
+      });
+    } else if (event is MapEventStartMoveCamera) {
+      if (event.reason == CameraChangeReason.apiGesture) {
+        // User-initiated gesture: stop following pilot and schedule recenter
+        setState(() {
+          _centerOnPilot = false;
+        });
+        _startRecenterTimer();
+      }
     }
   }
 
   void _updateCamera() {
+    final controller = _mapController;
+    if (controller == null) return;
     final bearing = widget.orientation == MapOrientation.trackUp
         ? widget.headingDeg
         : 0.0;
-    _mapService.moveCamera(
-      position: _effectivePilotPosition,
-      zoom: _currentZoom,
-      bearing: bearing,
-    );
+    if (_centerOnPilot) {
+      final pos = _effectivePilotPosition;
+      controller.moveCamera(
+        center: Geographic(lon: pos.longitude, lat: pos.latitude),
+        zoom: _currentZoom,
+        bearing: bearing,
+      );
+    } else {
+      controller.moveCamera(
+        bearing: bearing,
+      );
+    }
   }
 
   void _handleZoom(double delta) {
@@ -219,9 +336,10 @@ class _MapWidgetState extends State<MapWidget> {
       _currentZoom = newZoom;
     });
 
-    _mapService.moveCamera(
-      position: _effectivePilotPosition,
+    // Zoom at current camera center, not jumping to pilot position
+    _mapController?.animateCamera(
       zoom: newZoom,
+      nativeDuration: const Duration(milliseconds: 200),
     );
 
     widget.onZoomChanged?.call(newZoom);
@@ -235,10 +353,20 @@ class _MapWidgetState extends State<MapWidget> {
   void _recenter() {
     _recenterTimer?.cancel();
     setState(() {
-      _panOffset = Offset.zero;
       _centerOnPilot = true;
     });
-    _updateCamera();
+    final controller = _mapController;
+    if (controller != null) {
+      final bearing = widget.orientation == MapOrientation.trackUp
+          ? widget.headingDeg
+          : 0.0;
+      final pos = _effectivePilotPosition;
+      controller.animateCamera(
+        center: Geographic(lon: pos.longitude, lat: pos.latitude),
+        bearing: bearing,
+        nativeDuration: const Duration(milliseconds: 500),
+      );
+    }
   }
 
   void _startRecenterTimer() {
@@ -254,19 +382,9 @@ class _MapWidgetState extends State<MapWidget> {
       borderRadius: BorderRadius.circular(8),
       child: Stack(
         children: [
-          // 1. Map Canvas / MapLibre GL Base Map
+          // 1. Map Canvas / MapLibre GL Base Map — gestures handled natively
           Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onPanUpdate: (details) {
-                setState(() {
-                  _panOffset += details.delta;
-                  _centerOnPilot = false;
-                });
-                _startRecenterTimer();
-              },
-              child: _buildMapBackground(pilotPos),
-            ),
+            child: _buildMapBackground(pilotPos),
           ),
 
           // 2. Flight Overlays (Airspace, Flight Track, Thermals, Pilot Marker)
@@ -277,8 +395,8 @@ class _MapWidgetState extends State<MapWidget> {
                   pilotPosition: pilotPos,
                   orientation: widget.orientation,
                   headingDeg: widget.headingDeg,
-                  zoom: _currentZoom,
-                  panOffset: _panOffset,
+                  mapController: _mapController,
+                  mapCamera: _mapCamera,
                   showAirspace: widget.showAirspace,
                   showTrack: widget.showTrack,
                   showThermals: widget.showThermals,
@@ -419,9 +537,14 @@ class _MapWidgetState extends State<MapWidget> {
           ),
           initZoom: _currentZoom,
           initStyle: _styleJson!,
+          gestures: const MapGestures.all(),
         ),
-        onMapCreated: _mapService.onMapCreated,
-        onStyleLoaded: _mapService.onStyleLoaded,
+        gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+          Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+        },
+        onMapCreated: _onMapCreated,
+        onStyleLoaded: _onStyleLoaded,
+        onEvent: _onMapEvent,
       );
     }
 
@@ -581,8 +704,8 @@ class _FlightOverlayPainter extends CustomPainter {
     required this.pilotPosition,
     required this.orientation,
     required this.headingDeg,
-    required this.zoom,
-    required this.panOffset,
+    required this.mapController,
+    required this.mapCamera,
     required this.showAirspace,
     required this.showTrack,
     required this.showThermals,
@@ -596,8 +719,8 @@ class _FlightOverlayPainter extends CustomPainter {
   final LatLng pilotPosition;
   final MapOrientation orientation;
   final double headingDeg;
-  final double zoom;
-  final Offset panOffset;
+  final MapController? mapController;
+  final MapCamera? mapCamera;
   final bool showAirspace;
   final bool showTrack;
   final bool showThermals;
@@ -607,28 +730,31 @@ class _FlightOverlayPainter extends CustomPainter {
   final int mapTrackHistoryMinutes;
   final bool mapTrackShowOlderTail;
 
+  /// Convert a geographic coordinate to a screen pixel offset.
+  ///
+  /// Delegates to [MapController.toScreenLocation] when the controller is ready,
+  /// which uses the same projection as the native MapLibre GL renderer ensuring
+  /// pixel-perfect overlay sync at all zoom levels, bearings, and pan positions.
+  /// Falls back to screen center before the controller is available.
   Offset _toScreen(LatLng point, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    // 1 degree lat approx 111,000m. Scale based on zoom.
-    final pixelsPerDegreeLat = math.pow(2, zoom) * 8.0;
-    final cosLat = math.cos(pilotPosition.latitude * math.pi / 180);
-    final pixelsPerDegreeLng = pixelsPerDegreeLat * cosLat;
-
-    final dLat = point.latitude - pilotPosition.latitude;
-    final dLng = point.longitude - pilotPosition.longitude;
-
-    var dx = dLng * pixelsPerDegreeLng;
-    var dy = -dLat * pixelsPerDegreeLat; // Screen Y is inverted
-
-    if (orientation == MapOrientation.trackUp) {
-      final rad = -headingDeg * math.pi / 180;
-      final rotX = dx * math.cos(rad) - dy * math.sin(rad);
-      final rotY = dx * math.sin(rad) + dy * math.cos(rad);
-      dx = rotX;
-      dy = rotY + size.height * 0.1; // Forward bias
+    final controller = mapController;
+    if (controller != null) {
+      return controller.toScreenLocation(
+        Geographic(lon: point.longitude, lat: point.latitude),
+      );
     }
+    // Controller not yet ready — render at center as a safe fallback
+    return Offset(size.width / 2, size.height / 2);
+  }
 
-    return center + Offset(dx, dy) + panOffset;
+  @override
+  bool shouldRepaint(_FlightOverlayPainter old) {
+    return old.mapCamera != mapCamera ||
+        old.pilotPosition != pilotPosition ||
+        old.headingDeg != headingDeg ||
+        old.showAirspace != showAirspace ||
+        old.showTrack != showTrack ||
+        old.showThermals != showThermals;
   }
 
   @override
@@ -755,7 +881,4 @@ class _FlightOverlayPainter extends CustomPainter {
     canvas.drawPath(path, bodyPaint);
     canvas.restore();
   }
-
-  @override
-  bool shouldRepaint(_FlightOverlayPainter old) => true;
 }

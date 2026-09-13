@@ -29,8 +29,10 @@ class LocalTileServer {
   StreamSubscription<HttpRequest>? _serverSubscription;
   PMTilesReader? _primaryReader;
   PMTilesReader? _fallbackReader;
+  PMTilesReader? _contourReader;
   String? _primaryArchivePath;
   String? _fallbackArchivePath;
+  String? _contourArchivePath;
   bool _isRunning = false;
 
   bool get isRunning => _isRunning;
@@ -108,6 +110,29 @@ class LocalTileServer {
     }
   }
 
+  /// Sets or updates the contour vector PMTiles archive (per-region contour lines).
+  Future<void> setContourArchive(String? path) async {
+    if (_contourArchivePath == path && _contourReader != null) {
+      return;
+    }
+
+    await _contourReader?.close();
+    _contourReader = null;
+    _contourArchivePath = path;
+
+    if (path != null && path.isNotEmpty) {
+      final file = File(path);
+      if (await file.exists() && await file.length() >= 127) {
+        try {
+          _contourReader = await PMTilesReader.open(file);
+          debugPrint('[LocalTileServer] Loaded contour archive: $path');
+        } catch (e) {
+          debugPrint('[LocalTileServer] Failed to open contour archive $path: $e');
+        }
+      }
+    }
+  }
+
   /// Shuts down the HTTP server and releases open file handles.
   Future<void> stop() async {
     if (!_isRunning) return;
@@ -127,6 +152,10 @@ class LocalTileServer {
     _fallbackReader = null;
     _fallbackArchivePath = null;
 
+    await _contourReader?.close();
+    _contourReader = null;
+    _contourArchivePath = null;
+
     try {
       _httpClient.close(force: true);
     } catch (_) {}
@@ -145,6 +174,7 @@ class LocalTileServer {
           'port': port,
           'primaryLoaded': _primaryReader != null,
           'fallbackLoaded': _fallbackReader != null,
+          'contourLoaded': _contourReader != null,
         });
         return;
       }
@@ -160,6 +190,15 @@ class LocalTileServer {
         final x = int.parse(tileMatch.group(2)!);
         final y = int.parse(tileMatch.group(3)!);
         await _handleTileRequest(request, z, x, y);
+        return;
+      }
+
+      final contourMatch = RegExp(r'^/contours/(\d+)/(\d+)/(\d+)\.pbf$').firstMatch(path);
+      if (contourMatch != null) {
+        final z = int.parse(contourMatch.group(1)!);
+        final x = int.parse(contourMatch.group(2)!);
+        final y = int.parse(contourMatch.group(3)!);
+        await _handleContourRequest(request, z, x, y);
         return;
       }
 
@@ -198,6 +237,29 @@ class LocalTileServer {
     metadata['tiles'] = [tilesUrlTemplate];
 
     _respondJson(request, HttpStatus.ok, metadata);
+  }
+
+  /// Serves contour vector tile payloads from the contour PMTiles archive.
+  Future<void> _handleContourRequest(
+    HttpRequest request,
+    int z,
+    int x,
+    int y,
+  ) async {
+    if (_contourReader != null) {
+      try {
+        final tileBytes = await _contourReader!.getTile(z, x, y);
+        if (tileBytes != null && tileBytes.isNotEmpty) {
+          await _serveTileBytes(request, tileBytes);
+          return;
+        }
+      } catch (e) {
+        debugPrint('[LocalTileServer] Contour tile fetch error ($z/$x/$y): $e');
+      }
+    }
+    // Return 204 No Content when no contour data available for this tile
+    request.response.statusCode = HttpStatus.noContent;
+    await request.response.close();
   }
 
   /// Serves vector tile payloads from primary PMTiles, fallback PMTiles, or online proxy.

@@ -121,6 +121,7 @@ class MapLibreMapService extends ChangeNotifier {
     final basePath = await getRegionsBasePath();
     bool useRegion = false;
     String? terrainSourceUrl;
+    String? contourArchivePath;
 
     String? effectiveRegionId = regionId;
     if (effectiveRegionId == null || effectiveRegionId.isEmpty) {
@@ -143,6 +144,7 @@ class MapLibreMapService extends ChangeNotifier {
       final regionDir = '$basePath/$effectiveRegionId';
       final mapFile = File('$regionDir/map.pmtiles');
       final terrainFile = File('$regionDir/terrain.pmtiles');
+      final contourFile = File('$regionDir/contours.pmtiles');
 
       if (mapFile.existsSync() && mapFile.lengthSync() > 0) {
         useRegion = true;
@@ -150,11 +152,19 @@ class MapLibreMapService extends ChangeNotifier {
         if (terrainFile.existsSync() && terrainFile.lengthSync() > 0) {
           terrainSourceUrl = 'pmtiles://$regionDir/terrain.pmtiles';
         }
+        if (contourFile.existsSync() && contourFile.lengthSync() > 0) {
+          contourArchivePath = contourFile.path;
+          await _tileServer.setContourArchive(contourFile.path);
+        } else {
+          await _tileServer.setContourArchive(null);
+        }
       } else {
         await _tileServer.setPrimaryArchive(null);
+        await _tileServer.setContourArchive(null);
       }
     } else {
       await _tileServer.setPrimaryArchive(null);
+      await _tileServer.setContourArchive(null);
     }
 
     final overviewPath = await resolveOverviewArchivePath();
@@ -189,7 +199,7 @@ class MapLibreMapService extends ChangeNotifier {
       };
     }
 
-    // Configure terrain raster-dem source if available
+    // Configure terrain raster-dem source if available, or fall back to online elevation tiles
     if (terrainSourceUrl != null) {
       if (sources.containsKey('terrain')) {
         final t = sources['terrain'] as Map<String, dynamic>;
@@ -206,14 +216,46 @@ class MapLibreMapService extends ChangeNotifier {
         'source': 'terrain',
         'exaggeration': 1.5,
       };
+    } else if (_tileServer.onlineFallbackEnabled) {
+      // Local terrain PMTiles archive not present, but online fallback is enabled.
+      // Use AWS Terrarium raster-dem tiles so hillshade relief renders during
+      // simulation, development, and before regions are downloaded offline.
+      sources['terrain'] = {
+        'type': 'raster-dem',
+        'tiles': [
+          'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+        ],
+        'tileSize': 512,
+        'maxzoom': 15,
+        'encoding': 'terrarium',
+      };
     } else {
-      // Remove terrain source and hillshade layer when fallback or no DEM
+      // Remove terrain source and hillshade layer only when strictly offline without DEM
       sources.remove('terrain');
       styleMap.remove('terrain');
       final layers = (styleMap['layers'] as List<dynamic>?) ?? [];
       layers.removeWhere((l) {
         if (l is Map<String, dynamic>) {
           return l['type'] == 'hillshade' || l['source'] == 'terrain';
+        }
+        return false;
+      });
+    }
+
+    // Configure contour vector source if archive is available
+    final contourTileUrl = '${_tileServer.baseUrl}/contours/{z}/{x}/{y}.pbf';
+    if (contourArchivePath != null) {
+      sources['contours'] = {
+        'type': 'vector',
+        'tiles': [contourTileUrl],
+      };
+    } else {
+      // Strip contour source and all contour layers when no archive present
+      sources.remove('contours');
+      final layers = (styleMap['layers'] as List<dynamic>?) ?? [];
+      layers.removeWhere((l) {
+        if (l is Map<String, dynamic>) {
+          return l['source'] == 'contours';
         }
         return false;
       });

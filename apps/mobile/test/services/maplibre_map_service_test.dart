@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:brandyfly/models/lat_lng.dart';
+import 'package:brandyfly/services/local_tile_server.dart';
 import 'package:brandyfly/services/maplibre_map_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -51,6 +52,21 @@ void main() {
       final tiles = sources['openmaptiles']['tiles'] as List<dynamic>;
       expect(tiles.first, contains('http://127.0.0.1:'));
       expect(tiles.first, contains('/tiles/{z}/{x}/{y}.pbf'));
+      // When online fallback is enabled, uses terrarium raster-dem
+      expect(sources.containsKey('terrain'), isTrue);
+      expect(sources['terrain']['tiles'].first, contains('terrarium'));
+    });
+
+    test('buildStyleJson removes terrain when online fallback is disabled and DEM missing', () async {
+      final offlineServer = LocalTileServer(onlineFallbackEnabled: false);
+      final offlineService = MapLibreMapService(
+        customAppSupportDir: tempDir.path,
+        tileServer: offlineServer,
+      );
+      addTearDown(offlineService.dispose);
+      final styleJson = await offlineService.buildStyleJson(regionId: 'non_existent_region');
+      final styleMap = jsonDecode(styleJson) as Map<String, dynamic>;
+      final sources = styleMap['sources'] as Map<String, dynamic>;
       expect(sources.containsKey('terrain'), isFalse);
     });
 
