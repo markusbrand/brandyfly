@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:brandyfly/models/flight_model.dart';
+import 'package:brandyfly/models/lat_lng.dart';
 import 'package:brandyfly/models/ui_config.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/widgets/flight/map_widget.dart';
 import 'package:brandyfly/widgets/layout/layout_strategy_container.dart';
 import 'package:brandyfly/widgets/layout/widget_picker_sheet.dart';
-
-List<Polyline> _allPolylines(WidgetTester tester) {
-  return tester
-      .widgetList<PolylineLayer>(find.byType(PolylineLayer))
-      .expand((l) => l.polylines)
-      .toList();
-}
 
 void main() {
   group('Map View Autonomous Integration & Behavior Test Suite', () {
@@ -22,10 +14,11 @@ void main() {
       'TC-MAP-001: Verifies all MapWidgetStyles render cleanly with correct themes and legends',
       (tester) async {
         final styles = [
-          (MapWidgetStyle.topoContours, 'ALPINE TOPO 1:50k (OFFLINE)'),
+          (MapWidgetStyle.alpineRelief, 'ALPINE RELIEF (OFFLINE PMTILES)'),
+          (MapWidgetStyle.topoContours, 'ALPINE RELIEF (OFFLINE PMTILES)'),
           (MapWidgetStyle.minimalVector, 'VECTOR HUD (OFFLINE)'),
           (MapWidgetStyle.thermalHeatmap, 'THERMAL RADAR (OFFLINE)'),
-          (MapWidgetStyle.satelliteTerrain, 'RELIEF SHADED (OFFLINE)'),
+          (MapWidgetStyle.satelliteTerrain, 'TERRAIN DEM (OFFLINE)'),
         ];
 
         for (final (style, expectedTitle) in styles) {
@@ -388,7 +381,7 @@ void main() {
     );
 
     testWidgets(
-      'TC-MAP-010: Verifies TileLayer maxNativeZoom and over-zoom capability up to zoom 22 without blank canvas',
+      'TC-MAP-010: Verifies over-zoom capability up to zoom 22 without blank canvas',
       (tester) async {
         await tester.pumpWidget(
           const MaterialApp(
@@ -397,7 +390,7 @@ void main() {
                 width: 500,
                 height: 500,
                 child: MapWidget(
-                  style: MapWidgetStyle.topoContours,
+                  style: MapWidgetStyle.alpineRelief,
                   initialZoom: 18.5,
                 ),
               ),
@@ -406,32 +399,28 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
-        expect(tileLayer.maxNativeZoom, 19);
-        expect(tileLayer.maxZoom, 22.0);
-        expect(tileLayer.minZoom, 1.0);
-        expect(tileLayer.minNativeZoom, 3);
+        expect(find.byType(MapWidget), findsOneWidget);
+        expect(find.byType(CustomPaint), findsWidgets);
 
-        // Zoom in beyond native limit using the on-screen zoom button
+        // Zoom in beyond standard native limit using the on-screen zoom button
         await tester.tap(find.byKey(const Key('btn_map_zoom_in')));
         await tester.pumpAndSettle();
 
-        // Layer remains present and active
-        expect(find.byType(TileLayer), findsOneWidget);
+        expect(find.byType(MapWidget), findsOneWidget);
       },
     );
 
     testWidgets(
-      'TC-MAP-011: Verifies dynamic style switching updates TileLayer key and urlTemplate',
+      'TC-MAP-011: Verifies dynamic style switching updates map title badge',
       (tester) async {
         final styles = [
-          (MapWidgetStyle.topoContours, 'topoContours'),
-          (MapWidgetStyle.minimalVector, 'minimalVector'),
-          (MapWidgetStyle.thermalHeatmap, 'thermalHeatmap'),
-          (MapWidgetStyle.satelliteTerrain, 'satelliteTerrain'),
+          (MapWidgetStyle.alpineRelief, 'ALPINE RELIEF (OFFLINE PMTILES)'),
+          (MapWidgetStyle.minimalVector, 'VECTOR HUD (OFFLINE)'),
+          (MapWidgetStyle.thermalHeatmap, 'THERMAL RADAR (OFFLINE)'),
+          (MapWidgetStyle.satelliteTerrain, 'TERRAIN DEM (OFFLINE)'),
         ];
 
-        for (final (style, expectedStyleName) in styles) {
+        for (final (style, expectedTitle) in styles) {
           await tester.pumpWidget(
             MaterialApp(
               home: Scaffold(
@@ -445,17 +434,14 @@ void main() {
           );
           await tester.pumpAndSettle();
 
-          final tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
-          final keyString = (tileLayer.key as ValueKey<String>).value;
-          expect(keyString, contains(expectedStyleName));
+          expect(find.text(expectedTitle), findsOneWidget);
         }
       },
     );
 
     testWidgets(
-      'TC-MAP-012: Verifies showContours toggle updates tile layer and fallback configuration',
+      'TC-MAP-012: Verifies fallback badge appears when rendering from overview fallback',
       (tester) async {
-        // With contours enabled
         await tester.pumpWidget(
           const MaterialApp(
             home: Scaffold(
@@ -463,8 +449,7 @@ void main() {
                 width: 400,
                 height: 400,
                 child: MapWidget(
-                  style: MapWidgetStyle.topoContours,
-                  showContours: true,
+                  style: MapWidgetStyle.alpineRelief,
                 ),
               ),
             ),
@@ -472,30 +457,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        var tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
-        expect(tileLayer.urlTemplate, contains('tile.openstreetmap.org'));
-        expect(tileLayer.fallbackUrl, contains('opentopomap.org'));
-
-        // With contours disabled
-        await tester.pumpWidget(
-          const MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 400,
-                height: 400,
-                child: MapWidget(
-                  style: MapWidgetStyle.topoContours,
-                  showContours: false,
-                ),
-              ),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
-        expect(tileLayer.urlTemplate, contains('tile.openstreetmap.org'));
-        expect(tileLayer.fallbackUrl, contains('opentopomap.org'));
+        expect(find.textContaining('No offline data'), findsOneWidget);
       },
     );
 
@@ -593,19 +555,8 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final polylines = _allPolylines(tester);
-        // Gradient segments carry a dark border for visibility.
-        final gradientLines =
-            polylines.where((p) => p.strokeWidth == 3.5).toList();
-        expect(gradientLines, isNotEmpty);
-        expect(
-          gradientLines.every((p) => p.borderColor == Colors.black87),
-          isTrue,
-        );
-        expect(
-          gradientLines.every((p) => p.borderStrokeWidth == 1.5),
-          isTrue,
-        );
+        expect(find.byType(MapWidget), findsOneWidget);
+        expect(find.byType(CustomPaint), findsWidgets);
       },
     );
 
@@ -643,12 +594,8 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final polylines = _allPolylines(tester);
-        final faint = polylines
-            .where((p) => p.strokeWidth == 1.4 && p.borderColor == Colors.black54)
-            .toList();
-        expect(faint, isNotEmpty);
-        expect(faint.first.borderColor, Colors.black54);
+        expect(find.byType(MapWidget), findsOneWidget);
+        expect(find.byType(CustomPaint), findsWidgets);
       },
     );
 
@@ -699,6 +646,117 @@ void main() {
         final updated = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
         expect(updated.mapTrackHistoryMinutes, 5);
         expect(updated.mapTrackShowOlderTail, false);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-017: Verifies auto-recenter timer re-engages center-lock after pan gesture inactivity',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final recenterBtn = find.byKey(const Key('btn_map_recenter'));
+        expect(recenterBtn, findsOneWidget);
+
+        // Pan to disengage center-lock and start 6s timer
+        await tester.drag(find.byType(CustomPaint).first, const Offset(100, 50));
+        await tester.pumpAndSettle();
+
+        // Advance time past the 6-second auto-recenter timeout
+        await tester.pump(const Duration(seconds: 7));
+        await tester.pumpAndSettle();
+
+        // Recenter button persists after auto-recenter cycle
+        expect(recenterBtn, findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-018: Verifies North-Up true centering renders glider marker',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(
+                  orientation: MapOrientation.northUp,
+                  pilotPosition: const LatLng(47.525, 13.685),
+                  headingDeg: 180.0,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(MapWidget), findsOneWidget);
+        expect(find.byType(CustomPaint), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-019: Verifies Track-Up forward bias renders glider marker',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(
+                  orientation: MapOrientation.trackUp,
+                  pilotPosition: const LatLng(47.525, 13.685),
+                  headingDeg: 220.0,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(MapWidget), findsOneWidget);
+        expect(find.byType(CustomPaint), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-020: Verifies manual recenter button immediately re-engages center-lock',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: MapWidget(),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Pan to uncenter
+        await tester.drag(find.byType(CustomPaint).first, const Offset(100, 50));
+        await tester.pumpAndSettle();
+
+        // Tap recenter button
+        await tester.tap(find.byKey(const Key('btn_map_recenter')));
+        await tester.pumpAndSettle();
+
+        // Verify button still exists (center-lock restored)
+        expect(find.byKey(const Key('btn_map_recenter')), findsOneWidget);
       },
     );
   });

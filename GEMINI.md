@@ -4,19 +4,20 @@ Always follow these guidelines when asked to start the paragliding vario applica
 
 ## Starting the Mobile App
 
-Run the following command to start the Flutter mobile app in local mock flight mode on the Linux desktop:
+Run the paragliding vario application on authentic target environments (Android Emulator or physical device on Linux, iOS Simulator on macOS):
 
-- **Command**: `flutter run -d linux --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true`
-- **Working Directory**: `/home/markus/Projects/brandyfly/apps/mobile`
+- **Command (Android Emulator / Device)**: `flutter run -d android --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true`
+  - If the emulator is not already running, launch it with: `flutter emulators --launch brandyfly_test_device` or `~/Android/Sdk/emulator/emulator -avd brandyfly_test_device`
+- **Command (iOS Simulator on macOS)**: `flutter run -d iPhone --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true`
+- **Working Directory**: `/home/markus/Projects/private/brandyfly/apps/mobile`
 - **Tool Options**:
-  - `BypassSandbox: true`
   - `IsDaemon: true`
   - `RunPersistent: true`
   - `WaitMsBeforeAsync: 10000`
 
-## Active Window Close Behavior
+## Active Window / Process Behavior
 
-- If the user actively closes the application window, the command execution task will finish.
+- If the user actively closes the application window or emulator, the command execution task will finish.
 - **DO NOT** restart the application automatically upon window closure/exit unless explicitly requested by the user.
 
 ## OpenSpec Workflow Guidelines
