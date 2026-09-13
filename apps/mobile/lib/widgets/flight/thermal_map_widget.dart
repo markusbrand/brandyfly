@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../models/ui_config.dart';
@@ -67,6 +68,7 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
   double _zoomLevel = 1.0;
   Offset _panOffset = Offset.zero;
   bool _centerOnPilot = true;
+  Timer? _recenterTimer;
   late AnimationController _pulseController;
 
   @override
@@ -80,6 +82,7 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
 
   @override
   void dispose() {
+    _recenterTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -96,10 +99,16 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
   }
 
   void _recenter() {
+    _recenterTimer?.cancel();
     setState(() {
       _panOffset = Offset.zero;
       _centerOnPilot = true;
     });
+  }
+
+  void _startRecenterTimer() {
+    _recenterTimer?.cancel();
+    _recenterTimer = Timer(const Duration(seconds: 6), _recenter);
   }
 
   @override
@@ -116,8 +125,10 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
                   _panOffset += details.delta;
                   _centerOnPilot = false;
                 });
+                _startRecenterTimer();
               },
               child: CustomPaint(
+                key: const Key('canvas_thermal_map'),
                 painter: _ThermalMapPainter(
                   style: widget.style,
                   showCore: widget.showCore,

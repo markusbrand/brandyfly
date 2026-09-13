@@ -333,6 +333,149 @@ void main() {
       expect(updatedMap.mapOrientation, MapOrientation.northUp);
     });
 
+    testWidgets(
+      'Edit Mode allows selecting widget on canvas, showing inspector, and deselecting',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        final manager = ScreenManagerService();
+        manager.addScreen('Selection Test Screen');
+        manager.addWidget(WidgetType.altitude);
+        manager.toggleEditMode(true);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {'altitude': 1450.0, 'speed': 42.5},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Initially no widget is selected, inspector is not shown
+        expect(manager.selectedWidgetId, isNull);
+        expect(find.byKey(const Key('widget_inspector_panel')), findsNothing);
+
+        final targetWidget = manager.activeScreen.widgets.first;
+        final targetId = targetWidget.id;
+
+        // Tap on the widget box on canvas
+        await tester.tap(find.byKey(Key('widget_box_$targetId')));
+        await tester.pumpAndSettle();
+
+        // Widget is now selected and inspector is displayed
+        expect(manager.selectedWidgetId, targetId);
+        expect(find.byKey(const Key('widget_inspector_panel')), findsOneWidget);
+
+        // Close inspector via close button
+        await tester.tap(find.byKey(const Key('btn_inspector_close')));
+        await tester.pumpAndSettle();
+
+        expect(manager.selectedWidgetId, isNull);
+        expect(find.byKey(const Key('widget_inspector_panel')), findsNothing);
+
+        // Tap canvas widget to select again
+        await tester.tap(find.byKey(Key('widget_box_$targetId')));
+        await tester.pumpAndSettle();
+        expect(manager.selectedWidgetId, targetId);
+
+        // Tap empty background area (far right/bottom from 2x2 widget at 0,0) to deselect
+        await tester.tapAt(const Offset(600, 600));
+        await tester.pumpAndSettle();
+        expect(manager.selectedWidgetId, isNull);
+        expect(find.byKey(const Key('widget_inspector_panel')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Toolbar Layer Selector selects obscured/background widgets and brings up inspector',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        final manager = ScreenManagerService();
+        manager.addScreen('Map Screen');
+        manager.addWidget(WidgetType.map);
+        manager.toggleEditMode(true);
+
+        final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+        final mapId = mapWidget.id;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {'altitude': 1450.0, 'speed': 42.5},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify layer selector button exists in toolbar
+        final layerSelectorFinder = find.byKey(const Key('btn_layer_selector'));
+        expect(layerSelectorFinder, findsOneWidget);
+
+        // Tap layer selector button to open dropdown
+        await tester.tap(layerSelectorFinder);
+        await tester.pumpAndSettle();
+
+        // Find the map widget item in popup menu
+        final mapMenuItemFinder = find.byKey(Key('layer_item_$mapId'));
+        expect(mapMenuItemFinder, findsOneWidget);
+
+        // Select the map item
+        await tester.tap(mapMenuItemFinder);
+        await tester.pumpAndSettle();
+
+        // Map is selected and inspector panel is visible
+        expect(manager.selectedWidgetId, mapId);
+        expect(find.byKey(const Key('widget_inspector_panel')), findsOneWidget);
+        expect(find.textContaining('MAP'), findsWidgets);
+
+        // Open config dialog from inspector panel
+        await tester.tap(find.byKey(const Key('btn_inspector_config')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Configure MAP'), findsOneWidget);
+        expect(find.text('MAP STYLE'), findsOneWidget);
+
+        // Cancel dialog
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(find.text('Configure MAP'), findsNothing);
+
+        // Test position nudge via inspector button
+        final origX = manager.activeScreen.widgets.firstWhere((w) => w.id == mapId).x;
+        if (origX + mapWidget.w < 8) {
+          await tester.tap(find.byKey(const Key('btn_inspector_move_right')));
+          await tester.pumpAndSettle();
+          expect(
+            manager.activeScreen.widgets.firstWhere((w) => w.id == mapId).x,
+            origX + 1,
+          );
+        }
+
+        // Test resize width via inspector button
+        final origW = manager.activeScreen.widgets.firstWhere((w) => w.id == mapId).w;
+        if (origW > 1) {
+          await tester.tap(find.byKey(const Key('btn_inspector_dec_width')));
+          await tester.pumpAndSettle();
+          expect(
+            manager.activeScreen.widgets.firstWhere((w) => w.id == mapId).w,
+            origW - 1,
+          );
+        }
+      },
+    );
+
     testWidgets('Widgets on same or different screens maintain independent styling', (
       tester,
     ) async {

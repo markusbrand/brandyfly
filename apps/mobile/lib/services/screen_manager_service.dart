@@ -16,6 +16,7 @@ class ScreenManagerService extends ChangeNotifier {
   bool _isSettingsVisible = false;
   bool _isFlightsScreenVisible = false;
   bool _isReplayActive = false;
+  String? _selectedWidgetId;
 
   UIConfig get config => _config;
   bool get isEditMode => _isEditMode;
@@ -23,6 +24,7 @@ class ScreenManagerService extends ChangeNotifier {
   bool get isSettingsVisible => _isSettingsVisible;
   bool get isFlightsScreenVisible => _isFlightsScreenVisible;
   bool get isReplayActive => _isReplayActive;
+  String? get selectedWidgetId => _selectedWidgetId;
 
   FlightScreenModel get activeScreen {
     final found = _config.screens.firstWhere(
@@ -34,6 +36,12 @@ class ScreenManagerService extends ChangeNotifier {
     return found;
   }
 
+  void selectWidget(String? id) {
+    if (_selectedWidgetId == id) return;
+    _selectedWidgetId = id;
+    notifyListeners();
+  }
+
   void toggleNavBar([bool? visible]) {
     _isNavBarVisible = visible ?? !_isNavBarVisible;
     notifyListeners();
@@ -43,6 +51,8 @@ class ScreenManagerService extends ChangeNotifier {
     _isEditMode = enabled ?? !_isEditMode;
     if (_isEditMode) {
       _isNavBarVisible = false;
+    } else {
+      _selectedWidgetId = null;
     }
     notifyListeners();
   }
@@ -75,6 +85,7 @@ class ScreenManagerService extends ChangeNotifier {
 
   void setActiveScreen(String screenId) {
     if (_config.activeScreenId == screenId) return;
+    _selectedWidgetId = null;
     _config = _config.copyWith(activeScreenId: screenId);
     _saveAndNotify();
   }
@@ -108,12 +119,14 @@ class ScreenManagerService extends ChangeNotifier {
       widgets: const [],
     );
     final updatedScreens = [..._config.screens, newScreen];
+    _selectedWidgetId = null;
     _config = _config.copyWith(screens: updatedScreens, activeScreenId: newId);
     _saveAndNotify();
   }
 
   void removeScreen(String screenId) {
     if (_config.screens.length <= 1) return; // Keep at least one screen
+    _selectedWidgetId = null;
     final updatedScreens = _config.screens
         .where((s) => s.id != screenId)
         .toList();
@@ -252,6 +265,9 @@ class ScreenManagerService extends ChangeNotifier {
   }
 
   void removeWidget(String widgetId) {
+    if (_selectedWidgetId == widgetId) {
+      _selectedWidgetId = null;
+    }
     final currentActive = activeScreen;
     final updatedWidgets = currentActive.widgets
         .where((w) => w.id != widgetId)

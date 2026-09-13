@@ -12,8 +12,7 @@ dependencies:
   shared_preferences: ^2.5.2
   brandyfly_native:
     path: ../../plugins/brandyfly_native
-  flutter_map: ^8.3.2
-  latlong2: ^0.10.1
+  maplibre: 0.3.6
   http: ^1.6.0
   path_provider: ^2.1.6
   crypto: ^3.0.7
@@ -22,8 +21,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  maplibre_platform_interface: ^0.3.6
 
 flutter:
   uses-material-design: true
   assets:
     - assets/sample_flights/Krippenstein-Aussee.IGC
+    - assets/map_styles/alpine_relief.json
+    - assets/map_data/global_overview.pmtiles

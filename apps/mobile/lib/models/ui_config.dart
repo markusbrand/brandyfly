@@ -44,10 +44,11 @@ enum AltitudeChartStyle {
 }
 
 enum MapWidgetStyle {
-  topoContours, // Option 1 (Default)
-  minimalVector, // Option 2
-  thermalHeatmap, // Option 3
-  satelliteTerrain, // Option 4
+  alpineRelief, // Option 1 (Default)
+  topoContours, // Option 2
+  minimalVector, // Option 3
+  thermalHeatmap, // Option 4
+  satelliteTerrain, // Option 5
 }
 
 enum MapOrientation {
