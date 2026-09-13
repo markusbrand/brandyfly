@@ -11,3 +11,7 @@
 **Vulnerability:** The map tile service (`apps/mobile/lib/services/map_tile_service.dart`) used MD5 (`md5.convert`) to generate cache filenames for URLs.
 **Learning:** While cache keys aren't typically a high-security context, using cryptographically broken algorithms like MD5 introduces collision risks and trips static security linters. If an attacker can control or influence the URL, they could potentially craft a URL that hashes to the same value as a legitimate tile, poisoning the cache.
 **Prevention:** Always use a secure hashing algorithm like SHA-256 (`sha256.convert`) even for cache keys or seemingly non-cryptographic purposes to maintain strong security hygiene and prevent collision attacks.
+## 2026-09-13 - Enforce security headers on error responses
+**Vulnerability:** Security headers (e.g. X-Frame-Options) were only set on successful responses, missing on early error returns (e.g. 401 Unauthorized).
+**Learning:** Route-level header setting causes headers to be bypassed during early error returns.
+**Prevention:** Wrap all route handlers with a global middleware that unconditionally sets security headers.
