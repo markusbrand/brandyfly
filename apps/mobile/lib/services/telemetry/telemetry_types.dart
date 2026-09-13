@@ -1,4 +1,4 @@
-import 'package:latlong2/latlong.dart' hide Path;
+import '../../models/lat_lng.dart';
 import '../../models/flight_model.dart';
 
 /// Available telemetry source types.

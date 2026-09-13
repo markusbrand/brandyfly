@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart' hide Path;
 import '../../models/flight_model.dart';
+import '../../models/lat_lng.dart';
 import '../../models/ui_config.dart';
 import '../../services/screen_manager_service.dart';
 import '../flight/altitude_sparkline_chart.dart';
@@ -24,60 +24,409 @@ class LayoutStrategyContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeScreen = screenManager.activeScreen;
-    final strategy = activeScreen.layoutStrategy;
-    final isEditMode = screenManager.isEditMode;
+    return ListenableBuilder(
+      listenable: screenManager,
+      builder: (context, _) {
+        final activeScreen = screenManager.activeScreen;
+        final strategy = activeScreen.layoutStrategy;
+        final isEditMode = screenManager.isEditMode;
+        final selectedWidgetId = screenManager.selectedWidgetId;
+        final selectedWidget = selectedWidgetId != null
+            ? activeScreen.widgets.cast<WidgetPlacementModel?>().firstWhere(
+                (w) => w?.id == selectedWidgetId,
+                orElse: () => null,
+              )
+            : null;
 
-    return Stack(
-      children: [
-        // Core Layout Strategy View
-        Positioned.fill(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _buildLayout(context, strategy, activeScreen, isEditMode),
-          ),
-        ),
+        return Stack(
+          children: [
+            // Core Layout Strategy View
+            Positioned.fill(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _buildLayout(context, strategy, activeScreen, isEditMode),
+              ),
+            ),
 
-        // Edit Mode Overlay Controls & Floating Action Button
-        if (isEditMode)
-          Positioned(
-            bottom: 16,
-            left: 16,
-            right: 16,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                FloatingActionButton.extended(
-                  key: const Key('btn_add_widget'),
-                  heroTag: 'add_widget_fab',
-                  backgroundColor: Colors.blueAccent,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Widget'),
-                  tooltip: 'Add new widget to layout',
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      builder: (ctx) =>
-                          WidgetPickerSheet(screenManager: screenManager),
-                    );
-                  },
+            // Edit Mode Overlay Controls & Floating Action Button
+            if (isEditMode)
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 16,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (selectedWidget != null) ...[
+                      _buildInspectorPanel(context, selectedWidget),
+                      const SizedBox(height: 10),
+                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        FloatingActionButton.extended(
+                          key: const Key('btn_add_widget'),
+                          heroTag: 'add_widget_fab',
+                          backgroundColor: Colors.blueAccent,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Widget'),
+                          tooltip: 'Add new widget to layout',
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              builder: (ctx) =>
+                                  WidgetPickerSheet(screenManager: screenManager),
+                            );
+                          },
+                        ),
+                        _buildLayerSelector(
+                          context,
+                          activeScreen.widgets,
+                          selectedWidget,
+                        ),
+                        FloatingActionButton.extended(
+                          key: const Key('btn_done_editing'),
+                          heroTag: 'done_edit_fab',
+                          backgroundColor: Colors.green,
+                          icon: const Icon(Icons.check),
+                          label: const Text('Done Editing'),
+                          tooltip: 'Save layout and exit edit mode',
+                          onPressed: () {
+                            screenManager.toggleEditMode(false);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                FloatingActionButton.extended(
-                  key: const Key('btn_done_editing'),
-                  heroTag: 'done_edit_fab',
-                  backgroundColor: Colors.green,
-                  icon: const Icon(Icons.check),
-                  label: const Text('Done Editing'),
-                  tooltip: 'Save layout and exit edit mode',
-                  onPressed: () {
-                    screenManager.toggleEditMode(false);
-                  },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLayerSelector(
+    BuildContext context,
+    List<WidgetPlacementModel> widgets,
+    WidgetPlacementModel? selectedWidget,
+  ) {
+    return PopupMenuButton<String>(
+      key: const Key('btn_layer_selector'),
+      tooltip: 'Select Widget Layer',
+      color: Colors.blueGrey.shade900,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Colors.cyanAccent, width: 1.2),
+      ),
+      onSelected: (widgetId) {
+        screenManager.selectWidget(widgetId);
+      },
+      itemBuilder: (ctx) {
+        return widgets.map((w) {
+          final isCurrent = w.id == selectedWidget?.id;
+          return PopupMenuItem<String>(
+            key: Key('layer_item_${w.id}'),
+            value: w.id,
+            child: Row(
+              children: [
+                Icon(
+                  w.type == WidgetType.map
+                      ? Icons.map
+                      : w.type == WidgetType.thermalMap
+                          ? Icons.wb_sunny
+                          : Icons.widgets,
+                  color: isCurrent ? Colors.cyanAccent : Colors.white70,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${w.type.name.toUpperCase()} (${w.w}x${w.h} @ ${w.x},${w.y})',
+                    style: TextStyle(
+                      color: isCurrent ? Colors.cyanAccent : Colors.white,
+                      fontWeight:
+                          isCurrent ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                if (isCurrent)
+                  const Icon(Icons.check, color: Colors.cyanAccent, size: 14),
+              ],
+            ),
+          );
+        }).toList();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey.shade900.withAlpha(230),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: selectedWidget != null ? Colors.cyanAccent : Colors.white30,
+            width: 1.5,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black45,
+              blurRadius: 6,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.layers,
+              size: 16,
+              color:
+                  selectedWidget != null ? Colors.cyanAccent : Colors.white70,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              selectedWidget != null
+                  ? selectedWidget.type.name.toUpperCase()
+                  : 'Layers (${widgets.length})',
+              style: TextStyle(
+                color: selectedWidget != null ? Colors.cyanAccent : Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInspectorPanel(
+    BuildContext context,
+    WidgetPlacementModel model,
+  ) {
+    final id = model.id;
+    final typeName = model.type.name.toUpperCase();
+
+    return Container(
+      key: const Key('widget_inspector_panel'),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade900.withAlpha(245),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.cyanAccent, width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black54,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Widget type title & Quick Actions
+          Row(
+            children: [
+              Icon(
+                model.type == WidgetType.map
+                    ? Icons.map
+                    : model.type == WidgetType.thermalMap
+                        ? Icons.wb_sunny
+                        : Icons.widgets,
+                color: Colors.cyanAccent,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '$typeName [${model.x},${model.y} ${model.w}x${model.h}]',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                key: const Key('btn_inspector_config'),
+                icon: const Icon(Icons.tune, color: Colors.cyanAccent),
+                iconSize: 18,
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(),
+                tooltip: 'Configure Widget',
+                onPressed: () => _WidgetEditFrameState._showConfigDialog(
+                  context,
+                  model,
+                  screenManager,
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                key: const Key('btn_inspector_delete'),
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                iconSize: 18,
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(),
+                tooltip: 'Remove Widget',
+                onPressed: () => screenManager.removeWidget(id),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                key: const Key('btn_inspector_close'),
+                icon: const Icon(Icons.close, color: Colors.white70),
+                iconSize: 18,
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(),
+                tooltip: 'Deselect',
+                onPressed: () => screenManager.selectWidget(null),
+              ),
+            ],
+          ),
+          const Divider(color: Colors.white24, height: 12),
+          // Position nudge arrows and size steppers
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              children: [
+                // Move arrows
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _inspectorButton(
+                      key: const Key('btn_inspector_move_left'),
+                      icon: Icons.chevron_left,
+                      tooltip: 'Move Left',
+                      enabled: model.x > 0,
+                      onPressed: () => screenManager.moveWidget(id, -1, 0),
+                    ),
+                    _inspectorButton(
+                      key: const Key('btn_inspector_move_right'),
+                      icon: Icons.chevron_right,
+                      tooltip: 'Move Right',
+                      enabled: model.x + model.w < 8,
+                      onPressed: () => screenManager.moveWidget(id, 1, 0),
+                    ),
+                    _inspectorButton(
+                      key: const Key('btn_inspector_move_up'),
+                      icon: Icons.expand_less,
+                      tooltip: 'Move Up',
+                      enabled: model.y > 0,
+                      onPressed: () => screenManager.moveWidget(id, 0, -1),
+                    ),
+                    _inspectorButton(
+                      key: const Key('btn_inspector_move_down'),
+                      icon: Icons.expand_more,
+                      tooltip: 'Move Down',
+                      enabled: true,
+                      onPressed: () => screenManager.moveWidget(id, 0, 1),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                // Size steppers
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _inspectorTextButton(
+                      key: const Key('btn_inspector_dec_width'),
+                      label: 'W-',
+                      tooltip: 'Decrease Width',
+                      enabled: model.w > 1,
+                      onPressed: () => screenManager.resizeWidget(id, -1, 0),
+                    ),
+                    _inspectorTextButton(
+                      key: const Key('btn_inspector_inc_width'),
+                      label: 'W+',
+                      tooltip: 'Increase Width',
+                      enabled: model.x + model.w < 8,
+                      onPressed: () => screenManager.resizeWidget(id, 1, 0),
+                    ),
+                    const SizedBox(width: 4),
+                    _inspectorTextButton(
+                      key: const Key('btn_inspector_dec_height'),
+                      label: 'H-',
+                      tooltip: 'Decrease Height',
+                      enabled: model.h > 1,
+                      onPressed: () => screenManager.resizeWidget(id, 0, -1),
+                    ),
+                    _inspectorTextButton(
+                      key: const Key('btn_inspector_inc_height'),
+                      label: 'H+',
+                      tooltip: 'Increase Height',
+                      enabled: model.h < 16,
+                      onPressed: () => screenManager.resizeWidget(id, 0, 1),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  Widget _inspectorButton({
+    required Key key,
+    required IconData icon,
+    required String tooltip,
+    required bool enabled,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      key: key,
+      onPressed: enabled ? onPressed : null,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      constraints: const BoxConstraints(),
+      iconSize: 18,
+      tooltip: tooltip,
+      icon: Icon(icon, color: enabled ? Colors.cyanAccent : Colors.white24),
+    );
+  }
+
+  Widget _inspectorTextButton({
+    required Key key,
+    required String label,
+    required String tooltip,
+    required bool enabled,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        key: key,
+        onTap: enabled ? onPressed : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: enabled ? Colors.blueGrey.shade800 : Colors.black45,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color:
+                  enabled ? Colors.cyanAccent.withAlpha(80) : Colors.transparent,
+              width: 0.8,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: enabled ? Colors.white : Colors.white24,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -109,9 +458,10 @@ class LayoutStrategyContainer extends StatelessWidget {
           (maxBottomGrid * cellHeight) + (isEditMode ? 80.0 : 0.0),
         );
 
+        final Widget layoutView;
         switch (strategy) {
           case LayoutStrategyStyle.freeformHud:
-            return _buildFreeformHud(
+            layoutView = _buildFreeformHud(
               context,
               screen,
               isEditMode,
@@ -121,7 +471,7 @@ class LayoutStrategyContainer extends StatelessWidget {
               cellHeight,
             );
           case LayoutStrategyStyle.snapToGrid:
-            return _buildSnapToGrid(
+            layoutView = _buildSnapToGrid(
               context,
               screen,
               isEditMode,
@@ -131,7 +481,7 @@ class LayoutStrategyContainer extends StatelessWidget {
               cellHeight,
             );
           case LayoutStrategyStyle.sidebarDashboard:
-            return _buildSidebarDashboard(
+            layoutView = _buildSidebarDashboard(
               context,
               screen,
               isEditMode,
@@ -141,6 +491,14 @@ class LayoutStrategyContainer extends StatelessWidget {
               cellHeight,
             );
         }
+        if (isEditMode) {
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => screenManager.selectWidget(null),
+            child: layoutView,
+          );
+        }
+        return layoutView;
       },
     );
   }
@@ -588,6 +946,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
 
     final model = widget.model;
     final id = model.id;
+    final isSelected = widget.screenManager.selectedWidgetId == id;
     final typeName = model.type.name.toUpperCase();
     final pixelHeight = model.h * widget.cellHeight;
     final isCompact = model.w <= 2 || pixelHeight < 65;
@@ -597,47 +956,65 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
 
     return Padding(
       padding: const EdgeInsets.all(2.0),
-      child: Container(
-        key: Key('widget_box_$id'),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.cyanAccent, width: 1.5),
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.blueGrey.shade900.withAlpha(200),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black45,
-              blurRadius: 6,
-              offset: Offset(0, 3),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => widget.screenManager.selectWidget(id),
+        child: Container(
+          key: Key('widget_box_$id'),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isSelected
+                  ? Colors.cyanAccent
+                  : Colors.cyanAccent.withAlpha(120),
+              width: isSelected ? 2.5 : 1.5,
             ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Widget Content (Scales to fill allotted frame space)
-            Positioned.fill(
-              top: headerHeight + 1,
-              bottom: bottomBarHeight + 1,
-              left: 2,
-              right: 2,
-              child: ClipRect(
-                child: Opacity(
-                  opacity: 0.9,
-                  child: SizedBox.expand(child: widget.child),
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.blueGrey.shade900.withAlpha(isSelected ? 230 : 200),
+            boxShadow: [
+              if (isSelected)
+                BoxShadow(
+                  color: Colors.cyanAccent.withAlpha(120),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 2),
+                )
+              else
+                const BoxShadow(
+                  color: Colors.black45,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Widget Content (Scales to fill allotted frame space)
+              Positioned.fill(
+                top: headerHeight + 1,
+                bottom: bottomBarHeight + 1,
+                left: 2,
+                right: 2,
+                child: ClipRect(
+                  child: Opacity(
+                    opacity: 0.9,
+                    child: SizedBox.expand(child: widget.child),
+                  ),
                 ),
               ),
-            ),
 
-            // Top Header: Drag Handle & Info & Actions
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: headerHeight,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanStart: (_) {
-                  _dragAccum = Offset.zero;
-                },
+              // Top Header: Drag Handle & Info & Actions
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: headerHeight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => widget.screenManager.selectWidget(id),
+                  onPanStart: (_) {
+                    widget.screenManager.selectWidget(id);
+                    _dragAccum = Offset.zero;
+                  },
                 onPanUpdate: (details) {
                   _dragAccum += details.delta;
 
@@ -699,7 +1076,11 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                         // Configure Dialog Button
                         IconButton(
                           key: Key('btn_config_$id'),
-                          onPressed: () => _showConfigDialog(context),
+                          onPressed: () => _showConfigDialog(
+                            context,
+                            widget.model,
+                            widget.screenManager,
+                          ),
                           padding: const EdgeInsets.symmetric(horizontal: 1),
                           constraints: const BoxConstraints(),
                           iconSize: isCompact ? 11 : 14,
@@ -913,6 +1294,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -968,8 +1350,11 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     );
   }
 
-  void _showConfigDialog(BuildContext context) {
-    final model = widget.model;
+  static void _showConfigDialog(
+    BuildContext context,
+    WidgetPlacementModel model,
+    ScreenManagerService screenManager,
+  ) {
     int curX = model.x;
     int curY = model.y;
     int curW = model.w;
@@ -1829,7 +2214,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                       thermalMapShowCore: curThermalMapShowCore,
                       thermalMapHistorySeconds: curThermalMapHistorySeconds,
                     );
-                    widget.screenManager.updateWidgetPlacement(updated);
+                    screenManager.updateWidgetPlacement(updated);
                     Navigator.pop(ctx);
                   },
                   child: const Text(
@@ -1848,7 +2233,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  static Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 4, top: 4),
       child: Text(
@@ -1863,7 +2248,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     );
   }
 
-  Widget _styleChip<T>({
+  static Widget _styleChip<T>({
     required String label,
     required T value,
     required T selectedValue,
@@ -1886,7 +2271,7 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
     );
   }
 
-  Widget _durationChip(
+  static Widget _durationChip(
     int value,
     int currentValue,
     StateSetter setDialogState,

@@ -164,5 +164,43 @@ void main() {
       expect(decoded.settingsStyle, SettingsStyle.cardDashboard);
       expect(decoded.screens.length, config.screens.length);
     });
+
+    test('tracks selectedWidgetId and clears upon exiting edit mode or switching screen', () {
+      final manager = ScreenManagerService();
+      final widgetId = manager.activeScreen.widgets.first.id;
+
+      expect(manager.selectedWidgetId, isNull);
+
+      manager.toggleEditMode(true);
+      expect(manager.isEditMode, isTrue);
+
+      manager.selectWidget(widgetId);
+      expect(manager.selectedWidgetId, widgetId);
+
+      // Exiting edit mode clears selection
+      manager.toggleEditMode(false);
+      expect(manager.isEditMode, isFalse);
+      expect(manager.selectedWidgetId, isNull);
+
+      // Re-entering and switching screen clears selection
+      manager.toggleEditMode(true);
+      manager.selectWidget(widgetId);
+      expect(manager.selectedWidgetId, widgetId);
+
+      manager.addScreen('New Screen');
+      expect(manager.selectedWidgetId, isNull);
+    });
+
+    test('clears selectedWidgetId when selected widget is removed', () {
+      final manager = ScreenManagerService();
+      final widgetId = manager.activeScreen.widgets.first.id;
+
+      manager.toggleEditMode(true);
+      manager.selectWidget(widgetId);
+      expect(manager.selectedWidgetId, widgetId);
+
+      manager.removeWidget(widgetId);
+      expect(manager.selectedWidgetId, isNull);
+    });
   });
 }
