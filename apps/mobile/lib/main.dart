@@ -264,12 +264,9 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                             ),
                     ),
 
-                    // Floating Bottom Replay HUD when Replay Mode is active
+                    // Floating Replay HUD when Replay Mode is active
                     if (_screenManager.isReplayActive)
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
+                      Positioned.fill(
                         child: ReplayControlOverlay(
                           replayService: _replayService,
                           onExit: _exitReplay,
