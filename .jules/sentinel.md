@@ -11,3 +11,7 @@
 **Vulnerability:** The map tile service (`apps/mobile/lib/services/map_tile_service.dart`) used MD5 (`md5.convert`) to generate cache filenames for URLs.
 **Learning:** While cache keys aren't typically a high-security context, using cryptographically broken algorithms like MD5 introduces collision risks and trips static security linters. If an attacker can control or influence the URL, they could potentially craft a URL that hashes to the same value as a legitimate tile, poisoning the cache.
 **Prevention:** Always use a secure hashing algorithm like SHA-256 (`sha256.convert`) even for cache keys or seemingly non-cryptographic purposes to maintain strong security hygiene and prevent collision attacks.
+## 2026-09-14 - [Global Security Headers Middleware]
+**Vulnerability:** Security headers (e.g. X-Frame-Options, Content-Security-Policy) set at the route-handler level were bypassed if the handler returned early with an error (e.g. 401 Unauthorized), leaving the error response unprotected.
+**Learning:** In Go HTTP handlers, setting headers locally inside a handler does not retroactively apply them if an early `http.Error` call interrupts the flow. Standard security headers must wrap the entire mux.
+**Prevention:** Always enforce global standard security headers via a middleware that wraps all route handlers (`SecurityHeadersMiddleware`) rather than applying them locally inside specific route closures.

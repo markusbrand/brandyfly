@@ -51,6 +51,9 @@ func TestHealthEndpointUnauthorized(t *testing.T) {
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusUnauthorized)
 	}
+	if nosniff := response.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q, want nosniff even on unauthorized response", nosniff)
+	}
 }
 
 func TestCheckHealthRejectsUnhealthyResponse(t *testing.T) {
