@@ -15,6 +15,15 @@ import (
 
 const shutdownTimeout = 10 * time.Second
 
+func SecurityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func NewHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(response http.ResponseWriter, request *http.Request) {
@@ -31,14 +40,11 @@ func NewHandler() http.Handler {
 				return
 			}
 		}
-		response.Header().Set("X-Content-Type-Options", "nosniff")
-		response.Header().Set("X-Frame-Options", "DENY")
-		response.Header().Set("Content-Security-Policy", "default-src 'none'")
 		response.Header().Set("Content-Type", "application/json")
 		response.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(response, "{\"status\":\"ok\"}\n")
 	})
-	return mux
+	return SecurityHeadersMiddleware(mux)
 }
 
 func Run(ctx context.Context, logger *slog.Logger, address string) error {
