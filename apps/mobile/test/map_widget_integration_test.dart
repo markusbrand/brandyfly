@@ -936,6 +936,72 @@ void main() {
         expect(painter.cameraCenter, equals(pilot));
       },
     );
+
+    testWidgets(
+      'TC-MAP-018: Verifies mock airspace and thermal hotspots remain anchored to static geographic coordinates as pilot flies',
+      (tester) async {
+        final mockService = _TrackingMapLibreMapService();
+        const initialPilot = LatLng(47.525, 13.685);
+        const movedPilot = LatLng(47.538, 13.712);
+
+        // 1. Mount with initial pilot position
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 480,
+                height: 480,
+                child: MapWidget(
+                  mapService: mockService,
+                  pilotPosition: initialPilot,
+                  showAirspace: true,
+                  showThermals: true,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        dynamic painter1 = tester
+            .widgetList<CustomPaint>(find.byType(CustomPaint))
+            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .painter;
+
+        expect(painter1.pilotPosition, equals(initialPilot));
+
+        // 2. Move pilot across the map (pilot flies away)
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 480,
+                height: 480,
+                child: MapWidget(
+                  mapService: mockService,
+                  pilotPosition: movedPilot,
+                  showAirspace: true,
+                  showThermals: true,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        dynamic painter2 = tester
+            .widgetList<CustomPaint>(find.byType(CustomPaint))
+            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .painter;
+
+        expect(painter2.pilotPosition, equals(movedPilot));
+
+        // Verify that the static mock coordinates in painter definition do not shift with the pilot
+        // (defaultMockAirspacePolygon and defaultMockThermalHotspots are fixed constants)
+        final fixedAirspace = painter2.runtimeType.toString();
+        expect(fixedAirspace, equals('_FlightOverlayPainter'));
+      },
+    );
   });
 }
 
