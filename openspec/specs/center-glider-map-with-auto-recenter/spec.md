@@ -43,7 +43,8 @@ The application SHALL permit temporary manual panning of the map and automatical
 
 #### Scenario: User pans the map
 - **WHEN** the pilot drags/pans either `MapWidget` or `ThermalMapWidget`
-- **THEN** center-lock is temporarily disengaged, the map follows the drag gesture, and an inactivity timer of 6 seconds is started/reset.
+- **THEN** center-lock is temporarily disengaged, the map camera moves across geographic coordinates following the drag gesture, and an inactivity timer of 6 seconds is started/reset.
+- **AND** the pilot position marker, flight track breadcrumbs, airspace polygons, and thermal overlays in `MapWidget` stay anchored to their respective earth coordinates rather than translating across a static base map.
 
 #### Scenario: Inactivity timeout triggers auto-recenter
 - **WHEN** 6 seconds elapse without any further pan/drag touch events

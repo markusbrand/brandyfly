@@ -1,9 +1,9 @@
 {
   "version": 8,
-  "name": "BrandyFly OpenStreetMap",
+  "name": "BrandyFly Alpine Relief",
   "metadata": {
     "brandyfly:style": "alpine_relief",
-    "brandyfly:description": "OpenStreetMap vector style with forests, pastures, rocks, water, buildings, roads, trails, aerialways, and peaks."
+    "brandyfly:description": "OpenStreetMap OpenMapTiles vector style with hillshade, terrain relief, forests, meadows, rocks, water, trails, aerialways, and peaks."
   },
   "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   "sources": {
@@ -14,7 +14,7 @@
     "terrain": {
       "type": "raster-dem",
       "url": "pmtiles://terrain.pmtiles",
-      "tileSize": 512,
+      "tileSize": 256,
       "encoding": "terrarium"
     }
   },
@@ -27,55 +27,81 @@
       }
     },
     {
-      "id": "landuse-glacier",
+      "id": "hillshade",
+      "type": "hillshade",
+      "source": "terrain",
+      "paint": {
+        "hillshade-illumination-direction": 315,
+        "hillshade-exaggeration": 0.8,
+        "hillshade-shadow-color": "#3d332a",
+        "hillshade-highlight-color": "#ffffff",
+        "hillshade-accent-color": "#000000"
+      }
+    },
+    {
+      "id": "landcover-glacier",
       "type": "fill",
       "source": "openmaptiles",
-      "source-layer": "landuse",
-      "filter": ["==", "kind", "glacier"],
+      "source-layer": "landcover",
+      "filter": ["in", "class", "glacier", "ice"],
       "paint": {
         "fill-color": "#e8f4f8",
         "fill-opacity": 0.85
       }
     },
     {
-      "id": "landuse-bare-rock",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "landuse",
-      "filter": ["in", "kind", "bare_rock", "scree", "cliff"],
-      "paint": {
-        "fill-color": "#dedad5"
-      }
-    },
-    {
-      "id": "landuse-forest",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "landuse",
-      "filter": ["in", "kind", "forest", "wood"],
-      "paint": {
-        "fill-color": "#d2e8cb",
-        "fill-opacity": 0.9
-      }
-    },
-    {
-      "id": "landcover-forest-fallback",
+      "id": "landcover-rock",
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
+      "filter": ["in", "class", "rock", "bare_rock", "scree", "cliff"],
       "paint": {
-        "fill-color": "#d2e8cb",
-        "fill-opacity": 0.35
+        "fill-color": "#dedad5",
+        "fill-opacity": 0.75
       }
     },
     {
-      "id": "landuse-meadow",
+      "id": "landcover-wood",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "filter": ["in", "class", "wood", "forest"],
+      "paint": {
+        "fill-color": "#d2e8cb",
+        "fill-opacity": 0.75
+      }
+    },
+    {
+      "id": "landuse-wood",
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landuse",
-      "filter": ["in", "kind", "meadow", "grass", "grassland", "scrub", "heath"],
+      "filter": ["in", "class", "wood", "forest"],
       "paint": {
-        "fill-color": "#e2f0d9"
+        "fill-color": "#d2e8cb",
+        "fill-opacity": 0.75
+      }
+    },
+    {
+      "id": "landcover-grass",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "filter": ["in", "class", "grass", "meadow", "scrub", "heath", "grassland"],
+      "paint": {
+        "fill-color": "#e2f0d9",
+        "fill-opacity": 0.65
+      }
+    },
+    {
+      "id": "landuse-grass",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landuse",
+      "filter": ["in", "class", "grass", "meadow", "scrub", "heath"],
+      "paint": {
+        "fill-color": "#e2f0d9",
+        "fill-opacity": 0.65
       }
     },
     {
@@ -83,9 +109,10 @@
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landuse",
-      "filter": ["in", "kind", "residential", "commercial", "industrial"],
+      "filter": ["in", "class", "residential", "commercial", "industrial", "suburb"],
       "paint": {
-        "fill-color": "#e8e5df"
+        "fill-color": "#e8e5df",
+        "fill-opacity": 0.7
       }
     },
     {
@@ -102,62 +129,30 @@
       "id": "waterway-river",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "water",
-      "filter": ["in", "kind", "river", "waterway"],
+      "source-layer": "waterway",
+      "filter": ["==", "class", "river"],
       "paint": {
         "line-color": "#9bcad6",
-        "line-width": 1.5
+        "line-width": 1.8
       }
     },
     {
       "id": "waterway-stream",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "water",
-      "filter": ["in", "kind_detail", "stream", "canal", "ditch"],
+      "source-layer": "waterway",
+      "filter": ["in", "class", "stream", "canal", "ditch"],
       "paint": {
         "line-color": "#aad3df",
         "line-width": 1.0
       }
     },
     {
-      "id": "waterway-fallback",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "waterway",
-      "paint": {
-        "line-color": "#9bcad6",
-        "line-width": 1.5
-      }
-    },
-    {
-      "id": "buildings-fill",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "buildings",
-      "minzoom": 12,
-      "paint": {
-        "fill-color": "#d9d0c9",
-        "fill-opacity": 0.85
-      }
-    },
-    {
-      "id": "buildings-outline",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "buildings",
-      "minzoom": 12,
-      "paint": {
-        "line-color": "#c4bcb2",
-        "line-width": 0.75
-      }
-    },
-    {
       "id": "road-highway-casing",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind", "highway"],
+      "source-layer": "transportation",
+      "filter": ["in", "class", "motorway", "trunk"],
       "paint": {
         "line-color": "#cf603a",
         "line-width": [
@@ -174,8 +169,8 @@
       "id": "road-highway-fill",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind", "highway"],
+      "source-layer": "transportation",
+      "filter": ["in", "class", "motorway", "trunk"],
       "paint": {
         "line-color": "#fdbf6f",
         "line-width": [
@@ -192,8 +187,8 @@
       "id": "road-major-casing",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind", "major_road"],
+      "source-layer": "transportation",
+      "filter": ["==", "class", "primary"],
       "paint": {
         "line-color": "#d48834",
         "line-width": [
@@ -210,8 +205,8 @@
       "id": "road-major-fill",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind", "major_road"],
+      "source-layer": "transportation",
+      "filter": ["==", "class", "primary"],
       "paint": {
         "line-color": "#fdd6a4",
         "line-width": [
@@ -225,29 +220,11 @@
       }
     },
     {
-      "id": "road-medium-casing",
+      "id": "road-medium",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind", "medium_road"],
-      "paint": {
-        "line-color": "#b0aba2",
-        "line-width": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          8, 1.5,
-          12, 3.0,
-          14, 5.0
-        ]
-      }
-    },
-    {
-      "id": "road-medium-fill",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind", "medium_road"],
+      "source-layer": "transportation",
+      "filter": ["in", "class", "secondary", "tertiary"],
       "paint": {
         "line-color": "#ffffff",
         "line-width": [
@@ -261,29 +238,11 @@
       }
     },
     {
-      "id": "road-minor-casing",
+      "id": "road-minor",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["in", "kind", "minor_road", "service"],
-      "minzoom": 11,
-      "paint": {
-        "line-color": "#cfcac2",
-        "line-width": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          11, 1.5,
-          14, 3.5
-        ]
-      }
-    },
-    {
-      "id": "road-minor-fill",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["in", "kind", "minor_road", "service"],
+      "source-layer": "transportation",
+      "filter": ["in", "class", "minor", "service"],
       "minzoom": 11,
       "paint": {
         "line-color": "#ffffff",
@@ -292,7 +251,7 @@
           ["linear"],
           ["zoom"],
           11, 1.0,
-          14, 2.5
+          14, 2.2
         ]
       }
     },
@@ -300,8 +259,8 @@
       "id": "road-track",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind_detail", "track"],
+      "source-layer": "transportation",
+      "filter": ["==", "class", "track"],
       "minzoom": 11,
       "paint": {
         "line-color": "#8c7256",
@@ -319,8 +278,8 @@
       "id": "road-path",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["in", "kind_detail", "path", "footway", "cycleway"],
+      "source-layer": "transportation",
+      "filter": ["==", "class", "path"],
       "minzoom": 11,
       "paint": {
         "line-color": "#b34d28",
@@ -335,28 +294,15 @@
       }
     },
     {
-      "id": "road-path-general",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": [
-        "all",
-        ["==", "kind", "path"],
-        ["!in", "kind_detail", "track", "path", "footway", "cycleway"]
-      ],
-      "minzoom": 11,
-      "paint": {
-        "line-color": "#a86440",
-        "line-width": 1.2,
-        "line-dasharray": [2, 2]
-      }
-    },
-    {
       "id": "road-aerialway",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind", "aerialway"],
+      "source-layer": "transportation",
+      "filter": [
+        "any",
+        ["==", "class", "aerialway"],
+        ["in", "subclass", "cable_car", "gondola", "chair_lift", "drag_lift"]
+      ],
       "minzoom": 10,
       "paint": {
         "line-color": "#2c2c2c",
@@ -368,8 +314,8 @@
       "id": "road-rail",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "roads",
-      "filter": ["==", "kind", "rail"],
+      "source-layer": "transportation",
+      "filter": ["in", "class", "rail", "transit"],
       "minzoom": 9,
       "paint": {
         "line-color": "#666666",
@@ -378,45 +324,11 @@
       }
     },
     {
-      "id": "omt-roads-major",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "filter": ["in", "class", "motorway", "trunk", "primary"],
-      "paint": {
-        "line-color": "#d48834",
-        "line-width": 2.5
-      }
-    },
-    {
-      "id": "omt-roads-minor",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "filter": ["in", "class", "secondary", "tertiary", "minor", "service"],
-      "minzoom": 11,
-      "paint": {
-        "line-color": "#ffffff",
-        "line-width": 1.5
-      }
-    },
-    {
-      "id": "earth-cliff",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "earth",
-      "filter": ["==", "kind", "cliff"],
-      "minzoom": 11,
-      "paint": {
-        "line-color": "#78746e",
-        "line-width": 1.2
-      }
-    },
-    {
       "id": "boundary-country-state",
       "type": "line",
       "source": "openmaptiles",
-      "source-layer": "boundaries",
+      "source-layer": "boundary",
+      "filter": ["in", "admin_level", 2, 4],
       "paint": {
         "line-color": "#8b6b9e",
         "line-width": 1.0,
@@ -425,60 +337,35 @@
       }
     },
     {
-      "id": "peak-points",
-      "type": "circle",
-      "source": "openmaptiles",
-      "source-layer": "pois",
-      "filter": ["==", "kind", "peak"],
-      "paint": {
-        "circle-radius": 3.5,
-        "circle-color": "#8b4513",
-        "circle-stroke-width": 1.5,
-        "circle-stroke-color": "#ffffff"
-      }
-    },
-    {
-      "id": "peak-omt-points",
+      "id": "mountain-peak-point",
       "type": "circle",
       "source": "openmaptiles",
       "source-layer": "mountain_peak",
+      "filter": ["has", "name"],
+      "minzoom": 12,
       "paint": {
-        "circle-radius": 3.5,
-        "circle-color": "#8b4513",
-        "circle-stroke-width": 1.5,
+        "circle-radius": 3.0,
+        "circle-color": "#633816",
+        "circle-stroke-width": 1.2,
         "circle-stroke-color": "#ffffff"
       }
     },
     {
-      "id": "peaks-label",
+      "id": "mountain-peak-label",
       "type": "symbol",
       "source": "openmaptiles",
-      "source-layer": "pois",
-      "filter": ["==", "kind", "peak"],
+      "source-layer": "mountain_peak",
+      "filter": ["has", "name"],
+      "minzoom": 12,
       "layout": {
-        "text-field": "{name}",
-        "text-size": 11,
-        "text-offset": [0, 1.2],
-        "text-anchor": "top"
+        "text-field": "{name}\n{ele}m",
+        "text-size": 10,
+        "text-offset": [0, 1.1],
+        "text-anchor": "top",
+        "text-optional": true
       },
       "paint": {
         "text-color": "#4a2810",
-        "text-halo-color": "#ffffff",
-        "text-halo-width": 1.5
-      }
-    },
-    {
-      "id": "place-labels",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "places",
-      "filter": ["in", "kind", "city", "town", "village", "locality"],
-      "layout": {
-        "text-field": "{name}",
-        "text-size": 11
-      },
-      "paint": {
-        "text-color": "#2c2c2c",
         "text-halo-color": "#ffffff",
         "text-halo-width": 1.5
       }
@@ -488,7 +375,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "place",
-      "filter": ["in", "class", "city", "town", "village"],
+      "filter": ["in", "class", "city", "town", "village", "hamlet"],
       "layout": {
         "text-field": "{name}",
         "text-size": 11

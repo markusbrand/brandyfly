@@ -112,8 +112,10 @@ class _MapWidgetState extends State<MapWidget> {
   late double _currentZoom;
   bool _centerOnPilot = true;
   Timer? _recenterTimer;
-  Offset _panOffset = Offset.zero;
+  late LatLng _cameraCenter;
   String? _styleJson;
+  bool _isProgrammaticMove = false;
+  Timer? _programmaticMoveTimer;
 
   // Default Alpine launch reference coordinates (Dachstein / Krippenstein)
   static const LatLng _defaultPilotPosition = LatLng(47.525, 13.685);
@@ -147,8 +149,16 @@ class _MapWidgetState extends State<MapWidget> {
   void initState() {
     super.initState();
     _mapService = widget.mapService ?? MapLibreMapService();
+    _mapService.addListener(_onMapServiceChanged);
     _currentZoom = widget.initialZoom;
+    _cameraCenter = _effectivePilotPosition;
     _initMapStyle();
+  }
+
+  void _onMapServiceChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _initMapStyle() async {
@@ -164,6 +174,8 @@ class _MapWidgetState extends State<MapWidget> {
 
   @override
   void dispose() {
+    _programmaticMoveTimer?.cancel();
+    _mapService.removeListener(_onMapServiceChanged);
     _recenterTimer?.cancel();
     if (widget.mapService == null) {
       _mapService.dispose();
@@ -175,10 +187,12 @@ class _MapWidgetState extends State<MapWidget> {
   void didUpdateWidget(MapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.mapService != oldWidget.mapService) {
+      _mapService.removeListener(_onMapServiceChanged);
       if (oldWidget.mapService == null) {
         _mapService.dispose();
       }
       _mapService = widget.mapService ?? MapLibreMapService();
+      _mapService.addListener(_onMapServiceChanged);
       _initMapStyle();
     } else if (widget.regionId != oldWidget.regionId) {
       _initMapStyle();
@@ -192,6 +206,7 @@ class _MapWidgetState extends State<MapWidget> {
     final oldPilot = oldWidget.pilotPosition ?? _defaultPilotPosition;
     final newPilot = _effectivePilotPosition;
     if (_centerOnPilot && oldPilot != newPilot) {
+      _cameraCenter = newPilot;
       _updateCamera();
     }
 
@@ -202,15 +217,37 @@ class _MapWidgetState extends State<MapWidget> {
     }
   }
 
-  void _updateCamera() {
+  void _updateCamera({bool animate = false}) {
+    _programmaticMoveTimer?.cancel();
+    _isProgrammaticMove = true;
     final bearing = widget.orientation == MapOrientation.trackUp
         ? widget.headingDeg
         : 0.0;
-    _mapService.moveCamera(
-      position: _effectivePilotPosition,
-      zoom: _currentZoom,
-      bearing: bearing,
-    );
+    if (animate) {
+      _mapService.animateCamera(
+        position: _cameraCenter,
+        zoom: _currentZoom,
+        bearing: bearing,
+      ).whenComplete(() {
+        if (!mounted) return;
+        _programmaticMoveTimer?.cancel();
+        _programmaticMoveTimer = Timer(const Duration(milliseconds: 300), () {
+          if (mounted) _isProgrammaticMove = false;
+        });
+      });
+    } else {
+      _mapService.moveCamera(
+        position: _cameraCenter,
+        zoom: _currentZoom,
+        bearing: bearing,
+      ).whenComplete(() {
+        if (!mounted) return;
+        _programmaticMoveTimer?.cancel();
+        _programmaticMoveTimer = Timer(const Duration(milliseconds: 100), () {
+          if (mounted) _isProgrammaticMove = false;
+        });
+      });
+    }
   }
 
   void _handleZoom(double delta) {
@@ -220,7 +257,7 @@ class _MapWidgetState extends State<MapWidget> {
     });
 
     _mapService.moveCamera(
-      position: _effectivePilotPosition,
+      position: _cameraCenter,
       zoom: newZoom,
     );
 
@@ -235,15 +272,92 @@ class _MapWidgetState extends State<MapWidget> {
   void _recenter() {
     _recenterTimer?.cancel();
     setState(() {
-      _panOffset = Offset.zero;
+      _cameraCenter = _effectivePilotPosition;
       _centerOnPilot = true;
     });
-    _updateCamera();
+    _updateCamera(animate: true);
   }
 
   void _startRecenterTimer() {
     _recenterTimer?.cancel();
     _recenterTimer = Timer(const Duration(seconds: 6), _recenter);
+  }
+
+  void _onMapEvent(MapEvent event) {
+    if (event is MapEventStartMoveCamera) {
+      if (event.reason == CameraChangeReason.apiGesture || !_isProgrammaticMove) {
+        if (_centerOnPilot) {
+          setState(() {
+            _centerOnPilot = false;
+          });
+        }
+        _startRecenterTimer();
+      }
+    } else if (event is MapEventMoveCamera) {
+      if (_isProgrammaticMove) return;
+      final cam = event.camera;
+      final newCenter = LatLng(cam.center.lat, cam.center.lon);
+      final latDiff = (_cameraCenter.latitude - newCenter.latitude).abs();
+      final lngDiff = (_cameraCenter.longitude - newCenter.longitude).abs();
+      final zoomDiff = (_currentZoom - cam.zoom).abs();
+
+      if (latDiff > 1e-6 || lngDiff > 1e-6 || zoomDiff > 0.01) {
+        setState(() {
+          _centerOnPilot = false;
+          _cameraCenter = newCenter;
+          _currentZoom = cam.zoom;
+        });
+        _startRecenterTimer();
+      }
+    }
+  }
+
+  void _onPanStart(DragStartDetails details) {
+    setState(() {
+      _centerOnPilot = false;
+    });
+    _startRecenterTimer();
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    final worldSize = 512.0 * math.pow(2.0, _currentZoom);
+    final bearing = widget.orientation == MapOrientation.trackUp
+        ? widget.headingDeg
+        : 0.0;
+
+    double dx = details.delta.dx;
+    double dy = details.delta.dy;
+
+    if (bearing != 0.0) {
+      final rad = bearing * math.pi / 180.0;
+      final rx = dx * math.cos(rad) - dy * math.sin(rad);
+      final ry = dx * math.sin(rad) + dy * math.cos(rad);
+      dx = rx;
+      dy = ry;
+    }
+
+    final dLng = -dx * 360.0 / worldSize;
+    final radLat = _cameraCenter.latitude * math.pi / 180.0;
+    final dLat = dy * 360.0 * math.cos(radLat) / worldSize;
+
+    final newLat = (_cameraCenter.latitude + dLat).clamp(-85.0, 85.0);
+    var newLng = _cameraCenter.longitude + dLng;
+    while (newLng > 180.0) {
+      newLng -= 360.0;
+    }
+    while (newLng < -180.0) {
+      newLng += 360.0;
+    }
+
+    final newCenter = LatLng(newLat, newLng);
+
+    setState(() {
+      _cameraCenter = newCenter;
+      _centerOnPilot = false;
+    });
+
+    _updateCamera();
+    _startRecenterTimer();
   }
 
   @override
@@ -257,15 +371,11 @@ class _MapWidgetState extends State<MapWidget> {
           // 1. Map Canvas / MapLibre GL Base Map
           Positioned.fill(
             child: GestureDetector(
+              key: const Key('map_gesture_detector'),
               behavior: HitTestBehavior.opaque,
-              onPanUpdate: (details) {
-                setState(() {
-                  _panOffset += details.delta;
-                  _centerOnPilot = false;
-                });
-                _startRecenterTimer();
-              },
-              child: _buildMapBackground(pilotPos),
+              onPanStart: _onPanStart,
+              onPanUpdate: _onPanUpdate,
+              child: _buildMapBackground(_cameraCenter),
             ),
           ),
 
@@ -274,11 +384,12 @@ class _MapWidgetState extends State<MapWidget> {
             child: IgnorePointer(
               child: CustomPaint(
                 painter: _FlightOverlayPainter(
+                  mapController: _mapService.controller,
                   pilotPosition: pilotPos,
+                  cameraCenter: _cameraCenter,
                   orientation: widget.orientation,
                   headingDeg: widget.headingDeg,
                   zoom: _currentZoom,
-                  panOffset: _panOffset,
                   showAirspace: widget.showAirspace,
                   showTrack: widget.showTrack,
                   showThermals: widget.showThermals,
@@ -292,7 +403,7 @@ class _MapWidgetState extends State<MapWidget> {
             ),
           ),
 
-          // 3. Fallback Badge ("No offline data")
+          // 3. Fallback Badge ("No offline data" / "Online preview")
           if (_mapService.isFallbackActive)
             Positioned(
               top: 36,
@@ -300,18 +411,33 @@ class _MapWidgetState extends State<MapWidget> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.amber.shade900.withAlpha(220),
+                  color: _mapService.isOnlinePreviewActive
+                      ? Colors.teal.shade900.withAlpha(220)
+                      : Colors.amber.shade900.withAlpha(220),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: Colors.amberAccent, width: 1),
+                  border: Border.all(
+                    color: _mapService.isOnlinePreviewActive
+                        ? Colors.tealAccent
+                        : Colors.amberAccent,
+                    width: 1,
+                  ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.warning_amber_rounded, size: 12, color: Colors.white),
-                    SizedBox(width: 4),
+                    Icon(
+                      _mapService.isOnlinePreviewActive
+                          ? Icons.cloud_queue_rounded
+                          : Icons.warning_amber_rounded,
+                      size: 12,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 4),
                     Text(
-                      'No offline data (Overview fallback)',
-                      style: TextStyle(
+                      _mapService.isOnlinePreviewActive
+                          ? 'Online preview (No offline data)'
+                          : 'No offline data (Overview fallback)',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 9,
                         fontWeight: FontWeight.w600,
@@ -409,19 +535,20 @@ class _MapWidgetState extends State<MapWidget> {
     );
   }
 
-  Widget _buildMapBackground(LatLng pilotPos) {
+  Widget _buildMapBackground(LatLng cameraPos) {
     if (_styleJson != null) {
       return MapLibreMap(
         options: MapOptions(
           initCenter: Geographic(
-            lon: pilotPos.longitude,
-            lat: pilotPos.latitude,
+            lon: cameraPos.longitude,
+            lat: cameraPos.latitude,
           ),
           initZoom: _currentZoom,
           initStyle: _styleJson!,
         ),
         onMapCreated: _mapService.onMapCreated,
         onStyleLoaded: _mapService.onStyleLoaded,
+        onEvent: _onMapEvent,
       );
     }
 
@@ -578,11 +705,12 @@ class _MapWidgetState extends State<MapWidget> {
 /// thermal markers, and pilot position marker.
 class _FlightOverlayPainter extends CustomPainter {
   const _FlightOverlayPainter({
+    this.mapController,
     required this.pilotPosition,
+    required this.cameraCenter,
     required this.orientation,
     required this.headingDeg,
     required this.zoom,
-    required this.panOffset,
     required this.showAirspace,
     required this.showTrack,
     required this.showThermals,
@@ -593,11 +721,12 @@ class _FlightOverlayPainter extends CustomPainter {
     required this.mapTrackShowOlderTail,
   });
 
+  final MapController? mapController;
   final LatLng pilotPosition;
+  final LatLng cameraCenter;
   final MapOrientation orientation;
   final double headingDeg;
   final double zoom;
-  final Offset panOffset;
   final bool showAirspace;
   final bool showTrack;
   final bool showThermals;
@@ -608,27 +737,42 @@ class _FlightOverlayPainter extends CustomPainter {
   final bool mapTrackShowOlderTail;
 
   Offset _toScreen(LatLng point, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    // 1 degree lat approx 111,000m. Scale based on zoom.
-    final pixelsPerDegreeLat = math.pow(2, zoom) * 8.0;
-    final cosLat = math.cos(pilotPosition.latitude * math.pi / 180);
-    final pixelsPerDegreeLng = pixelsPerDegreeLat * cosLat;
+    if (mapController != null) {
+      try {
+        final loc = mapController!.toScreenLocation(
+          Geographic(lat: point.latitude, lon: point.longitude),
+        );
+        if (loc.dx != 0 || loc.dy != 0) {
+          return loc;
+        }
+      } catch (_) {}
+    }
 
-    final dLat = point.latitude - pilotPosition.latitude;
-    final dLng = point.longitude - pilotPosition.longitude;
+    final worldSize = 512.0 * math.pow(2.0, zoom);
+    final centerLngX = (cameraCenter.longitude + 180.0) / 360.0 * worldSize;
+    final pointLngX = (point.longitude + 180.0) / 360.0 * worldSize;
 
-    var dx = dLng * pixelsPerDegreeLng;
-    var dy = -dLat * pixelsPerDegreeLat; // Screen Y is inverted
+    double latToMercatorY(double lat) {
+      final clamped = lat.clamp(-85.05112878, 85.05112878);
+      final sinLat = math.sin(clamped * math.pi / 180.0);
+      return (0.5 - math.log((1.0 + sinLat) / (1.0 - sinLat)) / (4.0 * math.pi)) * worldSize;
+    }
+
+    final centerLatY = latToMercatorY(cameraCenter.latitude);
+    final pointLatY = latToMercatorY(point.latitude);
+
+    var dx = pointLngX - centerLngX;
+    var dy = pointLatY - centerLatY;
 
     if (orientation == MapOrientation.trackUp) {
       final rad = -headingDeg * math.pi / 180;
       final rotX = dx * math.cos(rad) - dy * math.sin(rad);
       final rotY = dx * math.sin(rad) + dy * math.cos(rad);
       dx = rotX;
-      dy = rotY + size.height * 0.1; // Forward bias
+      dy = rotY;
     }
 
-    return center + Offset(dx, dy) + panOffset;
+    return Offset(size.width / 2 + dx, size.height / 2 + dy);
   }
 
   @override

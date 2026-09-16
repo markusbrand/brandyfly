@@ -18,9 +18,14 @@
 **/build/
 **/coverage/
 
+__pycache__/
+*.pyc
+
 /private-data/
 /tools/map_pipeline/data/
 /tools/map_pipeline/output/
+/tools/map-pipeline/data/
+/tools/map-pipeline/output/
 
 services/backend/brandyfly-backend
 

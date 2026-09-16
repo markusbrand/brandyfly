@@ -1,42 +1,107 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'pmtiles_reader.dart';
 
 /// Embedded loopback HTTP tile server running on `127.0.0.1` on an ephemeral port.
 ///
-/// Serves standard OpenMapTiles vector tiles (`/tiles/{z}/{x}/{y}.pbf`) from local
-/// PMTiles archives directly to MapLibre Native, bypassing platform URI limitations
-/// on Android and iOS while avoiding main-thread disk I/O.
+/// Serves standard OpenMapTiles vector tiles (`/tiles/{z}/{x}/{y}.pbf`) and
+/// raster DEM terrain tiles (`/terrain/{z}/{x}/{y}.png`) from local PMTiles
+/// archives, persistent disk cache, or online providers directly to MapLibre Native.
 class LocalTileServer {
   LocalTileServer({
     this.onlineFallbackEnabled = true,
-    this.onlineFallbackUrlTemplate =
-        'https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf',
+    String? onlineFallbackUrlTemplate,
+    String? onlineTerrainFallbackUrlTemplate,
+    this.cacheDirectoryPath,
     HttpClient? httpClient,
-  }) : _httpClient = httpClient ?? HttpClient() {
-    _httpClient.connectionTimeout = const Duration(seconds: 4);
+  })  : _configuredOnlineFallbackUrlTemplate = onlineFallbackUrlTemplate,
+        _configuredOnlineTerrainFallbackUrlTemplate =
+            onlineTerrainFallbackUrlTemplate,
+        _httpClient = httpClient ?? HttpClient() {
+    _httpClient.connectionTimeout = const Duration(seconds: 3);
+    _httpClient.autoUncompress = false;
   }
 
+  static const String defaultSnapshotTemplate =
+      'https://tiles.openfreemap.org/planet/20260906_080001_pt/{z}/{x}/{y}.pbf';
+  static const String defaultTerrainTemplate =
+      'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+  static const String dynamicDiscoveryUrl =
+      'https://tiles.openfreemap.org/planet';
+
   final bool onlineFallbackEnabled;
-  final String onlineFallbackUrlTemplate;
+  final String? _configuredOnlineFallbackUrlTemplate;
+  final String? _configuredOnlineTerrainFallbackUrlTemplate;
+  final String? cacheDirectoryPath;
   final HttpClient _httpClient;
+
+  String _activeOnlineFallbackUrlTemplate = defaultSnapshotTemplate;
+  String? _resolvedCacheDirectoryPath;
 
   HttpServer? _server;
   StreamSubscription<HttpRequest>? _serverSubscription;
   PMTilesReader? _primaryReader;
   PMTilesReader? _fallbackReader;
+  PMTilesReader? _terrainReader;
   String? _primaryArchivePath;
   String? _fallbackArchivePath;
+  String? _terrainArchivePath;
   bool _isRunning = false;
 
+  final ValueNotifier<bool> onlinePreviewNotifier = ValueNotifier<bool>(false);
+
   bool get isRunning => _isRunning;
+  bool get isOnlinePreviewActive => onlinePreviewNotifier.value;
   int get port => _server?.port ?? 0;
   String get baseUrl => 'http://127.0.0.1:$port';
   String get tilesUrlTemplate => '$baseUrl/tiles/{z}/{x}/{y}.pbf';
+  String get terrainUrlTemplate => '$baseUrl/terrain/{z}/{x}/{y}.png';
+  String get onlineFallbackUrlTemplate =>
+      _configuredOnlineFallbackUrlTemplate ?? _activeOnlineFallbackUrlTemplate;
+  String get onlineTerrainFallbackUrlTemplate =>
+      _configuredOnlineTerrainFallbackUrlTemplate ?? defaultTerrainTemplate;
+
+  /// Asynchronously queries OpenFreeMap for the currently active snapshot URL template.
+  Future<void> discoverSnapshot() async {
+    if (!onlineFallbackEnabled || _configuredOnlineFallbackUrlTemplate != null) {
+      return;
+    }
+    try {
+      final req = await _httpClient
+          .getUrl(Uri.parse(dynamicDiscoveryUrl))
+          .timeout(const Duration(seconds: 2));
+      req.headers.set(HttpHeaders.acceptEncodingHeader, 'gzip');
+      final resp = await req.close().timeout(const Duration(seconds: 2));
+      if (resp.statusCode == HttpStatus.ok) {
+        final builder = BytesBuilder();
+        await for (final chunk in resp) {
+          builder.add(chunk);
+        }
+        final bytes = builder.takeBytes();
+        final content = _isGzip(bytes)
+            ? utf8.decode(gzip.decode(bytes))
+            : utf8.decode(bytes, allowMalformed: true);
+        final json = jsonDecode(content) as Map<String, dynamic>;
+        final tiles = json['tiles'] as List<dynamic>?;
+        if (tiles != null && tiles.isNotEmpty && tiles.first is String) {
+          _activeOnlineFallbackUrlTemplate = tiles.first as String;
+          debugPrint(
+            '[LocalTileServer] Discovered active OpenFreeMap snapshot: $_activeOnlineFallbackUrlTemplate',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint(
+        '[LocalTileServer] Dynamic snapshot discovery failed: $e (using fallback: $_activeOnlineFallbackUrlTemplate)',
+      );
+    }
+  }
 
   /// Starts the HTTP server on `InternetAddress.loopbackIPv4` on an ephemeral port (`0`).
   Future<int> start() async {
@@ -58,6 +123,10 @@ class LocalTileServer {
       },
     );
 
+    if (onlineFallbackEnabled && _configuredOnlineFallbackUrlTemplate == null) {
+      unawaited(discoverSnapshot());
+    }
+
     debugPrint('[LocalTileServer] Started listening on $baseUrl');
     return _server!.port;
   }
@@ -77,6 +146,7 @@ class LocalTileServer {
       if (await file.exists() && await file.length() >= 127) {
         try {
           _primaryReader = await PMTilesReader.open(file);
+          _setOnlinePreviewActive(false);
           debugPrint('[LocalTileServer] Loaded primary archive: $path');
         } catch (e) {
           debugPrint('[LocalTileServer] Failed to open primary archive $path: $e');
@@ -108,10 +178,35 @@ class LocalTileServer {
     }
   }
 
+  /// Sets or updates the terrain DEM PMTiles archive.
+  Future<void> setTerrainArchive(String? path) async {
+    if (_terrainArchivePath == path && _terrainReader != null) {
+      return;
+    }
+
+    await _terrainReader?.close();
+    _terrainReader = null;
+    _terrainArchivePath = path;
+
+    if (path != null && path.isNotEmpty) {
+      final file = File(path);
+      if (await file.exists() && await file.length() >= 127) {
+        try {
+          _terrainReader = await PMTilesReader.open(file);
+          debugPrint('[LocalTileServer] Loaded terrain archive: $path');
+        } catch (e) {
+          debugPrint('[LocalTileServer] Failed to open terrain archive $path: $e');
+        }
+      }
+    }
+  }
+
   /// Shuts down the HTTP server and releases open file handles.
   Future<void> stop() async {
     if (!_isRunning) return;
     _isRunning = false;
+
+    _setOnlinePreviewActive(false);
 
     await _serverSubscription?.cancel();
     _serverSubscription = null;
@@ -127,11 +222,109 @@ class LocalTileServer {
     _fallbackReader = null;
     _fallbackArchivePath = null;
 
+    await _terrainReader?.close();
+    _terrainReader = null;
+    _terrainArchivePath = null;
+
     try {
       _httpClient.close(force: true);
     } catch (_) {}
 
     debugPrint('[LocalTileServer] Stopped');
+  }
+
+  /// Resolves the root directory path used for caching online vector tiles.
+  Future<String?> _getCacheDirectoryPath() async {
+    if (cacheDirectoryPath != null) {
+      return cacheDirectoryPath;
+    }
+    if (_resolvedCacheDirectoryPath != null) {
+      return _resolvedCacheDirectoryPath;
+    }
+    try {
+      final temp = await getTemporaryDirectory();
+      _resolvedCacheDirectoryPath = '${temp.path}/cache';
+      return _resolvedCacheDirectoryPath;
+    } catch (_) {
+      final temp = Directory.systemTemp;
+      _resolvedCacheDirectoryPath = '${temp.path}/brandyfly_cache';
+      return _resolvedCacheDirectoryPath;
+    }
+  }
+
+  /// Checks local disk cache for previously downloaded vector tile.
+  Future<Uint8List?> _getCachedVectorTile(int z, int x, int y) async {
+    try {
+      final cacheDir = await _getCacheDirectoryPath();
+      if (cacheDir == null) return null;
+      final file = File('$cacheDir/vector_tiles/$z/$x/$y.pbf');
+      if (await file.exists() && await file.length() > 0) {
+        return await file.readAsBytes();
+      }
+    } catch (e) {
+      debugPrint('[LocalTileServer] Error reading cached vector tile $z/$x/$y: $e');
+    }
+    return null;
+  }
+
+  /// Checks local disk cache for previously downloaded terrain raster DEM tile.
+  Future<Uint8List?> _getCachedTerrainTile(int z, int x, int y) async {
+    try {
+      final cacheDir = await _getCacheDirectoryPath();
+      if (cacheDir == null) return null;
+      final file = File('$cacheDir/terrain_tiles/$z/$x/$y.png');
+      if (await file.exists() && await file.length() > 0) {
+        return await file.readAsBytes();
+      }
+    } catch (e) {
+      debugPrint('[LocalTileServer] Error reading cached terrain tile $z/$x/$y: $e');
+    }
+    return null;
+  }
+
+  /// Persists a downloaded vector tile to the local disk cache.
+  Future<void> _saveVectorTileToDiskCache(int z, int x, int y, Uint8List bytes) async {
+    try {
+      final cacheDir = await _getCacheDirectoryPath();
+      if (cacheDir == null) return;
+      final file = File('$cacheDir/vector_tiles/$z/$x/$y.pbf');
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(bytes, flush: true);
+    } catch (e) {
+      debugPrint('[LocalTileServer] Failed to write vector tile cache for $z/$x/$y: $e');
+    }
+  }
+
+  /// Persists a downloaded terrain raster tile to the local disk cache.
+  Future<void> _saveTerrainTileToDiskCache(int z, int x, int y, Uint8List bytes) async {
+    try {
+      final cacheDir = await _getCacheDirectoryPath();
+      if (cacheDir == null) return;
+      final file = File('$cacheDir/terrain_tiles/$z/$x/$y.png');
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(bytes, flush: true);
+    } catch (e) {
+      debugPrint('[LocalTileServer] Failed to write terrain tile cache for $z/$x/$y: $e');
+    }
+  }
+
+  /// Clears all cached tiles on disk.
+  Future<void> clearDiskCache() async {
+    try {
+      final cacheDir = await _getCacheDirectoryPath();
+      if (cacheDir != null) {
+        final dir = Directory(cacheDir);
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _setOnlinePreviewActive(bool active) {
+    if (onlinePreviewNotifier.value != active) {
+      onlinePreviewNotifier.value = active;
+    }
   }
 
   /// Routes incoming HTTP requests to handlers.
@@ -145,6 +338,8 @@ class LocalTileServer {
           'port': port,
           'primaryLoaded': _primaryReader != null,
           'fallbackLoaded': _fallbackReader != null,
+          'terrainLoaded': _terrainReader != null,
+          'isOnlinePreviewActive': isOnlinePreviewActive,
         });
         return;
       }
@@ -154,12 +349,23 @@ class LocalTileServer {
         return;
       }
 
-      final tileMatch = RegExp(r'^/tiles/(\d+)/(\d+)/(\d+)\.pbf$').firstMatch(path);
-      if (tileMatch != null) {
-        final z = int.parse(tileMatch.group(1)!);
-        final x = int.parse(tileMatch.group(2)!);
-        final y = int.parse(tileMatch.group(3)!);
-        await _handleTileRequest(request, z, x, y);
+      final vectorMatch =
+          RegExp(r'^/tiles/(\d+)/(\d+)/(\d+)\.pbf$').firstMatch(path);
+      if (vectorMatch != null) {
+        final z = int.parse(vectorMatch.group(1)!);
+        final x = int.parse(vectorMatch.group(2)!);
+        final y = int.parse(vectorMatch.group(3)!);
+        await _handleVectorTileRequest(request, z, x, y);
+        return;
+      }
+
+      final terrainMatch =
+          RegExp(r'^/terrain/(\d+)/(\d+)/(\d+)\.png$').firstMatch(path);
+      if (terrainMatch != null) {
+        final z = int.parse(terrainMatch.group(1)!);
+        final x = int.parse(terrainMatch.group(2)!);
+        final y = int.parse(terrainMatch.group(3)!);
+        await _handleTerrainTileRequest(request, z, x, y);
         return;
       }
 
@@ -200,8 +406,8 @@ class LocalTileServer {
     _respondJson(request, HttpStatus.ok, metadata);
   }
 
-  /// Serves vector tile payloads from primary PMTiles, fallback PMTiles, or online proxy.
-  Future<void> _handleTileRequest(
+  /// Serves vector tile payloads from primary PMTiles, fallback PMTiles, disk cache, or online proxy.
+  Future<void> _handleVectorTileRequest(
     HttpRequest request,
     int z,
     int x,
@@ -212,7 +418,8 @@ class LocalTileServer {
       try {
         final tileBytes = await _primaryReader!.getTile(z, x, y);
         if (tileBytes != null && tileBytes.isNotEmpty) {
-          await _serveTileBytes(request, tileBytes);
+          _setOnlinePreviewActive(false);
+          await _serveVectorBytes(request, tileBytes);
           return;
         }
       } catch (e) {
@@ -225,7 +432,7 @@ class LocalTileServer {
       try {
         final tileBytes = await _fallbackReader!.getTile(z, x, y);
         if (tileBytes != null && tileBytes.isNotEmpty) {
-          await _serveTileBytes(request, tileBytes);
+          await _serveVectorBytes(request, tileBytes);
           return;
         }
       } catch (e) {
@@ -233,63 +440,168 @@ class LocalTileServer {
       }
     }
 
-    // 3. Optional online vector tile fallback during simulation / dev
+    // 3. Check persistent disk cache
+    final cachedBytes = await _getCachedVectorTile(z, x, y);
+    if (cachedBytes != null && cachedBytes.isNotEmpty) {
+      _setOnlinePreviewActive(true);
+      await _serveVectorBytes(request, cachedBytes);
+      return;
+    }
+
+    // 4. Optional online vector tile fallback during simulation / dev
     if (onlineFallbackEnabled) {
-      final handled = await _proxyOnlineTile(request, z, x, y);
+      final handled = await _proxyOnlineVectorTile(request, z, x, y);
       if (handled) return;
     }
 
-    // 4. Return 204 No Content for missing tiles (standard in vector map rendering)
+    // 5. Return 204 No Content for missing tiles
     request.response.statusCode = HttpStatus.noContent;
     await request.response.close();
   }
 
-  /// Serves compressed tile payload directly to MapLibre.
-  Future<void> _serveTileBytes(HttpRequest request, Uint8List tileBytes) async {
+  /// Serves terrain DEM raster tiles from terrain PMTiles, disk cache, or online proxy.
+  Future<void> _handleTerrainTileRequest(
+    HttpRequest request,
+    int z,
+    int x,
+    int y,
+  ) async {
+    // 1. Check local terrain archive
+    if (_terrainReader != null) {
+      try {
+        final tileBytes = await _terrainReader!.getTile(z, x, y);
+        if (tileBytes != null && tileBytes.isNotEmpty) {
+          await _serveRasterBytes(request, tileBytes);
+          return;
+        }
+      } catch (e) {
+        debugPrint('[LocalTileServer] Terrain archive fetch error ($z/$x/$y): $e');
+      }
+    }
+
+    // 2. Check persistent disk cache
+    final cachedBytes = await _getCachedTerrainTile(z, x, y);
+    if (cachedBytes != null && cachedBytes.isNotEmpty) {
+      await _serveRasterBytes(request, cachedBytes);
+      return;
+    }
+
+    // 3. Online terrain DEM proxy (AWS Terrarium)
+    if (onlineFallbackEnabled) {
+      final handled = await _proxyOnlineTerrainTile(request, z, x, y);
+      if (handled) return;
+    }
+
+    // 4. Return 204 No Content for missing terrain tiles
+    request.response.statusCode = HttpStatus.noContent;
+    await request.response.close();
+  }
+
+  /// Serves compressed vector tile payload directly to MapLibre.
+  Future<void> _serveVectorBytes(HttpRequest request, Uint8List tileBytes) async {
     final response = request.response;
     response.statusCode = HttpStatus.ok;
     response.headers.set(HttpHeaders.contentTypeHeader, 'application/x-protobuf');
-    response.headers.set(HttpHeaders.contentEncodingHeader, 'gzip');
+    if (_isGzip(tileBytes)) {
+      response.headers.set(HttpHeaders.contentEncodingHeader, 'gzip');
+    }
     response.headers.set(HttpHeaders.cacheControlHeader, 'public, max-age=86400');
     response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
     response.add(tileBytes);
     await response.close();
   }
 
+  /// Serves raster PNG terrain tile payload directly to MapLibre.
+  Future<void> _serveRasterBytes(HttpRequest request, Uint8List tileBytes) async {
+    final response = request.response;
+    response.statusCode = HttpStatus.ok;
+    response.headers.set(HttpHeaders.contentTypeHeader, 'image/png');
+    if (_isGzip(tileBytes)) {
+      response.headers.set(HttpHeaders.contentEncodingHeader, 'gzip');
+    }
+    response.headers.set(HttpHeaders.cacheControlHeader, 'public, max-age=86400');
+    response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
+    response.add(tileBytes);
+    await response.close();
+  }
+
+  static bool _isGzip(List<int> bytes) =>
+      bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b;
+
   /// Fetches vector tile from online provider when outside local bounds.
-  Future<bool> _proxyOnlineTile(HttpRequest request, int z, int x, int y) async {
+  Future<bool> _proxyOnlineVectorTile(
+    HttpRequest request,
+    int z,
+    int x,
+    int y,
+  ) async {
     final upstreamUrl = onlineFallbackUrlTemplate
         .replaceAll('{z}', '$z')
         .replaceAll('{x}', '$x')
         .replaceAll('{y}', '$y');
 
     try {
-      final upstreamReq = await _httpClient.getUrl(Uri.parse(upstreamUrl));
+      final upstreamReq = await _httpClient
+          .getUrl(Uri.parse(upstreamUrl))
+          .timeout(const Duration(seconds: 3));
       upstreamReq.headers.set(HttpHeaders.acceptEncodingHeader, 'gzip');
-      final upstreamResp = await upstreamReq.close();
+      final upstreamResp = await upstreamReq
+          .close()
+          .timeout(const Duration(seconds: 3));
 
       if (upstreamResp.statusCode == HttpStatus.ok) {
-        final response = request.response;
-        response.statusCode = HttpStatus.ok;
-        response.headers.set(
-          HttpHeaders.contentTypeHeader,
-          upstreamResp.headers.value(HttpHeaders.contentTypeHeader) ??
-              'application/x-protobuf',
-        );
-
-        final encoding = upstreamResp.headers.value(HttpHeaders.contentEncodingHeader);
-        if (encoding != null) {
-          response.headers.set(HttpHeaders.contentEncodingHeader, encoding);
+        final builder = BytesBuilder();
+        await for (final chunk in upstreamResp) {
+          builder.add(chunk);
         }
-
-        response.headers.set(HttpHeaders.cacheControlHeader, 'public, max-age=86400');
-        response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
-        await response.addStream(upstreamResp);
-        await response.close();
-        return true;
+        final bytes = builder.takeBytes();
+        if (bytes.isNotEmpty) {
+          unawaited(_saveVectorTileToDiskCache(z, x, y, bytes));
+          _setOnlinePreviewActive(true);
+          await _serveVectorBytes(request, bytes);
+          return true;
+        }
       }
     } catch (e) {
-      // Network error or timeout - silently proceed to 204
+      debugPrint('[LocalTileServer] Online vector proxy error ($z/$x/$y): $e');
+    }
+    return false;
+  }
+
+  /// Fetches raster DEM terrain tile from online provider (AWS Terrarium).
+  Future<bool> _proxyOnlineTerrainTile(
+    HttpRequest request,
+    int z,
+    int x,
+    int y,
+  ) async {
+    final upstreamUrl = onlineTerrainFallbackUrlTemplate
+        .replaceAll('{z}', '$z')
+        .replaceAll('{x}', '$x')
+        .replaceAll('{y}', '$y');
+
+    try {
+      final upstreamReq = await _httpClient
+          .getUrl(Uri.parse(upstreamUrl))
+          .timeout(const Duration(seconds: 3));
+      final upstreamResp = await upstreamReq
+          .close()
+          .timeout(const Duration(seconds: 3));
+
+      if (upstreamResp.statusCode == HttpStatus.ok) {
+        final builder = BytesBuilder();
+        await for (final chunk in upstreamResp) {
+          builder.add(chunk);
+        }
+        final bytes = builder.takeBytes();
+        if (bytes.isNotEmpty) {
+          unawaited(_saveTerrainTileToDiskCache(z, x, y, bytes));
+          await _serveRasterBytes(request, bytes);
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('[LocalTileServer] Online terrain proxy error ($z/$x/$y): $e');
     }
     return false;
   }
