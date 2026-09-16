@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart' hide Marker;
 
@@ -68,22 +67,38 @@ class MapWidget extends StatefulWidget {
     if (vario <= -3.0) return const Color(0xFF991B1B); // Deep Dark Red
     if (vario < -1.5) {
       final t = (vario - (-3.0)) / (-1.5 - (-3.0));
-      return Color.lerp(const Color(0xFF991B1B), const Color(0xFFEF4444), t)!;
+      return Color.lerp(
+        const Color(0xFF991B1B),
+        const Color(0xFFEF4444),
+        t,
+      )!;
     }
     if (vario < -0.5) {
       final t = (vario - (-1.5)) / (-0.5 - (-1.5));
-      return Color.lerp(const Color(0xFFEF4444), const Color(0xFFFCA5A5), t)!;
+      return Color.lerp(
+        const Color(0xFFEF4444),
+        const Color(0xFFFCA5A5),
+        t,
+      )!;
     }
     if (vario <= 0.5) {
       return const Color(0xFF94A3B8); // Neutral Slate Grey
     }
     if (vario < 1.5) {
       final t = (vario - 0.5) / (1.5 - 0.5);
-      return Color.lerp(const Color(0xFF86EFAC), const Color(0xFF22C55E), t)!;
+      return Color.lerp(
+        const Color(0xFF86EFAC),
+        const Color(0xFF22C55E),
+        t,
+      )!;
     }
     if (vario < 3.5) {
       final t = (vario - 1.5) / (3.5 - 1.5);
-      return Color.lerp(const Color(0xFF22C55E), const Color(0xFF15803D), t)!;
+      return Color.lerp(
+        const Color(0xFF22C55E),
+        const Color(0xFF15803D),
+        t,
+      )!;
     }
     return const Color(0xFF15803D); // Dark Emerald Green
   }
@@ -137,7 +152,9 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   Future<void> _initMapStyle() async {
-    final style = await _mapService.buildStyleJson(regionId: widget.regionId);
+    final style = await _mapService.buildStyleJson(
+      regionId: widget.regionId,
+    );
     if (mounted) {
       setState(() {
         _styleJson = style;
@@ -202,7 +219,10 @@ class _MapWidgetState extends State<MapWidget> {
       _currentZoom = newZoom;
     });
 
-    _mapService.moveCamera(position: _effectivePilotPosition, zoom: newZoom);
+    _mapService.moveCamera(
+      position: _effectivePilotPosition,
+      zoom: newZoom,
+    );
 
     widget.onZoomChanged?.call(newZoom);
     if (delta > 0) {
@@ -287,11 +307,7 @@ class _MapWidgetState extends State<MapWidget> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      size: 12,
-                      color: Colors.white,
-                    ),
+                    Icon(Icons.warning_amber_rounded, size: 12, color: Colors.white),
                     SizedBox(width: 4),
                     Text(
                       'No offline data (Overview fallback)',
@@ -344,7 +360,11 @@ class _MapWidgetState extends State<MapWidget> {
           ),
 
           // 5. North / Orientation Compass Widget
-          Positioned(top: 8, right: 8, child: _buildCompassIndicator()),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: _buildCompassIndicator(),
+          ),
 
           // 6. In-flight Zoom Steppers & Recenter Toolbar
           Positioned(
@@ -379,7 +399,11 @@ class _MapWidgetState extends State<MapWidget> {
           ),
 
           // 7. Dynamic Scale Bar & Altitude / Speed HUD
-          Positioned(bottom: 8, left: 8, child: _buildScaleAndLegend()),
+          Positioned(
+            bottom: 8,
+            left: 8,
+            child: _buildScaleAndLegend(),
+          ),
         ],
       ),
     );
@@ -468,7 +492,11 @@ class _MapWidgetState extends State<MapWidget> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 35, height: 2, color: Colors.white70),
+              Container(
+                width: 35,
+                height: 2,
+                color: Colors.white70,
+              ),
               const SizedBox(width: 4),
               Text(
                 '${scaleKm.toStringAsFixed(1)} km',
@@ -528,28 +556,13 @@ class _MapWidgetState extends State<MapWidget> {
     final now = DateTime.now();
     final latSteps = [0.015, 0.010, 0.006, 0.003, 0.001, 0.0];
     final lngSteps = [0.018, 0.012, 0.008, 0.003, 0.001, 0.0];
-    final varioProfile = [
-      3.2,
-      2.4,
-      1.6,
-      0.8,
-      0.2,
-      -0.3,
-      -0.8,
-      -1.6,
-      -2.4,
-      0.5,
-      1.2,
-      2.8,
-    ];
+    final varioProfile = [3.2, 2.4, 1.6, 0.8, 0.2, -0.3, -0.8, -1.6, -2.4, 0.5, 1.2, 2.8];
 
     final mock = <FlightPoint>[];
     for (var i = 0; i < latSteps.length; i++) {
       mock.add(
         FlightPoint(
-          timestamp: now.subtract(
-            Duration(minutes: (latSteps.length - i - 1) * 1),
-          ),
+          timestamp: now.subtract(Duration(minutes: (latSteps.length - i - 1) * 1)),
           latitude: p.latitude - latSteps[i],
           longitude: p.longitude - lngSteps[i],
           altitude: 1450.0 + (i * 12),
@@ -579,36 +592,6 @@ class _FlightOverlayPainter extends CustomPainter {
     required this.mapTrackHistoryMinutes,
     required this.mapTrackShowOlderTail,
   });
-
-  // ⚡ Bolt: Cache Paint objects to avoid per-frame/per-segment GC allocations
-  static final Paint _airspaceFillPaint = Paint()
-    ..color = const Color(0xFFEF4444).withAlpha(35)
-    ..style = PaintingStyle.fill;
-  static final Paint _airspaceBorderPaint = Paint()
-    ..color = const Color(0xFFEF4444).withAlpha(180)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.5;
-  static final Paint _trackPaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 3.5
-    ..strokeCap = StrokeCap.round;
-  static final Paint _thermalCirclePaint = Paint()
-    ..color = const Color(0xFFF97316).withAlpha(200)
-    ..style = PaintingStyle.fill;
-  static final Paint _thermalRingPaint = Paint()
-    ..color = const Color(0xFFFACC15)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.5;
-  static final Paint _pilotHaloPaint = Paint()
-    ..color = Colors.cyanAccent.withAlpha(45)
-    ..style = PaintingStyle.fill;
-  static final Paint _pilotOutlinePaint = Paint()
-    ..color = Colors.black87
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 2.5;
-  static final Paint _pilotBodyPaint = Paint()
-    ..color = Colors.cyanAccent
-    ..style = PaintingStyle.fill;
 
   final LatLng pilotPosition;
   final MapOrientation orientation;
@@ -671,22 +654,10 @@ class _FlightOverlayPainter extends CustomPainter {
 
   void _paintAirspace(Canvas canvas, Size size) {
     final pts = [
-      _toScreen(
-        LatLng(pilotPosition.latitude + 0.025, pilotPosition.longitude - 0.035),
-        size,
-      ),
-      _toScreen(
-        LatLng(pilotPosition.latitude + 0.035, pilotPosition.longitude + 0.025),
-        size,
-      ),
-      _toScreen(
-        LatLng(pilotPosition.latitude + 0.010, pilotPosition.longitude + 0.040),
-        size,
-      ),
-      _toScreen(
-        LatLng(pilotPosition.latitude - 0.015, pilotPosition.longitude - 0.010),
-        size,
-      ),
+      _toScreen(LatLng(pilotPosition.latitude + 0.025, pilotPosition.longitude - 0.035), size),
+      _toScreen(LatLng(pilotPosition.latitude + 0.035, pilotPosition.longitude + 0.025), size),
+      _toScreen(LatLng(pilotPosition.latitude + 0.010, pilotPosition.longitude + 0.040), size),
+      _toScreen(LatLng(pilotPosition.latitude - 0.015, pilotPosition.longitude - 0.010), size),
     ];
 
     final path = Path()..moveTo(pts[0].dx, pts[0].dy);
@@ -695,8 +666,16 @@ class _FlightOverlayPainter extends CustomPainter {
     }
     path.close();
 
-    canvas.drawPath(path, _airspaceFillPaint);
-    canvas.drawPath(path, _airspaceBorderPaint);
+    final fillPaint = Paint()
+      ..color = const Color(0xFFEF4444).withAlpha(35)
+      ..style = PaintingStyle.fill;
+    final borderPaint = Paint()
+      ..color = const Color(0xFFEF4444).withAlpha(180)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    canvas.drawPath(path, fillPaint);
+    canvas.drawPath(path, borderPaint);
   }
 
   void _paintFlightTrack(Canvas canvas, Size size) {
@@ -704,41 +683,39 @@ class _FlightOverlayPainter extends CustomPainter {
     if (points.isEmpty) return;
 
     for (int i = 1; i < points.length; i++) {
-      final p1 = _toScreen(
-        LatLng(points[i - 1].latitude, points[i - 1].longitude),
-        size,
-      );
-      final p2 = _toScreen(
-        LatLng(points[i].latitude, points[i].longitude),
-        size,
-      );
+      final p1 = _toScreen(LatLng(points[i - 1].latitude, points[i - 1].longitude), size);
+      final p2 = _toScreen(LatLng(points[i].latitude, points[i].longitude), size);
       final color = MapWidget.getVarioTrackColor(points[i].vario);
 
-      _trackPaint.color = color;
-      canvas.drawLine(p1, p2, _trackPaint);
+      final trackPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5
+        ..strokeCap = StrokeCap.round;
+
+      canvas.drawLine(p1, p2, trackPaint);
     }
   }
 
   void _paintThermals(Canvas canvas, Size size) {
     final hotspots = [
-      (
-        LatLng(pilotPosition.latitude + 0.008, pilotPosition.longitude + 0.012),
-        '+2.8',
-      ),
-      (
-        LatLng(pilotPosition.latitude - 0.006, pilotPosition.longitude + 0.018),
-        '+3.4',
-      ),
-      (
-        LatLng(pilotPosition.latitude - 0.012, pilotPosition.longitude - 0.009),
-        '+1.9',
-      ),
+      (LatLng(pilotPosition.latitude + 0.008, pilotPosition.longitude + 0.012), '+2.8'),
+      (LatLng(pilotPosition.latitude - 0.006, pilotPosition.longitude + 0.018), '+3.4'),
+      (LatLng(pilotPosition.latitude - 0.012, pilotPosition.longitude - 0.009), '+1.9'),
     ];
+
+    final circlePaint = Paint()
+      ..color = const Color(0xFFF97316).withAlpha(200)
+      ..style = PaintingStyle.fill;
+    final ringPaint = Paint()
+      ..color = const Color(0xFFFACC15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
 
     for (final th in hotspots) {
       final pos = _toScreen(th.$1, size);
-      canvas.drawCircle(pos, 8, _thermalCirclePaint);
-      canvas.drawCircle(pos, 8, _thermalRingPaint);
+      canvas.drawCircle(pos, 8, circlePaint);
+      canvas.drawCircle(pos, 8, ringPaint);
     }
   }
 
@@ -753,7 +730,10 @@ class _FlightOverlayPainter extends CustomPainter {
     canvas.rotate(rotate);
 
     // Halo
-    canvas.drawCircle(Offset.zero, 18, _pilotHaloPaint);
+    final haloPaint = Paint()
+      ..color = Colors.cyanAccent.withAlpha(45)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset.zero, 18, haloPaint);
 
     // Glider Arrow
     final path = Path()
@@ -763,8 +743,16 @@ class _FlightOverlayPainter extends CustomPainter {
       ..lineTo(8, 8)
       ..close();
 
-    canvas.drawPath(path, _pilotOutlinePaint);
-    canvas.drawPath(path, _pilotBodyPaint);
+    final outlinePaint = Paint()
+      ..color = Colors.black87
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    final bodyPaint = Paint()
+      ..color = Colors.cyanAccent
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(path, outlinePaint);
+    canvas.drawPath(path, bodyPaint);
     canvas.restore();
   }
 

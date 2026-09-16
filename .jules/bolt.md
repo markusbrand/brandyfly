@@ -42,6 +42,7 @@
 **Learning:** Using `Vec::remove(0)` to drop the oldest item or pop elements from the front of a queue shifts every subsequent element in memory, resulting in O(N) operations per push/pop when capacity is reached. Switching the underlying storage to `VecDeque` converts `pop_front()` and `push_back()` into O(1) ring buffer operations.
 **Action:** Always use `std::collections::VecDeque` instead of `Vec` for FIFO queues or bounded buffers where items are inserted at the back and removed from the front.
 
-## 2026-09-15 - Cached Paint Properties in CustomPainters
-**Learning:** For stateless Flutter `CustomPainter` widgets, allocating `Paint` objects locally inside the `paint()` method (especially inside loops, like tracking paths) causes unnecessary O(N) GC allocations per frame, leading to frame drops. However, simply dropping the `const` constructor to store them as instance fields causes per-frame widget rebuild object allocations instead.
-**Action:** In a single-threaded rendering context like Flutter, cache `Paint` objects as `static final` properties of the `CustomPainter` class. This completely eliminates per-frame/per-segment GC allocations inside the `paint()` hot-path while safely preserving the `const CustomPainter` widget instantiation optimization.
+
+## 2026-09-15 - Rejection: Static mutable Paint objects are an anti-pattern
+**Learning:** Caching `Paint` objects as `static final` properties and then mutating them inside a `CustomPainter`'s rendering loop (like `_paint.color = newColor;`) is an anti-pattern when dealing with complex, multi-instance widgets like `MapWidget`. This is because it shares mutable rendering state across all instances of that painter in the application, which conflicts with concurrent or multi-view refactoring efforts (e.g. #177).
+**Action:** Do not use `static final` for mutable `Paint` caching if the widget architecture might support multiple instances on screen. Use instance properties instead, accepting the small object allocation overhead of non-const constructors over thread/instance safety hazards.
