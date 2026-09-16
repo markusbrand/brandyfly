@@ -796,13 +796,27 @@ class _FlightOverlayPainter extends CustomPainter {
     _paintPilotMarker(canvas, size);
   }
 
+  /// Static geographic boundary coordinates for the mock airspace restriction polygon
+  /// centered in the Dachstein / Krippenstein Alpine flight area (47.525°N, 13.685°E).
+  static const List<LatLng> defaultMockAirspacePolygon = [
+    LatLng(47.550, 13.650),
+    LatLng(47.560, 13.710),
+    LatLng(47.535, 13.725),
+    LatLng(47.510, 13.675),
+  ];
+
+  /// Static geographic coordinates for mock thermal updraft hotspots
+  /// located on sun-facing slopes in the Dachstein / Krippenstein flight area.
+  static const List<(LatLng, String)> defaultMockThermalHotspots = [
+    (LatLng(47.533, 13.697), '+2.8'),
+    (LatLng(47.519, 13.703), '+3.4'),
+    (LatLng(47.513, 13.676), '+1.9'),
+  ];
+
   void _paintAirspace(Canvas canvas, Size size) {
-    final pts = [
-      _toScreen(LatLng(pilotPosition.latitude + 0.025, pilotPosition.longitude - 0.035), size),
-      _toScreen(LatLng(pilotPosition.latitude + 0.035, pilotPosition.longitude + 0.025), size),
-      _toScreen(LatLng(pilotPosition.latitude + 0.010, pilotPosition.longitude + 0.040), size),
-      _toScreen(LatLng(pilotPosition.latitude - 0.015, pilotPosition.longitude - 0.010), size),
-    ];
+    final pts = defaultMockAirspacePolygon
+        .map((point) => _toScreen(point, size))
+        .toList();
 
     final path = Path()..moveTo(pts[0].dx, pts[0].dy);
     for (int i = 1; i < pts.length; i++) {
@@ -842,12 +856,6 @@ class _FlightOverlayPainter extends CustomPainter {
   }
 
   void _paintThermals(Canvas canvas, Size size) {
-    final hotspots = [
-      (LatLng(pilotPosition.latitude + 0.008, pilotPosition.longitude + 0.012), '+2.8'),
-      (LatLng(pilotPosition.latitude - 0.006, pilotPosition.longitude + 0.018), '+3.4'),
-      (LatLng(pilotPosition.latitude - 0.012, pilotPosition.longitude - 0.009), '+1.9'),
-    ];
-
     final circlePaint = Paint()
       ..color = const Color(0xFFF97316).withAlpha(200)
       ..style = PaintingStyle.fill;
@@ -856,7 +864,7 @@ class _FlightOverlayPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
-    for (final th in hotspots) {
+    for (final th in defaultMockThermalHotspots) {
       final pos = _toScreen(th.$1, size);
       canvas.drawCircle(pos, 8, circlePaint);
       canvas.drawCircle(pos, 8, ringPaint);
