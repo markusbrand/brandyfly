@@ -1,7 +1,7 @@
 # offline-map-region-pipeline Specification
 
 ## Purpose
-TBD - created by archiving change offline-map-data-pipeline. Update Purpose after archive.
+Define requirements for the automated data generation and distribution pipeline that transforms OpenStreetMap extracts and Copernicus GLO-30 DEM data into compact vector and terrain-RGB PMTiles archives, publishes them with versioned checksummed catalogs to public CDN storage, and automates regular updates for offline paragliding navigation.
 
 ## Requirements
 
