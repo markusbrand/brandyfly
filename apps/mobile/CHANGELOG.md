@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.6.0...brandyfly-v0.6.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* **map:** anchor mock airspace and thermal hotspots to static coordinates ([#178](https://github.com/markusbrand/brandyfly/issues/178)) ([f7275e7](https://github.com/markusbrand/brandyfly/commit/f7275e7a76de1f8cfc85d418f5cb2644f696b81d))
+
 ## [0.6.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.5.0...brandyfly-v0.6.0) (2026-09-16)
 
 
