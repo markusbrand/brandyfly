@@ -1,0 +1,128 @@
+name: Offline Map Data Pipeline
+
+on:
+  schedule:
+    # Run monthly at 02:00 UTC on the 1st of every month
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+    inputs:
+      region:
+        description: 'Region ID to generate (or "all")'
+        required: true
+        default: 'all'
+      dry_run:
+        description: 'Dry run (validate flow without running full generation)'
+        type: boolean
+        default: false
+      skip_upload:
+        description: 'Skip uploading outputs to Cloudflare R2'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-test:
+    name: Pipeline Validation & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tools/map-pipeline/requirements.txt
+
+      - name: Run Pipeline Test Suite
+        run: python tools/map-pipeline/test_pipeline.py
+
+      - name: Validate Data Source Governance
+        run: bash tools/validate-data-sources.sh
+
+  build-and-publish:
+    name: Generate & Publish Map Regions
+    needs: validate-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'brandyfly-maps' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Java 21 (for Planetiler)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System Tools (GDAL & rclone)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gdal-bin libgdal-dev rclone
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tools/map-pipeline/requirements.txt
+
+      - name: Cache Planetiler & go-pmtiles binaries
+        uses: actions/cache@v4
+        with:
+          path: map_pipeline_work/tools
+          key: map-pipeline-tools-v1
+
+      - name: Run Map Generation Pipeline
+        run: |
+          REGION_ARG=""
+          if [ "${{ github.event.inputs.region }}" != "all" ] && [ -n "${{ github.event.inputs.region }}" ]; then
+            REGION_ARG="--region ${{ github.event.inputs.region }}"
+          fi
+
+          DRY_ARG=""
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            DRY_ARG="--dry-run"
+          fi
+
+          python tools/map-pipeline/run_pipeline.py \
+            --config tools/map-pipeline/regions.yaml \
+            --workdir map_pipeline_work \
+            --skip-upload \
+            $REGION_ARG \
+            $DRY_ARG
+
+      - name: Validate Generated Catalog Schema and Checksums
+        run: |
+          python tools/map-pipeline/validate_catalog.py \
+            --catalog map_pipeline_work/output/catalog.json \
+            --verify-local map_pipeline_work/output
+
+      - name: Upload Build Artifacts (Catalog & Checksums)
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-catalog-${{ github.run_id }}
+          path: |
+            map_pipeline_work/output/catalog.json
+            map_pipeline_work/output/checksums.sha256
+          retention-days: 30
+
+      - name: Publish to Cloudflare R2
+        if: ${{ github.event.inputs.skip_upload != 'true' && github.event.inputs.dry_run != 'true' && env.R2_ACCESS_KEY_ID != '' }}
+        run: |
+          bash tools/map-pipeline/upload_r2.sh map_pipeline_work/output

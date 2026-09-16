@@ -3,10 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:brandyfly/models/flight_model.dart';
 import 'package:brandyfly/models/lat_lng.dart';
 import 'package:brandyfly/models/ui_config.dart';
+import 'package:brandyfly/services/local_tile_server.dart';
+import 'package:brandyfly/services/maplibre_map_service.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/widgets/flight/map_widget.dart';
 import 'package:brandyfly/widgets/layout/layout_strategy_container.dart';
 import 'package:brandyfly/widgets/layout/widget_picker_sheet.dart';
+import 'package:maplibre/maplibre.dart' hide Marker;
 
 void main() {
   group('Map View Autonomous Integration & Behavior Test Suite', () {
@@ -458,6 +461,40 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.textContaining('No offline data'), findsOneWidget);
+        expect(find.text('No offline data (Overview fallback)'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-012b: Verifies badge renders "Online preview (No offline data)" when online preview is active',
+      (tester) async {
+        final mockTileServer = LocalTileServer(onlineFallbackEnabled: true);
+        mockTileServer.onlinePreviewNotifier.value = true;
+        final mapService = MapLibreMapService(tileServer: mockTileServer);
+
+        try {
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 400,
+                  height: 400,
+                  child: MapWidget(
+                    style: MapWidgetStyle.alpineRelief,
+                    mapService: mapService,
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.text('Online preview (No offline data)'), findsOneWidget);
+          expect(find.byIcon(Icons.cloud_queue_rounded), findsOneWidget);
+        } finally {
+          mapService.dispose();
+          await mockTileServer.stop();
+        }
       },
     );
 
@@ -759,5 +796,197 @@ void main() {
         expect(find.byKey(const Key('btn_map_recenter')), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'TC-MAP-021: Dragging translates the map camera and preserves geographic anchoring of pilot',
+      (tester) async {
+        final trackingService = _TrackingMapLibreMapService();
+        addTearDown(() => trackingService.dispose());
+        const pilot = LatLng(47.525, 13.685);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 500,
+                height: 500,
+                child: MapWidget(
+                  pilotPosition: pilot,
+                  mapService: trackingService,
+                  orientation: MapOrientation.northUp,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        dynamic painter = tester
+            .widgetList<CustomPaint>(find.byType(CustomPaint))
+            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .painter;
+
+        expect(painter.cameraCenter, equals(pilot));
+        expect(painter.pilotPosition, equals(pilot));
+
+        // Drag 100 pixels right (+X) and 50 pixels up (-Y) on map_gesture_detector
+        await tester.drag(find.byKey(const Key('map_gesture_detector')), const Offset(100, -50));
+        await tester.pumpAndSettle();
+
+        painter = tester
+            .widgetList<CustomPaint>(find.byType(CustomPaint))
+            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .painter;
+
+        // Camera center has translated in geographic space
+        expect(painter.cameraCenter, isNot(equals(pilot)));
+        // Dragging right translates camera west (lower longitude)
+        expect(painter.cameraCenter.longitude, lessThan(pilot.longitude));
+        // Dragging up translates camera south (lower latitude)
+        expect(painter.cameraCenter.latitude, lessThan(pilot.latitude));
+        // Pilot GPS position remains unchanged
+        expect(painter.pilotPosition, equals(pilot));
+
+        // MapLibre camera move was dispatched to the tracking service with the new cameraCenter
+        expect(trackingService.moveCameraCallCount, greaterThan(0));
+        expect(trackingService.lastMovePosition, equals(painter.cameraCenter));
+
+        // Tap recenter button
+        await tester.tap(find.byKey(const Key('btn_map_recenter')));
+        await tester.pumpAndSettle();
+
+        painter = tester
+            .widgetList<CustomPaint>(find.byType(CustomPaint))
+            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .painter;
+
+        // Camera center is restored to pilot position
+        expect(painter.cameraCenter, equals(pilot));
+        expect(trackingService.animateCameraCallCount, greaterThan(0));
+        expect(trackingService.lastAnimatePosition, equals(pilot));
+      },
+    );
+
+    testWidgets(
+      'TC-MAP-022: Verifies MapLibre onEvent synchronizes native gesture camera movement and auto-recenters',
+      (tester) async {
+        final trackingService = _TrackingMapLibreMapService();
+        addTearDown(() => trackingService.dispose());
+        const pilot = LatLng(47.525, 13.685);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 500,
+                height: 500,
+                child: MapWidget(
+                  pilotPosition: pilot,
+                  mapService: trackingService,
+                  orientation: MapOrientation.northUp,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final mapLibreFinder = find.byType(MapLibreMap);
+        expect(mapLibreFinder, findsOneWidget);
+        final mapLibre = tester.widget<MapLibreMap>(mapLibreFinder);
+
+        // Simulate native gesture start
+        mapLibre.onEvent?.call(
+          const MapEventStartMoveCamera(reason: CameraChangeReason.apiGesture),
+        );
+        await tester.pump();
+
+        // Simulate native camera move
+        const newLat = 47.530;
+        const newLon = 13.700;
+        mapLibre.onEvent?.call(
+          MapEventMoveCamera(
+            camera: MapCamera(
+              center: const Geographic(lat: newLat, lon: newLon),
+              zoom: 14.0,
+              bearing: 0.0,
+              pitch: 0.0,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        dynamic painter = tester
+            .widgetList<CustomPaint>(find.byType(CustomPaint))
+            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .painter;
+
+        expect(painter.cameraCenter.latitude, closeTo(newLat, 1e-5));
+        expect(painter.cameraCenter.longitude, closeTo(newLon, 1e-5));
+
+        // Advance 7 seconds to trigger auto-recenter
+        await tester.pump(const Duration(seconds: 7));
+        await tester.pumpAndSettle();
+
+        painter = tester
+            .widgetList<CustomPaint>(find.byType(CustomPaint))
+            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .painter;
+
+        expect(painter.cameraCenter, equals(pilot));
+      },
+    );
   });
+}
+
+class _TrackingMapLibreMapService extends MapLibreMapService {
+  LatLng? lastMovePosition;
+  double? lastMoveZoom;
+  double? lastMoveBearing;
+  LatLng? lastAnimatePosition;
+  int moveCameraCallCount = 0;
+  int animateCameraCallCount = 0;
+
+  @override
+  Future<String> buildStyleJson({String? regionId, String? baseTemplateJson}) async {
+    return '{"version": 8, "sources": {}, "layers": []}';
+  }
+
+  @override
+  Future<void> moveCamera({
+    required LatLng position,
+    double? zoom,
+    double? bearing,
+    double? pitch,
+  }) async {
+    lastMovePosition = position;
+    lastMoveZoom = zoom;
+    lastMoveBearing = bearing;
+    moveCameraCallCount++;
+    await super.moveCamera(
+      position: position,
+      zoom: zoom,
+      bearing: bearing,
+      pitch: pitch,
+    );
+  }
+
+  @override
+  Future<void> animateCamera({
+    required LatLng position,
+    double? zoom,
+    double? bearing,
+    double? pitch,
+    Duration nativeDuration = const Duration(seconds: 1),
+  }) async {
+    lastAnimatePosition = position;
+    animateCameraCallCount++;
+    await super.animateCamera(
+      position: position,
+      zoom: zoom,
+      bearing: bearing,
+      pitch: pitch,
+      nativeDuration: nativeDuration,
+    );
+  }
 }

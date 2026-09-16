@@ -1,0 +1,117 @@
+# BrandyFly Offline Map Regions Configuration (v1 Catalog)
+# Coordinates are in WGS84 decimal degrees.
+# overlapKm is applied around the bounding box to ensure seamless rendering at boundaries.
+
+version: 1
+catalog_version: 1
+cdn_base_url: "https://cdn.brandyfly.org/maps"
+
+attribution:
+  osm: "© OpenStreetMap contributors, licensed under ODbL 1.0 (https://www.openstreetmap.org/copyright)"
+  copernicus: "Contains modified Copernicus DEM data © ESA/Copernicus (2021) distributed under CC BY 4.0 (https://spacedata.copernicus.eu)"
+  natural_earth: "Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com (public domain)"
+
+regions:
+  - id: alps-east
+    name: "Alps - Eastern"
+    description: "Eastern Austria, Slovenia, SE Bavaria (Dachstein, Karawanken, Julian Alps)"
+    bounds:
+      north: 48.3
+      south: 46.2
+      west: 12.5
+      east: 16.6
+    overlapKm: 20
+    osmSource: "europe/austria"
+    geofabrikUrl: "https://download.geofabrik.de/europe/austria-latest.osm.pbf"
+
+  - id: alps-central
+    name: "Alps - Central"
+    description: "Tyrol, Vorarlberg, eastern Switzerland, Allgaeu (Stubai, Zillertal, Arlberg, Engadin)"
+    bounds:
+      north: 47.8
+      south: 46.2
+      west: 9.5
+      east: 12.8
+    overlapKm: 20
+    osmSource: "europe/alps"
+    geofabrikUrl: "https://download.geofabrik.de/europe/alps-latest.osm.pbf"
+
+  - id: alps-west
+    name: "Alps - Western"
+    description: "Western Switzerland, French Alps, Aosta, Savoie (Chamonix, Verbier, Annecy)"
+    bounds:
+      north: 46.5
+      south: 44.8
+      west: 5.7
+      east: 8.0
+    overlapKm: 20
+    osmSource: "europe/alps"
+    geofabrikUrl: "https://download.geofabrik.de/europe/alps-latest.osm.pbf"
+
+  - id: alps-south
+    name: "Alps - Southern"
+    description: "South Tyrol, Trentino, Dolomites, Lombardy lakes (Bassano, Garda, Feltre)"
+    bounds:
+      north: 46.8
+      south: 45.4
+      west: 10.2
+      east: 12.6
+    overlapKm: 20
+    osmSource: "europe/italy/nord-est"
+    geofabrikUrl: "https://download.geofabrik.de/europe/italy/nord-est-latest.osm.pbf"
+
+  - id: pyrenees
+    name: "Pyrenees"
+    description: "FR/ES/AD Pyrenees chain (Ager, Castejon de Sos, Font-Romeu)"
+    bounds:
+      north: 43.5
+      south: 41.8
+      west: -2.0
+      east: 3.2
+    overlapKm: 20
+    osmSource: "europe/spain"
+    geofabrikUrl: "https://download.geofabrik.de/europe/spain-latest.osm.pbf"
+
+  - id: balkans-west
+    name: "Balkans - Western"
+    description: "Croatia coast, Montenegro, Albania, North Macedonia (Krushevo, Kotor)"
+    bounds:
+      north: 45.5
+      south: 40.8
+      west: 14.5
+      east: 21.8
+    overlapKm: 20
+    osmSource: "europe/croatia"
+    geofabrikUrl: "https://download.geofabrik.de/europe/croatia-latest.osm.pbf"
+
+  - id: turkey-aegean
+    name: "Turkey - Aegean & Mediterranean"
+    description: "SW Turkey coast and mountains (Oludeniz, Kas, Babadag, Pamukkale)"
+    bounds:
+      north: 38.5
+      south: 36.0
+      west: 27.0
+      east: 31.0
+    overlapKm: 20
+    osmSource: "europe/turkey"
+    geofabrikUrl: "https://download.geofabrik.de/europe/turkey-latest.osm.pbf"
+
+  - id: carpathians
+    name: "Carpathians"
+    description: "Romania, Slovakia, southern Poland (High Tatras, Brasov, Parang)"
+    bounds:
+      north: 49.8
+      south: 45.2
+      west: 19.0
+      east: 26.5
+    overlapKm: 20
+    osmSource: "europe/romania"
+    geofabrikUrl: "https://download.geofabrik.de/europe/romania-latest.osm.pbf"
+
+fallback:
+  id: global-overview
+  name: "Global Overview Fallback"
+  description: "Bundled low-zoom global overview vector tiles (zoom 0-6) from Natural Earth"
+  maxSizeBytes: 5242880 # 5 MB max target
+  minZoom: 0
+  maxZoom: 6

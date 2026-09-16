@@ -14,7 +14,9 @@ class MapLibreMapService extends ChangeNotifier {
   MapLibreMapService({
     this.customAppSupportDir,
     LocalTileServer? tileServer,
-  }) : _tileServer = tileServer ?? LocalTileServer();
+  }) : _tileServer = tileServer ?? LocalTileServer() {
+    _tileServer.onlinePreviewNotifier.addListener(notifyListeners);
+  }
 
   final String? customAppSupportDir;
   final LocalTileServer _tileServer;
@@ -32,6 +34,7 @@ class MapLibreMapService extends ChangeNotifier {
   StyleController? get styleController => _styleController;
   bool get isStyleLoaded => _isStyleLoaded;
   bool get isFallbackActive => _isFallbackActive;
+  bool get isOnlinePreviewActive => _tileServer.isOnlinePreviewActive;
   String? get activeRegionId => _activeRegionId;
   String? get lastLoadedStyleJson => _lastLoadedStyleJson;
 
@@ -120,7 +123,6 @@ class MapLibreMapService extends ChangeNotifier {
 
     final basePath = await getRegionsBasePath();
     bool useRegion = false;
-    String? terrainSourceUrl;
 
     String? effectiveRegionId = regionId;
     if (effectiveRegionId == null || effectiveRegionId.isEmpty) {
@@ -148,13 +150,17 @@ class MapLibreMapService extends ChangeNotifier {
         useRegion = true;
         await _tileServer.setPrimaryArchive(mapFile.path);
         if (terrainFile.existsSync() && terrainFile.lengthSync() > 0) {
-          terrainSourceUrl = 'pmtiles://$regionDir/terrain.pmtiles';
+          await _tileServer.setTerrainArchive(terrainFile.path);
+        } else {
+          await _tileServer.setTerrainArchive(null);
         }
       } else {
         await _tileServer.setPrimaryArchive(null);
+        await _tileServer.setTerrainArchive(null);
       }
     } else {
       await _tileServer.setPrimaryArchive(null);
+      await _tileServer.setTerrainArchive(null);
     }
 
     final overviewPath = await resolveOverviewArchivePath();
@@ -189,35 +195,27 @@ class MapLibreMapService extends ChangeNotifier {
       };
     }
 
-    // Configure terrain raster-dem source if available
-    if (terrainSourceUrl != null) {
-      if (sources.containsKey('terrain')) {
-        final t = sources['terrain'] as Map<String, dynamic>;
-        t['url'] = terrainSourceUrl;
-      } else {
-        sources['terrain'] = {
-          'type': 'raster-dem',
-          'url': terrainSourceUrl,
-          'tileSize': 512,
-          'encoding': 'terrarium',
-        };
-      }
-      styleMap['terrain'] = {
-        'source': 'terrain',
-        'exaggeration': 1.5,
-      };
+    // Configure terrain raster-dem source pointing directly to loopback tile server
+    final terrainTileUrl = '${_tileServer.baseUrl}/terrain/{z}/{x}/{y}.png';
+    if (sources.containsKey('terrain')) {
+      final t = sources['terrain'] as Map<String, dynamic>;
+      t.remove('url');
+      t['type'] = 'raster-dem';
+      t['tiles'] = [terrainTileUrl];
+      t['tileSize'] = 256;
+      t['encoding'] = 'terrarium';
     } else {
-      // Remove terrain source and hillshade layer when fallback or no DEM
-      sources.remove('terrain');
-      styleMap.remove('terrain');
-      final layers = (styleMap['layers'] as List<dynamic>?) ?? [];
-      layers.removeWhere((l) {
-        if (l is Map<String, dynamic>) {
-          return l['type'] == 'hillshade' || l['source'] == 'terrain';
-        }
-        return false;
-      });
+      sources['terrain'] = {
+        'type': 'raster-dem',
+        'tiles': [terrainTileUrl],
+        'tileSize': 256,
+        'encoding': 'terrarium',
+      };
     }
+    styleMap['terrain'] = {
+      'source': 'terrain',
+      'exaggeration': 1.0,
+    };
 
     styleMap['sources'] = sources;
     _lastLoadedStyleJson = jsonEncode(styleMap);
@@ -243,6 +241,29 @@ class MapLibreMapService extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('[MapLibreMapService] moveCamera error: $e');
+    }
+  }
+
+  /// Animates camera to center on given coordinates with optional zoom, bearing, pitch.
+  Future<void> animateCamera({
+    required LatLng position,
+    double? zoom,
+    double? bearing,
+    double? pitch,
+    Duration nativeDuration = const Duration(seconds: 1),
+  }) async {
+    final c = _controller;
+    if (c == null) return;
+    try {
+      await c.animateCamera(
+        center: Geographic(lon: position.longitude, lat: position.latitude),
+        zoom: zoom,
+        bearing: bearing,
+        pitch: pitch,
+        nativeDuration: nativeDuration,
+      );
+    } catch (e) {
+      debugPrint('[MapLibreMapService] animateCamera error: $e');
     }
   }
 
@@ -280,6 +301,12 @@ class MapLibreMapService extends ChangeNotifier {
     "openmaptiles": {
       "type": "vector",
       "tiles": ["http://127.0.0.1:0/tiles/{z}/{x}/{y}.pbf"]
+    },
+    "terrain": {
+      "type": "raster-dem",
+      "tiles": ["http://127.0.0.1:0/terrain/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "encoding": "terrarium"
     }
   },
   "layers": [
@@ -288,6 +315,15 @@ class MapLibreMapService extends ChangeNotifier {
       "type": "background",
       "paint": {
         "background-color": "#f0ece4"
+      }
+    },
+    {
+      "id": "hillshade",
+      "type": "hillshade",
+      "source": "terrain",
+      "paint": {
+        "hillshade-illumination-direction": 315,
+        "hillshade-exaggeration": 0.8
       }
     },
     {
@@ -306,6 +342,7 @@ class MapLibreMapService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _tileServer.onlinePreviewNotifier.removeListener(notifyListeners);
     _controller = null;
     _styleController = null;
     _isStyleLoaded = false;

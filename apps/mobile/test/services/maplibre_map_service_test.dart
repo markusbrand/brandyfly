@@ -51,7 +51,11 @@ void main() {
       final tiles = sources['openmaptiles']['tiles'] as List<dynamic>;
       expect(tiles.first, contains('http://127.0.0.1:'));
       expect(tiles.first, contains('/tiles/{z}/{x}/{y}.pbf'));
-      expect(sources.containsKey('terrain'), isFalse);
+      expect(sources.containsKey('terrain'), isTrue);
+      final terrainTiles = sources['terrain']['tiles'] as List<dynamic>;
+      expect(terrainTiles.first, contains('http://127.0.0.1:'));
+      expect(terrainTiles.first, contains('/terrain/{z}/{x}/{y}.png'));
+      expect(styleMap['terrain']['source'], equals('terrain'));
     });
 
     test('buildStyleJson configures local PMTiles when region files exist', () async {
@@ -60,7 +64,7 @@ void main() {
       final mapFile = File('${regionDir.path}/map.pmtiles');
       await mapFile.writeAsBytes(List.filled(127, 0));
       final terrainFile = File('${regionDir.path}/terrain.pmtiles');
-      await terrainFile.writeAsBytes([5, 6, 7, 8]);
+      await terrainFile.writeAsBytes(List.filled(127, 0));
 
       final styleJson = await service.buildStyleJson(regionId: 'salzkammergut');
       expect(service.isFallbackActive, isFalse);
@@ -72,7 +76,10 @@ void main() {
       final tiles = sources['openmaptiles']['tiles'] as List<dynamic>;
       expect(tiles.first, contains('http://127.0.0.1:'));
       expect(tiles.first, contains('/tiles/{z}/{x}/{y}.pbf'));
-      expect(sources['terrain']['url'], contains('/salzkammergut/terrain.pmtiles'));
+      expect(sources.containsKey('terrain'), isTrue);
+      final terrainTiles = sources['terrain']['tiles'] as List<dynamic>;
+      expect(terrainTiles.first, contains('http://127.0.0.1:'));
+      expect(terrainTiles.first, contains('/terrain/{z}/{x}/{y}.png'));
       expect(styleMap['terrain']['source'], equals('terrain'));
     });
 
