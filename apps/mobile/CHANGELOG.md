@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.5.0...brandyfly-v0.6.0) (2026-09-16)
+
+
+### Features
+
+* **map:** embed local PMTiles vector tile server and authentic OpenStreetMap styling ([#169](https://github.com/markusbrand/brandyfly/issues/169)) ([94cf2b3](https://github.com/markusbrand/brandyfly/commit/94cf2b3661a9d7f242472c27ea4d3172aa490066))
+* **map:** implement offline data pipeline, online fallback proxy, and camera pan tracking ([#177](https://github.com/markusbrand/brandyfly/issues/177)) ([a04f03b](https://github.com/markusbrand/brandyfly/commit/a04f03b6347fa21debf00db2e793ffd06a006ca0))
+
 ## [0.5.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.4.0...brandyfly-v0.5.0) (2026-09-10)
 
 
