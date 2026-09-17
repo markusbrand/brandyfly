@@ -44,7 +44,12 @@ class LayoutStrategyContainer extends StatelessWidget {
             Positioned.fill(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
-                child: _buildLayout(context, strategy, activeScreen, isEditMode),
+                child: _buildLayout(
+                  context,
+                  strategy,
+                  activeScreen,
+                  isEditMode,
+                ),
               ),
             ),
 
@@ -76,8 +81,9 @@ class LayoutStrategyContainer extends StatelessWidget {
                             showModalBottomSheet(
                               context: context,
                               backgroundColor: Colors.transparent,
-                              builder: (ctx) =>
-                                  WidgetPickerSheet(screenManager: screenManager),
+                              builder: (ctx) => WidgetPickerSheet(
+                                screenManager: screenManager,
+                              ),
                             );
                           },
                         ),
@@ -136,8 +142,8 @@ class LayoutStrategyContainer extends StatelessWidget {
                   w.type == WidgetType.map
                       ? Icons.map
                       : w.type == WidgetType.thermalMap
-                          ? Icons.wb_sunny
-                          : Icons.widgets,
+                      ? Icons.wb_sunny
+                      : Icons.widgets,
                   color: isCurrent ? Colors.cyanAccent : Colors.white70,
                   size: 16,
                 ),
@@ -147,8 +153,9 @@ class LayoutStrategyContainer extends StatelessWidget {
                     '${w.type.name.toUpperCase()} (${w.w}x${w.h} @ ${w.x},${w.y})',
                     style: TextStyle(
                       color: isCurrent ? Colors.cyanAccent : Colors.white,
-                      fontWeight:
-                          isCurrent ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isCurrent
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                       fontSize: 12,
                     ),
                   ),
@@ -183,8 +190,9 @@ class LayoutStrategyContainer extends StatelessWidget {
             Icon(
               Icons.layers,
               size: 16,
-              color:
-                  selectedWidget != null ? Colors.cyanAccent : Colors.white70,
+              color: selectedWidget != null
+                  ? Colors.cyanAccent
+                  : Colors.white70,
             ),
             const SizedBox(width: 6),
             Text(
@@ -192,7 +200,9 @@ class LayoutStrategyContainer extends StatelessWidget {
                   ? selectedWidget.type.name.toUpperCase()
                   : 'Layers (${widgets.length})',
               style: TextStyle(
-                color: selectedWidget != null ? Colors.cyanAccent : Colors.white,
+                color: selectedWidget != null
+                    ? Colors.cyanAccent
+                    : Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
               ),
@@ -238,8 +248,8 @@ class LayoutStrategyContainer extends StatelessWidget {
                 model.type == WidgetType.map
                     ? Icons.map
                     : model.type == WidgetType.thermalMap
-                        ? Icons.wb_sunny
-                        : Icons.widgets,
+                    ? Icons.wb_sunny
+                    : Icons.widgets,
                 color: Colors.cyanAccent,
                 size: 16,
               ),
@@ -412,8 +422,9 @@ class LayoutStrategyContainer extends StatelessWidget {
             color: enabled ? Colors.blueGrey.shade800 : Colors.black45,
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color:
-                  enabled ? Colors.cyanAccent.withAlpha(80) : Colors.transparent,
+              color: enabled
+                  ? Colors.cyanAccent.withAlpha(80)
+                  : Colors.transparent,
               width: 0.8,
             ),
           ),
@@ -1008,292 +1019,307 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                 left: 0,
                 right: 0,
                 height: headerHeight,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => widget.screenManager.selectWidget(id),
-                  onPanStart: (_) {
-                    widget.screenManager.selectWidget(id);
-                    _dragAccum = Offset.zero;
-                  },
-                onPanUpdate: (details) {
-                  _dragAccum += details.delta;
+                child: Semantics(
+                  button: true,
+                  label: 'Move widget',
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => widget.screenManager.selectWidget(id),
+                    onPanStart: (_) {
+                      widget.screenManager.selectWidget(id);
+                      _dragAccum = Offset.zero;
+                    },
+                    onPanUpdate: (details) {
+                      _dragAccum += details.delta;
 
-                  double accumX = _dragAccum.dx;
-                  double accumY = _dragAccum.dy;
-                  int dx = 0;
-                  int dy = 0;
-                  if (accumX > widget.cellWidth * 0.4) {
-                    dx = 1;
-                    accumX = 0;
-                  } else if (accumX < -widget.cellWidth * 0.4) {
-                    dx = -1;
-                    accumX = 0;
-                  }
+                      double accumX = _dragAccum.dx;
+                      double accumY = _dragAccum.dy;
+                      int dx = 0;
+                      int dy = 0;
+                      if (accumX > widget.cellWidth * 0.4) {
+                        dx = 1;
+                        accumX = 0;
+                      } else if (accumX < -widget.cellWidth * 0.4) {
+                        dx = -1;
+                        accumX = 0;
+                      }
 
-                  if (accumY > widget.cellHeight * 0.4) {
-                    dy = 1;
-                    accumY = 0;
-                  } else if (accumY < -widget.cellHeight * 0.4) {
-                    dy = -1;
-                    accumY = 0;
-                  }
+                      if (accumY > widget.cellHeight * 0.4) {
+                        dy = 1;
+                        accumY = 0;
+                      } else if (accumY < -widget.cellHeight * 0.4) {
+                        dy = -1;
+                        accumY = 0;
+                      }
 
-                  _dragAccum = Offset(accumX, accumY);
+                      _dragAccum = Offset(accumX, accumY);
 
-                  if (dx != 0 || dy != 0) {
-                    widget.screenManager.moveWidget(id, dx, dy);
-                  }
-                },
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.move,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.cyan.shade900.withAlpha(220),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(6),
+                      if (dx != 0 || dy != 0) {
+                        widget.screenManager.moveWidget(id, dx, dy);
+                      }
+                    },
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.move,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.cyan.shade900.withAlpha(220),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(6),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.drag_indicator,
+                              size: isCompact ? 11 : 14,
+                              color: Colors.cyanAccent,
+                            ),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: Text(
+                                '$typeName [${model.x},${model.y} ${model.w}x${model.h}]',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isCompact ? 8 : 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            // Configure Dialog Button
+                            IconButton(
+                              key: Key('btn_config_$id'),
+                              onPressed: () => _showConfigDialog(
+                                context,
+                                widget.model,
+                                widget.screenManager,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 1,
+                              ),
+                              constraints: const BoxConstraints(),
+                              iconSize: isCompact ? 11 : 14,
+                              tooltip: 'Configure Widget',
+                              icon: const Icon(
+                                Icons.tune,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            // Delete Button
+                            IconButton(
+                              key: Key('btn_delete_$id'),
+                              onPressed: () =>
+                                  widget.screenManager.removeWidget(id),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 1,
+                              ),
+                              constraints: const BoxConstraints(),
+                              iconSize: isCompact ? 11 : 14,
+                              tooltip: 'Remove Widget',
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                  ),
+                ),
+              ),
+
+              // Bottom Toolbar: Stepper Resize & Nudge Move Controls
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: dragHandleWidth,
+                height: bottomBarHeight,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(6),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.drag_indicator,
-                          size: isCompact ? 11 : 14,
-                          color: Colors.cyanAccent,
+                        // Position nudge arrows
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _miniButton(
+                              key: Key('btn_move_left_$id'),
+                              icon: Icons.chevron_left,
+                              tooltip: 'Move Left',
+                              enabled: model.x > 0,
+                              iconSize: isCompact ? 12 : 15,
+                              onPressed: () =>
+                                  widget.screenManager.moveWidget(id, -1, 0),
+                            ),
+                            _miniButton(
+                              key: Key('btn_move_right_$id'),
+                              icon: Icons.chevron_right,
+                              tooltip: 'Move Right',
+                              enabled: model.x + model.w < 8,
+                              iconSize: isCompact ? 12 : 15,
+                              onPressed: () =>
+                                  widget.screenManager.moveWidget(id, 1, 0),
+                            ),
+                            _miniButton(
+                              key: Key('btn_move_up_$id'),
+                              icon: Icons.expand_less,
+                              tooltip: 'Move Up',
+                              enabled: model.y > 0,
+                              iconSize: isCompact ? 12 : 15,
+                              onPressed: () =>
+                                  widget.screenManager.moveWidget(id, 0, -1),
+                            ),
+                            _miniButton(
+                              key: Key('btn_move_down_$id'),
+                              icon: Icons.expand_more,
+                              tooltip: 'Move Down',
+                              enabled: true,
+                              iconSize: isCompact ? 12 : 15,
+                              onPressed: () =>
+                                  widget.screenManager.moveWidget(id, 0, 1),
+                            ),
+                          ],
                         ),
                         const SizedBox(width: 2),
-                        Expanded(
-                          child: Text(
-                            '$typeName [${model.x},${model.y} ${model.w}x${model.h}]',
-                            style: TextStyle(
-                              color: Colors.white,
+                        // Size steppers (Width +/- and Height +/-)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Width dec/inc
+                            _textMiniButton(
+                              key: Key('btn_dec_width_$id'),
+                              label: 'W-',
+                              tooltip: 'Decrease Width',
+                              enabled: model.w > 1,
                               fontSize: isCompact ? 8 : 9,
-                              fontWeight: FontWeight.bold,
+                              onPressed: () =>
+                                  widget.screenManager.resizeWidget(id, -1, 0),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        // Configure Dialog Button
-                        IconButton(
-                          key: Key('btn_config_$id'),
-                          onPressed: () => _showConfigDialog(
-                            context,
-                            widget.model,
-                            widget.screenManager,
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 1),
-                          constraints: const BoxConstraints(),
-                          iconSize: isCompact ? 11 : 14,
-                          tooltip: 'Configure Widget',
-                          icon: const Icon(Icons.tune, color: Colors.white70),
-                        ),
-                        // Delete Button
-                        IconButton(
-                          key: Key('btn_delete_$id'),
-                          onPressed: () =>
-                              widget.screenManager.removeWidget(id),
-                          padding: const EdgeInsets.symmetric(horizontal: 1),
-                          constraints: const BoxConstraints(),
-                          iconSize: isCompact ? 11 : 14,
-                          tooltip: 'Remove Widget',
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.redAccent,
-                          ),
+                            _textMiniButton(
+                              key: Key('btn_inc_width_$id'),
+                              label: 'W+',
+                              tooltip: 'Increase Width',
+                              enabled: model.x + model.w < 8,
+                              fontSize: isCompact ? 8 : 9,
+                              onPressed: () =>
+                                  widget.screenManager.resizeWidget(id, 1, 0),
+                            ),
+                            const SizedBox(width: 2),
+                            // Height dec/inc
+                            _textMiniButton(
+                              key: Key('btn_dec_height_$id'),
+                              label: 'H-',
+                              tooltip: 'Decrease Height',
+                              enabled: model.h > 1,
+                              fontSize: isCompact ? 8 : 9,
+                              onPressed: () =>
+                                  widget.screenManager.resizeWidget(id, 0, -1),
+                            ),
+                            _textMiniButton(
+                              key: Key('btn_inc_height_$id'),
+                              label: 'H+',
+                              tooltip: 'Increase Height',
+                              enabled: model.h < 16,
+                              fontSize: isCompact ? 8 : 9,
+                              onPressed: () =>
+                                  widget.screenManager.resizeWidget(id, 0, 1),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
-            ),
 
-            // Bottom Toolbar: Stepper Resize & Nudge Move Controls
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: dragHandleWidth,
-              height: bottomBarHeight,
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(6),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Position nudge arrows
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _miniButton(
-                            key: Key('btn_move_left_$id'),
-                            icon: Icons.chevron_left,
-                            tooltip: 'Move Left',
-                            enabled: model.x > 0,
-                            iconSize: isCompact ? 12 : 15,
-                            onPressed: () =>
-                                widget.screenManager.moveWidget(id, -1, 0),
-                          ),
-                          _miniButton(
-                            key: Key('btn_move_right_$id'),
-                            icon: Icons.chevron_right,
-                            tooltip: 'Move Right',
-                            enabled: model.x + model.w < 8,
-                            iconSize: isCompact ? 12 : 15,
-                            onPressed: () =>
-                                widget.screenManager.moveWidget(id, 1, 0),
-                          ),
-                          _miniButton(
-                            key: Key('btn_move_up_$id'),
-                            icon: Icons.expand_less,
-                            tooltip: 'Move Up',
-                            enabled: model.y > 0,
-                            iconSize: isCompact ? 12 : 15,
-                            onPressed: () =>
-                                widget.screenManager.moveWidget(id, 0, -1),
-                          ),
-                          _miniButton(
-                            key: Key('btn_move_down_$id'),
-                            icon: Icons.expand_more,
-                            tooltip: 'Move Down',
-                            enabled: true,
-                            iconSize: isCompact ? 12 : 15,
-                            onPressed: () =>
-                                widget.screenManager.moveWidget(id, 0, 1),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 2),
-                      // Size steppers (Width +/- and Height +/-)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Width dec/inc
-                          _textMiniButton(
-                            key: Key('btn_dec_width_$id'),
-                            label: 'W-',
-                            tooltip: 'Decrease Width',
-                            enabled: model.w > 1,
-                            fontSize: isCompact ? 8 : 9,
-                            onPressed: () =>
-                                widget.screenManager.resizeWidget(id, -1, 0),
-                          ),
-                          _textMiniButton(
-                            key: Key('btn_inc_width_$id'),
-                            label: 'W+',
-                            tooltip: 'Increase Width',
-                            enabled: model.x + model.w < 8,
-                            fontSize: isCompact ? 8 : 9,
-                            onPressed: () =>
-                                widget.screenManager.resizeWidget(id, 1, 0),
-                          ),
-                          const SizedBox(width: 2),
-                          // Height dec/inc
-                          _textMiniButton(
-                            key: Key('btn_dec_height_$id'),
-                            label: 'H-',
-                            tooltip: 'Decrease Height',
-                            enabled: model.h > 1,
-                            fontSize: isCompact ? 8 : 9,
-                            onPressed: () =>
-                                widget.screenManager.resizeWidget(id, 0, -1),
-                          ),
-                          _textMiniButton(
-                            key: Key('btn_inc_height_$id'),
-                            label: 'H+',
-                            tooltip: 'Increase Height',
-                            enabled: model.h < 16,
-                            fontSize: isCompact ? 8 : 9,
-                            onPressed: () =>
-                                widget.screenManager.resizeWidget(id, 0, 1),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+              // OS-Style Corner Drag & Drop Resize Handle
+              Positioned(
+                bottom: 0,
+                right: 0,
+                width: dragHandleWidth,
+                height: bottomBarHeight,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeDownRight,
+                  child: Semantics(
+                    button: true,
+                    label: 'Resize widget',
+                    child: GestureDetector(
+                      key: Key('resize_handle_$id'),
+                      behavior: HitTestBehavior.opaque,
+                      onPanStart: (_) {
+                        _resizeAccum = Offset.zero;
+                      },
+                      onPanUpdate: (details) {
+                        _resizeAccum += details.delta;
 
-            // OS-Style Corner Drag & Drop Resize Handle
-            Positioned(
-              bottom: 0,
-              right: 0,
-              width: dragHandleWidth,
-              height: bottomBarHeight,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.resizeDownRight,
-                child: GestureDetector(
-                  key: Key('resize_handle_$id'),
-                  behavior: HitTestBehavior.opaque,
-                  onPanStart: (_) {
-                    _resizeAccum = Offset.zero;
-                  },
-                  onPanUpdate: (details) {
-                    _resizeAccum += details.delta;
+                        double accumX = _resizeAccum.dx;
+                        double accumY = _resizeAccum.dy;
+                        int dw = 0;
+                        int dh = 0;
+                        if (accumX > widget.cellWidth * 0.3) {
+                          dw = 1;
+                          accumX = 0;
+                        } else if (accumX < -widget.cellWidth * 0.3) {
+                          dw = -1;
+                          accumX = 0;
+                        }
 
-                    double accumX = _resizeAccum.dx;
-                    double accumY = _resizeAccum.dy;
-                    int dw = 0;
-                    int dh = 0;
-                    if (accumX > widget.cellWidth * 0.3) {
-                      dw = 1;
-                      accumX = 0;
-                    } else if (accumX < -widget.cellWidth * 0.3) {
-                      dw = -1;
-                      accumX = 0;
-                    }
+                        if (accumY > widget.cellHeight * 0.3) {
+                          dh = 1;
+                          accumY = 0;
+                        } else if (accumY < -widget.cellHeight * 0.3) {
+                          dh = -1;
+                          accumY = 0;
+                        }
 
-                    if (accumY > widget.cellHeight * 0.3) {
-                      dh = 1;
-                      accumY = 0;
-                    } else if (accumY < -widget.cellHeight * 0.3) {
-                      dh = -1;
-                      accumY = 0;
-                    }
+                        _resizeAccum = Offset(accumX, accumY);
 
-                    _resizeAccum = Offset(accumX, accumY);
-
-                    if (dw != 0 || dh != 0) {
-                      widget.screenManager.resizeWidget(id, dw, dh);
-                    }
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.cyan.shade900.withAlpha(220),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(4),
-                        bottomRight: Radius.circular(6),
-                      ),
-                      border: Border.all(
-                        color: Colors.cyanAccent.withAlpha(160),
-                        width: 1,
-                      ),
-                    ),
-                    child: Tooltip(
-                      message: 'Drag corner to resize',
-                      child: Center(
-                        child: Icon(
-                          Icons.south_east,
-                          size: isCompact ? 10 : 14,
-                          color: Colors.cyanAccent,
+                        if (dw != 0 || dh != 0) {
+                          widget.screenManager.resizeWidget(id, dw, dh);
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.cyan.shade900.withAlpha(220),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(4),
+                            bottomRight: Radius.circular(6),
+                          ),
+                          border: Border.all(
+                            color: Colors.cyanAccent.withAlpha(160),
+                            width: 1,
+                          ),
+                        ),
+                        child: Tooltip(
+                          message: 'Drag corner to resize',
+                          child: Center(
+                            child: Icon(
+                              Icons.south_east,
+                              size: isCompact ? 10 : 14,
+                              color: Colors.cyanAccent,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -2054,30 +2080,55 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                                   spacing: 6,
                                   runSpacing: 4,
                                   children: [
-                                    _durationChip(2, curMapTrackHistoryMinutes,
-                                        setDialogState, (v) {
-                                      curMapTrackHistoryMinutes = v;
-                                    }),
-                                    _durationChip(5, curMapTrackHistoryMinutes,
-                                        setDialogState, (v) {
-                                      curMapTrackHistoryMinutes = v;
-                                    }),
-                                    _durationChip(10, curMapTrackHistoryMinutes,
-                                        setDialogState, (v) {
-                                      curMapTrackHistoryMinutes = v;
-                                    }),
-                                    _durationChip(15, curMapTrackHistoryMinutes,
-                                        setDialogState, (v) {
-                                      curMapTrackHistoryMinutes = v;
-                                    }),
-                                    _durationChip(30, curMapTrackHistoryMinutes,
-                                        setDialogState, (v) {
-                                      curMapTrackHistoryMinutes = v;
-                                    }),
-                                    _durationChip(0, curMapTrackHistoryMinutes,
-                                        setDialogState, (v) {
-                                      curMapTrackHistoryMinutes = v;
-                                    }, label: 'All'),
+                                    _durationChip(
+                                      2,
+                                      curMapTrackHistoryMinutes,
+                                      setDialogState,
+                                      (v) {
+                                        curMapTrackHistoryMinutes = v;
+                                      },
+                                    ),
+                                    _durationChip(
+                                      5,
+                                      curMapTrackHistoryMinutes,
+                                      setDialogState,
+                                      (v) {
+                                        curMapTrackHistoryMinutes = v;
+                                      },
+                                    ),
+                                    _durationChip(
+                                      10,
+                                      curMapTrackHistoryMinutes,
+                                      setDialogState,
+                                      (v) {
+                                        curMapTrackHistoryMinutes = v;
+                                      },
+                                    ),
+                                    _durationChip(
+                                      15,
+                                      curMapTrackHistoryMinutes,
+                                      setDialogState,
+                                      (v) {
+                                        curMapTrackHistoryMinutes = v;
+                                      },
+                                    ),
+                                    _durationChip(
+                                      30,
+                                      curMapTrackHistoryMinutes,
+                                      setDialogState,
+                                      (v) {
+                                        curMapTrackHistoryMinutes = v;
+                                      },
+                                    ),
+                                    _durationChip(
+                                      0,
+                                      curMapTrackHistoryMinutes,
+                                      setDialogState,
+                                      (v) {
+                                        curMapTrackHistoryMinutes = v;
+                                      },
+                                      label: 'All',
+                                    ),
                                   ],
                                 ),
                                 const Divider(color: Colors.white12),
