@@ -41,3 +41,7 @@
 ## 2026-09-09 - Avoid `Vec::remove(0)` in Bounded Queue Operations
 **Learning:** Using `Vec::remove(0)` to drop the oldest item or pop elements from the front of a queue shifts every subsequent element in memory, resulting in O(N) operations per push/pop when capacity is reached. Switching the underlying storage to `VecDeque` converts `pop_front()` and `push_back()` into O(1) ring buffer operations.
 **Action:** Always use `std::collections::VecDeque` instead of `Vec` for FIFO queues or bounded buffers where items are inserted at the back and removed from the front.
+
+## 2026-09-17 - Avoid mutable static Paint objects in Flutter
+**Learning:** Using `static final Paint` objects and mutating their properties (like color) inside `CustomPainter.paint()` is an anti-pattern. While it eliminates allocations, it introduces shared mutable state across different painter instances and widgets, which causes bugs when multiple maps are rendered concurrently.
+**Action:** Instead of making `Paint` objects static, cache them as non-static `final` properties within the `CustomPainter` instance itself, and accept that the painter constructor must not be `const`.
