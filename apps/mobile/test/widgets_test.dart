@@ -476,6 +476,152 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Edit Mode temporarily elevates selected widget to the foreground in the rendering stack',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        final manager = ScreenManagerService();
+        manager.toggleEditMode(true);
+
+        final widgets = manager.activeScreen.widgets;
+        final mapId = widgets.firstWhere((w) => w.type == WidgetType.map).id;
+        final altId = widgets.firstWhere((w) => w.type == WidgetType.altitude).id;
+
+        // Ensure map is initially before altitude in persistent widgets list
+        final mapIdx = manager.activeScreen.widgets.indexWhere((w) => w.id == mapId);
+        final altIdx = manager.activeScreen.widgets.indexWhere((w) => w.id == altId);
+        expect(mapIdx, lessThan(altIdx));
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {'altitude': 1450.0},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Helper to get render order of positioned widgets
+        List<String> getRenderedPositionedKeys() {
+          final elements = find.byType(Positioned).evaluate();
+          final keys = <String>[];
+          for (final el in elements) {
+            final w = el.widget as Positioned;
+            if (w.key is Key) {
+              final keyStr = (w.key as ValueKey).value.toString();
+              if (keyStr.startsWith('positioned_')) {
+                keys.add(keyStr.replaceFirst('positioned_', ''));
+              }
+            }
+          }
+          return keys;
+        }
+
+        // Before selection: map renders before altitude
+        var order = getRenderedPositionedKeys();
+        expect(order.indexOf(mapId), lessThan(order.indexOf(altId)));
+
+        // Tap to select map widget
+        await tester.tap(find.byKey(Key('widget_box_$mapId')));
+        await tester.pumpAndSettle();
+        expect(manager.selectedWidgetId, mapId);
+
+        // While selected: map is elevated to the end of the render stack (drawn on top)
+        order = getRenderedPositionedKeys();
+        expect(order.last, mapId);
+        expect(order.indexOf(mapId), greaterThan(order.indexOf(altId)));
+
+        // Deselect via inspector close button
+        await tester.tap(find.byKey(const Key('btn_inspector_close')));
+        await tester.pumpAndSettle();
+        expect(manager.selectedWidgetId, isNull);
+
+        // After deselect: map returns to original position before altitude
+        order = getRenderedPositionedKeys();
+        expect(order.indexOf(mapId), lessThan(order.indexOf(altId)));
+      },
+    );
+
+    testWidgets(
+      'Floating Inspector Bar stack reorder controls adjust widget z-order and update layer badge',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        final manager = ScreenManagerService();
+        manager.toggleEditMode(true);
+
+        final totalCount = manager.activeScreen.widgets.length;
+        final mapWidget = manager.activeScreen.widgets.first;
+        final mapId = mapWidget.id;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LayoutStrategyContainer(
+                screenManager: manager,
+                telemetryData: const {'altitude': 1450.0},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Select the map widget at index 0
+        manager.selectWidget(mapId);
+        await tester.pumpAndSettle();
+
+        // Verify inspector layer badge indicates Layer 1 / total
+        expect(find.text('Layer 1/$totalCount'), findsOneWidget);
+
+        // Verify backward buttons are disabled for bottom widget
+        final sendToBackFinder = find.byKey(const Key('btn_inspector_send_to_back'));
+        final sendBackFinder = find.byKey(const Key('btn_inspector_send_backward'));
+        final bringFwdFinder = find.byKey(const Key('btn_inspector_bring_forward'));
+        final bringToFrontFinder = find.byKey(const Key('btn_inspector_bring_to_front'));
+
+        expect(sendToBackFinder, findsOneWidget);
+        expect(tester.widget<IconButton>(sendToBackFinder).onPressed, isNull);
+        expect(tester.widget<IconButton>(sendBackFinder).onPressed, isNull);
+        expect(tester.widget<IconButton>(bringFwdFinder).onPressed, isNotNull);
+        expect(tester.widget<IconButton>(bringToFrontFinder).onPressed, isNotNull);
+
+        // Tap Bring Forward: moves map from index 0 to index 1
+        await tester.tap(bringFwdFinder);
+        await tester.pumpAndSettle();
+
+        expect(manager.activeScreen.widgets[1].id, mapId);
+        expect(find.text('Layer 2/$totalCount'), findsOneWidget);
+        // Now both forward and backward should be enabled
+        expect(tester.widget<IconButton>(sendBackFinder).onPressed, isNotNull);
+        expect(tester.widget<IconButton>(bringFwdFinder).onPressed, isNotNull);
+
+        // Tap Bring to Front: moves map to the end
+        await tester.tap(bringToFrontFinder);
+        await tester.pumpAndSettle();
+
+        expect(manager.activeScreen.widgets.last.id, mapId);
+        expect(find.text('Layer $totalCount/$totalCount'), findsOneWidget);
+        expect(tester.widget<IconButton>(bringFwdFinder).onPressed, isNull);
+        expect(tester.widget<IconButton>(bringToFrontFinder).onPressed, isNull);
+        expect(tester.widget<IconButton>(sendBackFinder).onPressed, isNotNull);
+
+        // Tap Send to Back: moves map back to index 0
+        await tester.tap(sendToBackFinder);
+        await tester.pumpAndSettle();
+
+        expect(manager.activeScreen.widgets.first.id, mapId);
+        expect(find.text('Layer 1/$totalCount'), findsOneWidget);
+      },
+    );
+
     testWidgets('Widgets on same or different screens maintain independent styling', (
       tester,
     ) async {
@@ -648,10 +794,10 @@ void main() {
       await tester.tap(addButtonFinder);
       await tester.pumpAndSettle();
 
-      final lastWidget = manager.activeScreen.widgets.last;
-      expect(lastWidget.type, WidgetType.map);
-      expect(lastWidget.w, 8); // Full screen width
-      expect(lastWidget.h, 8); // Full screen height
+      final addedWidget = manager.activeScreen.widgets.first;
+      expect(addedWidget.type, WidgetType.map);
+      expect(addedWidget.w, 8); // Full screen width
+      expect(addedWidget.h, 8); // Full screen height
     });
 
     testWidgets('ThermalMapWidget renders Option 1 (XCtrack), Option 2 (Burnair Core), and Option 3 (Navigator Ribbon)', (
@@ -749,11 +895,11 @@ void main() {
       await tester.tap(addButtonFinder);
       await tester.pumpAndSettle();
 
-      final lastWidget = manager.activeScreen.widgets.last;
-      expect(lastWidget.type, WidgetType.thermalMap);
-      expect(lastWidget.w, 8); // Full screen width by default
-      expect(lastWidget.h, 8); // Full screen height by default
-      expect(lastWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
+      final addedWidget = manager.activeScreen.widgets.first;
+      expect(addedWidget.type, WidgetType.thermalMap);
+      expect(addedWidget.w, 8); // Full screen width by default
+      expect(addedWidget.h, 8); // Full screen height by default
+      expect(addedWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
     });
 
     testWidgets('Default thermaling screen contains thermalMap in widgets list', (

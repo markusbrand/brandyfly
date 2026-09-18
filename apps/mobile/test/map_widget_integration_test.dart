@@ -211,7 +211,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(manager.activeScreen.widgets.length, initialCount + 1);
-        final mapWidgetModel = manager.activeScreen.widgets.last;
+        final mapWidgetModel = manager.activeScreen.widgets.first;
         expect(mapWidgetModel.type, WidgetType.map);
         expect(mapWidgetModel.x, 0);
         expect(mapWidgetModel.y, 0);
