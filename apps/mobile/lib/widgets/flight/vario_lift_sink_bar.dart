@@ -13,6 +13,14 @@ class VarioLiftSinkBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Vario climb rate: ${climbRateMs.toStringAsFixed(1)} meters per second',
+      readOnly: true,
+      child: _buildStyledBar(context),
+    );
+  }
+
+  Widget _buildStyledBar(BuildContext context) {
     switch (style) {
       case LiftSinkBarStyle.verticalEdgeBar:
         return _buildVerticalEdgeBar(context);

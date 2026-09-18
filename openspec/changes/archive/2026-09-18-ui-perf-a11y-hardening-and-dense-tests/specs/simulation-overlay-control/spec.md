@@ -1,19 +1,4 @@
-## Purpose
-
-Provides free-floating drag-and-drop repositioning and boundary clamping for the flight simulation controller overlay during local mock flight testing.
-
-## Requirements
-
-### Requirement: Free-Floating Overlay Repositioning
-The simulation overlay SHALL allow the user to drag and drop the controller anywhere across the flight screen by panning on the overlay container.
-
-#### Scenario: User drags simulation overlay
-- **WHEN** the user pans across the background or non-button areas of the simulation overlay
-- **THEN** the overlay tracks the drag gesture in real time and updates its on-screen position accordingly
-
-#### Scenario: Overlay position preserved across flight ticks
-- **WHEN** periodic telemetry ticks or manual scenario advances trigger screen updates
-- **THEN** the simulation overlay retains its last dragged position on screen without resetting to the default coordinate
+## MODIFIED Requirements
 
 ### Requirement: Viewport and Safe Area Boundary Clamping
 The simulation overlay SHALL constrain its movement to remain entirely visible within the display viewport and safe area margins, and collapse cleanly without content clipping.

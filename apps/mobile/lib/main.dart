@@ -665,17 +665,6 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
                     ],
                   ),
                 ),
-                if (!isReplaying && _isSessionMinimized) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    'Mock flight session (${widget.config.sessionLabel})',
-                    style: const TextStyle(
-                      color: Colors.orangeAccent,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
                 if (!isReplaying && !_isSessionMinimized) ...[
                   const SizedBox(height: 4),
                   Container(
@@ -767,7 +756,7 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
           children: [
             Positioned(
               left: clampedPos?.dx,
-              top: clampedPos?.dy ?? (safePadding.top + 8),
+              top: clampedPos?.dy ?? (safePadding.top + 56),
               right: clampedPos == null ? (safePadding.right + 8) : null,
               child: overlayCard,
             ),

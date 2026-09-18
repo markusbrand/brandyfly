@@ -382,22 +382,24 @@ class _MapWidgetState extends State<MapWidget> {
           // 2. Flight Overlays (Airspace, Flight Track, Thermals, Pilot Marker)
           Positioned.fill(
             child: IgnorePointer(
-              child: CustomPaint(
-                painter: _FlightOverlayPainter(
-                  mapController: _mapService.controller,
-                  pilotPosition: pilotPos,
-                  cameraCenter: _cameraCenter,
-                  orientation: widget.orientation,
-                  headingDeg: widget.headingDeg,
-                  zoom: _currentZoom,
-                  showAirspace: widget.showAirspace,
-                  showTrack: widget.showTrack,
-                  showThermals: widget.showThermals,
-                  flightPoints: _effectiveFlightPoints,
-                  trackPoints: _effectiveTrackPoints,
-                  climbRateMs: widget.climbRateMs,
-                  mapTrackHistoryMinutes: widget.mapTrackHistoryMinutes,
-                  mapTrackShowOlderTail: widget.mapTrackShowOlderTail,
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: _FlightOverlayPainter(
+                    mapController: _mapService.controller,
+                    pilotPosition: pilotPos,
+                    cameraCenter: _cameraCenter,
+                    orientation: widget.orientation,
+                    headingDeg: widget.headingDeg,
+                    zoom: _currentZoom,
+                    showAirspace: widget.showAirspace,
+                    showTrack: widget.showTrack,
+                    showThermals: widget.showThermals,
+                    flightPoints: _effectiveFlightPoints,
+                    trackPoints: _effectiveTrackPoints,
+                    climbRateMs: widget.climbRateMs,
+                    mapTrackHistoryMinutes: widget.mapTrackHistoryMinutes,
+                    mapTrackShowOlderTail: widget.mapTrackShowOlderTail,
+                  ),
                 ),
               ),
             ),
@@ -527,7 +529,7 @@ class _MapWidgetState extends State<MapWidget> {
           // 7. Dynamic Scale Bar & Altitude / Speed HUD
           Positioned(
             bottom: 8,
-            left: 8,
+            left: 52,
             child: _buildScaleAndLegend(),
           ),
         ],
@@ -609,8 +611,9 @@ class _MapWidgetState extends State<MapWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(160),
+        color: Colors.black.withAlpha(200),
         borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white24, width: 0.8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,14 +623,18 @@ class _MapWidgetState extends State<MapWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 35,
+                width: 30,
                 height: 2,
                 color: Colors.white70,
               ),
               const SizedBox(width: 4),
               Text(
                 '${scaleKm.toStringAsFixed(1)} km',
-                style: const TextStyle(color: Colors.white70, fontSize: 9),
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -637,7 +644,7 @@ class _MapWidgetState extends State<MapWidget> {
             style: const TextStyle(
               color: Colors.cyanAccent,
               fontSize: 8,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

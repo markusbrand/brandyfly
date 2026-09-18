@@ -17,6 +17,15 @@ class NumericTextWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final semanticValue = unit.isNotEmpty ? '$label: $value $unit' : '$label: $value';
+    return Semantics(
+      label: semanticValue,
+      readOnly: true,
+      child: _buildStyledContent(context),
+    );
+  }
+
+  Widget _buildStyledContent(BuildContext context) {
     switch (style) {
       case NumericWidgetStyle.minimalistText:
         return _buildMinimalistText(context);
@@ -31,110 +40,170 @@ class NumericTextWidget extends StatelessWidget {
 
   // Option 1: Minimalist Text
   Widget _buildMinimalistText(BuildContext context) {
-    return SizedBox.expand(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.black.withAlpha(160),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxHeight < 6 || constraints.maxWidth < 6) {
+          return const SizedBox.shrink();
+        }
+        final showLabel = constraints.maxHeight >= 30;
+        return SizedBox.expand(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withAlpha(160),
+              borderRadius: BorderRadius.circular(6),
             ),
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      value,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 42,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                    if (unit.isNotEmpty) ...[
-                      const SizedBox(width: 3),
+            child: showLabel
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                       Text(
-                        unit,
+                        label.toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white70,
-                          fontSize: 16,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                value,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 42,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                              if (unit.isNotEmpty) ...[
+                                const SizedBox(width: 3),
+                                Text(
+                                  unit,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+                  )
+                : FittedBox(
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          value,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 42,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        if (unit.isNotEmpty) ...[
+                          const SizedBox(width: 3),
+                          Text(
+                            unit,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+          ),
+        );
+      },
     );
   }
 
   // Option 2: High-Contrast Box
   Widget _buildHighContrastBox(BuildContext context) {
-    return SizedBox.expand(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.yellow.shade400,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.black, width: 2),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxHeight < 6 || constraints.maxWidth < 6) {
+          return const SizedBox.shrink();
+        }
+        final showLabel = constraints.maxHeight >= 30;
+        return SizedBox.expand(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.yellow.shade400,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.black, width: 2),
             ),
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '$value $unit',
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 42,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'monospace',
+            child: showLabel
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        label.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '$value $unit',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 42,
+                              fontWeight: FontWeight.w900,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : FittedBox(
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '$value $unit',
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 42,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -191,50 +260,77 @@ class NumericTextWidget extends StatelessWidget {
 
   // Option 4: Retro Digital
   Widget _buildRetroDigital(BuildContext context) {
-    return SizedBox.expand(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.greenAccent.shade400, width: 1.2),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: TextStyle(
-                color: Colors.greenAccent.shade200,
-                fontSize: 10,
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxHeight < 6 || constraints.maxWidth < 6) {
+          return const SizedBox.shrink();
+        }
+        final showLabel = constraints.maxHeight >= 30;
+        return SizedBox.expand(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(6),
+              border:
+                  Border.all(color: Colors.greenAccent.shade400, width: 1.2),
             ),
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '$value $unit',
-                  style: TextStyle(
-                    color: Colors.greenAccent.shade400,
-                    fontSize: 42,
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.w900,
-                    shadows: const [
-                      Shadow(color: Colors.greenAccent, blurRadius: 6),
+            child: showLabel
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        label.toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.greenAccent.shade200,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '$value $unit',
+                            style: TextStyle(
+                              color: Colors.greenAccent.shade400,
+                              fontSize: 42,
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w900,
+                              shadows: const [
+                                Shadow(
+                                    color: Colors.greenAccent, blurRadius: 6),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
+                  )
+                : FittedBox(
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '$value $unit',
+                      style: TextStyle(
+                        color: Colors.greenAccent.shade400,
+                        fontSize: 42,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w900,
+                        shadows: const [
+                          Shadow(color: Colors.greenAccent, blurRadius: 6),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

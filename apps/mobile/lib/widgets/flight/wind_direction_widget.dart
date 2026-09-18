@@ -16,6 +16,14 @@ class WindDirectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Wind: ${speedKmH.toStringAsFixed(1)} km/h at ${directionDegrees.toInt()} degrees',
+      readOnly: true,
+      child: _buildStyledWind(context),
+    );
+  }
+
+  Widget _buildStyledWind(BuildContext context) {
     switch (style) {
       case WindWidgetStyle.relativeArrow:
         return _buildRelativeArrow(context);
