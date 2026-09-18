@@ -233,6 +233,46 @@ class ScreenManagerService extends ChangeNotifier {
     );
   }
 
+  void bringToFront(String widgetId) {
+    final currentActive = activeScreen;
+    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
+    if (index == -1 || index == currentActive.widgets.length - 1) return;
+    final updated = List<WidgetPlacementModel>.from(currentActive.widgets);
+    final item = updated.removeAt(index);
+    updated.add(item);
+    _updateActiveScreen(currentActive.copyWith(widgets: updated));
+  }
+
+  void bringForward(String widgetId) {
+    final currentActive = activeScreen;
+    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
+    if (index == -1 || index == currentActive.widgets.length - 1) return;
+    final updated = List<WidgetPlacementModel>.from(currentActive.widgets);
+    final item = updated.removeAt(index);
+    updated.insert(index + 1, item);
+    _updateActiveScreen(currentActive.copyWith(widgets: updated));
+  }
+
+  void sendBackward(String widgetId) {
+    final currentActive = activeScreen;
+    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
+    if (index <= 0) return;
+    final updated = List<WidgetPlacementModel>.from(currentActive.widgets);
+    final item = updated.removeAt(index);
+    updated.insert(index - 1, item);
+    _updateActiveScreen(currentActive.copyWith(widgets: updated));
+  }
+
+  void sendToBack(String widgetId) {
+    final currentActive = activeScreen;
+    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
+    if (index <= 0) return;
+    final updated = List<WidgetPlacementModel>.from(currentActive.widgets);
+    final item = updated.removeAt(index);
+    updated.insert(0, item);
+    _updateActiveScreen(currentActive.copyWith(widgets: updated));
+  }
+
   void addWidget(WidgetType type) {
     final currentActive = activeScreen;
     final newId = 'w_${DateTime.now().millisecondsSinceEpoch}';
@@ -260,7 +300,12 @@ class ScreenManagerService extends ChangeNotifier {
       mapTrackHistoryMinutes: 10,
       mapTrackShowOlderTail: true,
     );
-    final updatedWidgets = [...currentActive.widgets, newPlacement];
+    final List<WidgetPlacementModel> updatedWidgets;
+    if (isMapLike) {
+      updatedWidgets = [newPlacement, ...currentActive.widgets];
+    } else {
+      updatedWidgets = [...currentActive.widgets, newPlacement];
+    }
     _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
   }
 

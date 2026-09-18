@@ -73,7 +73,7 @@ void main() {
       final manager = ScreenManagerService();
       manager.addWidget(WidgetType.map);
 
-      final added = manager.activeScreen.widgets.last;
+      final added = manager.activeScreen.widgets.first;
       expect(added.type, WidgetType.map);
       expect(added.x, 0);
       expect(added.y, 0);
@@ -201,6 +201,76 @@ void main() {
 
       manager.removeWidget(widgetId);
       expect(manager.selectedWidgetId, isNull);
+    });
+
+    test('reorders widgets within stack hierarchy with boundary guards', () {
+      final manager = ScreenManagerService();
+      // Initially normal_flight has: w_map (0), w1 (1), w2 (2), w3 (3), w4 (4)
+      final initialIds = manager.activeScreen.widgets.map((w) => w.id).toList();
+      expect(initialIds.length, greaterThanOrEqualTo(3));
+
+      final firstId = initialIds[0];
+      final secondId = initialIds[1];
+      final lastId = initialIds.last;
+
+      // Cannot send first item backward or to back
+      manager.sendBackward(firstId);
+      expect(manager.activeScreen.widgets[0].id, firstId);
+      manager.sendToBack(firstId);
+      expect(manager.activeScreen.widgets[0].id, firstId);
+
+      // Cannot bring last item forward or to front
+      manager.bringForward(lastId);
+      expect(manager.activeScreen.widgets.last.id, lastId);
+      manager.bringToFront(lastId);
+      expect(manager.activeScreen.widgets.last.id, lastId);
+
+      // Bring second item forward: swaps index 1 with index 2
+      manager.bringForward(secondId);
+      expect(manager.activeScreen.widgets[2].id, secondId);
+
+      // Bring second item to front: moves to the very end
+      manager.bringToFront(secondId);
+      expect(manager.activeScreen.widgets.last.id, secondId);
+
+      // Send that item backward: moves from end to end-1
+      manager.sendBackward(secondId);
+      expect(manager.activeScreen.widgets[manager.activeScreen.widgets.length - 2].id, secondId);
+
+      // Send to back: moves to index 0
+      manager.sendToBack(secondId);
+      expect(manager.activeScreen.widgets.first.id, secondId);
+    });
+
+    test('places new map widgets at background index 0 and instruments at foreground', () {
+      final manager = ScreenManagerService();
+      manager.addScreen('Test Placement Screen');
+      expect(manager.activeScreen.widgets, isEmpty);
+
+      // Add instrument widget -> goes to foreground (index 0 when empty)
+      manager.addWidget(WidgetType.altitude);
+      expect(manager.activeScreen.widgets.length, 1);
+      final altId = manager.activeScreen.widgets.first.id;
+      expect(manager.activeScreen.widgets[0].type, WidgetType.altitude);
+
+      // Add another instrument widget -> appended to foreground (index 1)
+      manager.addWidget(WidgetType.speed);
+      expect(manager.activeScreen.widgets.length, 2);
+      expect(manager.activeScreen.widgets[0].id, altId);
+      expect(manager.activeScreen.widgets[1].type, WidgetType.speed);
+
+      // Add map widget -> placed at background (index 0)
+      manager.addWidget(WidgetType.map);
+      expect(manager.activeScreen.widgets.length, 3);
+      expect(manager.activeScreen.widgets[0].type, WidgetType.map);
+      expect(manager.activeScreen.widgets[1].id, altId);
+      expect(manager.activeScreen.widgets[2].type, WidgetType.speed);
+
+      // Add thermal map widget -> placed at background (index 0)
+      manager.addWidget(WidgetType.thermalMap);
+      expect(manager.activeScreen.widgets.length, 4);
+      expect(manager.activeScreen.widgets[0].type, WidgetType.thermalMap);
+      expect(manager.activeScreen.widgets[1].type, WidgetType.map);
     });
   });
 }

@@ -49,6 +49,7 @@ class LayoutStrategyContainer extends StatelessWidget {
                   strategy,
                   activeScreen,
                   isEditMode,
+                  selectedWidgetId,
                 ),
               ),
             ),
@@ -227,6 +228,13 @@ class LayoutStrategyContainer extends StatelessWidget {
     final id = model.id;
     final typeName = model.type.name.toUpperCase();
 
+    final widgets = screenManager.activeScreen.widgets;
+    final currentIndex = widgets.indexWhere((w) => w.id == id);
+    final totalWidgets = widgets.length;
+    final isAtBottom = currentIndex <= 0;
+    final isAtTop = currentIndex == -1 || currentIndex >= totalWidgets - 1;
+    final layerNumber = currentIndex != -1 ? (currentIndex + 1) : 1;
+
     return Container(
       key: const Key('widget_inspector_panel'),
       decoration: BoxDecoration(
@@ -306,7 +314,7 @@ class LayoutStrategyContainer extends StatelessWidget {
             ],
           ),
           const Divider(color: Colors.white24, height: 12),
-          // Position nudge arrows and size steppers
+          // Position nudge arrows, size steppers, and stack reordering controls
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -382,6 +390,62 @@ class LayoutStrategyContainer extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(width: 8),
+                // Stack Layer Reordering Controls
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _inspectorButton(
+                      key: const Key('btn_inspector_send_to_back'),
+                      icon: Icons.vertical_align_bottom,
+                      tooltip: 'Send to Back',
+                      enabled: !isAtBottom,
+                      onPressed: () => screenManager.sendToBack(id),
+                    ),
+                    _inspectorButton(
+                      key: const Key('btn_inspector_send_backward'),
+                      icon: Icons.arrow_downward,
+                      tooltip: 'Send Backward',
+                      enabled: !isAtBottom,
+                      onPressed: () => screenManager.sendBackward(id),
+                    ),
+                    Container(
+                      key: const Key('inspector_layer_badge'),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.cyan.shade900.withAlpha(140),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: Colors.cyanAccent.withAlpha(120),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        'Layer $layerNumber/$totalWidgets',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.cyanAccent,
+                        ),
+                      ),
+                    ),
+                    _inspectorButton(
+                      key: const Key('btn_inspector_bring_forward'),
+                      icon: Icons.arrow_upward,
+                      tooltip: 'Bring Forward',
+                      enabled: !isAtTop,
+                      onPressed: () => screenManager.bringForward(id),
+                    ),
+                    _inspectorButton(
+                      key: const Key('btn_inspector_bring_to_front'),
+                      icon: Icons.vertical_align_top,
+                      tooltip: 'Bring to Front',
+                      enabled: !isAtTop,
+                      onPressed: () => screenManager.bringToFront(id),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -451,6 +515,7 @@ class LayoutStrategyContainer extends StatelessWidget {
     LayoutStrategyStyle strategy,
     FlightScreenModel screen,
     bool isEditMode,
+    String? selectedWidgetId,
   ) {
     return LayoutBuilder(
       builder: (ctx, constraints) {
@@ -481,6 +546,7 @@ class LayoutStrategyContainer extends StatelessWidget {
               context,
               screen,
               isEditMode,
+              selectedWidgetId,
               totalWidth,
               contentHeight,
               cellWidth,
@@ -491,6 +557,7 @@ class LayoutStrategyContainer extends StatelessWidget {
               context,
               screen,
               isEditMode,
+              selectedWidgetId,
               totalWidth,
               contentHeight,
               cellWidth,
@@ -501,6 +568,7 @@ class LayoutStrategyContainer extends StatelessWidget {
               context,
               screen,
               isEditMode,
+              selectedWidgetId,
               totalWidth,
               contentHeight,
               cellWidth,
@@ -524,6 +592,7 @@ class LayoutStrategyContainer extends StatelessWidget {
     BuildContext context,
     FlightScreenModel screen,
     bool isEditMode,
+    String? selectedWidgetId,
     double totalWidth,
     double contentHeight,
     double cellWidth,
@@ -567,7 +636,11 @@ class LayoutStrategyContainer extends StatelessWidget {
                   cellHeight,
                 ),
               ],
-              ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
+              ..._getOrderedWidgets(
+                screen.widgets,
+                isEditMode: isEditMode,
+                selectedWidgetId: selectedWidgetId,
+              ).map((widgetModel) {
                 final left = widgetModel.x * cellWidth;
                 final top = widgetModel.y * cellHeight;
                 final width = widgetModel.w * cellWidth;
@@ -601,6 +674,7 @@ class LayoutStrategyContainer extends StatelessWidget {
     BuildContext context,
     FlightScreenModel screen,
     bool isEditMode,
+    String? selectedWidgetId,
     double totalWidth,
     double contentHeight,
     double cellWidth,
@@ -630,7 +704,11 @@ class LayoutStrategyContainer extends StatelessWidget {
                   cellHeight,
                 ),
               ],
-              ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
+              ..._getOrderedWidgets(
+                screen.widgets,
+                isEditMode: isEditMode,
+                selectedWidgetId: selectedWidgetId,
+              ).map((widgetModel) {
                 final left = widgetModel.x * cellWidth;
                 final top = widgetModel.y * cellHeight;
                 final width = widgetModel.w * cellWidth;
@@ -664,6 +742,7 @@ class LayoutStrategyContainer extends StatelessWidget {
     BuildContext context,
     FlightScreenModel screen,
     bool isEditMode,
+    String? selectedWidgetId,
     double totalWidth,
     double contentHeight,
     double cellWidth,
@@ -725,7 +804,11 @@ class LayoutStrategyContainer extends StatelessWidget {
                 ),
               ],
 
-              ..._getOrderedWidgets(screen.widgets).map((widgetModel) {
+              ..._getOrderedWidgets(
+                screen.widgets,
+                isEditMode: isEditMode,
+                selectedWidgetId: selectedWidgetId,
+              ).map((widgetModel) {
                 final left = widgetModel.x * cellWidth;
                 final top = widgetModel.y * cellHeight;
                 final width = widgetModel.w * cellWidth;
@@ -755,18 +838,18 @@ class LayoutStrategyContainer extends StatelessWidget {
   }
 
   List<WidgetPlacementModel> _getOrderedWidgets(
-    List<WidgetPlacementModel> widgets,
-  ) {
+    List<WidgetPlacementModel> widgets, {
+    bool isEditMode = false,
+    String? selectedWidgetId,
+  }) {
     final list = List<WidgetPlacementModel>.from(widgets);
-    list.sort((a, b) {
-      int layerOf(WidgetType t) {
-        if (t == WidgetType.map) return 0;
-        if (t == WidgetType.thermalMap) return 1;
-        return 2;
+    if (isEditMode && selectedWidgetId != null) {
+      final index = list.indexWhere((w) => w.id == selectedWidgetId);
+      if (index != -1) {
+        final selected = list.removeAt(index);
+        list.add(selected);
       }
-
-      return layerOf(a.type).compareTo(layerOf(b.type));
-    });
+    }
     return list;
   }
 
