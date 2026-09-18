@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.7.0...brandyfly-v0.8.0) (2026-09-18)
+
+
+### Features
+
+* **mobile:** add widget stack layer ordering and edit mode elevation ([#184](https://github.com/markusbrand/brandyfly/issues/184)) ([74d6b7d](https://github.com/markusbrand/brandyfly/commit/74d6b7db270607011396e6ebabc1f2bf6557b830))
+
 ## [0.7.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.6.1...brandyfly-v0.7.0) (2026-09-18)
 
 
