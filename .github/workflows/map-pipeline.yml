@@ -114,7 +114,7 @@ jobs:
             --verify-local map_pipeline_work/output
 
       - name: Upload Build Artifacts (Catalog & Checksums)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: map-catalog-${{ github.run_id }}
           path: |
