@@ -13,6 +13,14 @@ class AltitudeSparklineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Altitude history profile chart',
+      readOnly: true,
+      child: _buildStyledChart(context),
+    );
+  }
+
+  Widget _buildStyledChart(BuildContext context) {
     switch (style) {
       case AltitudeChartStyle.minimalSparkline:
         return _buildMinimalSparkline(context);

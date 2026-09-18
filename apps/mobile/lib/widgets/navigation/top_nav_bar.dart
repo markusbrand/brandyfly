@@ -64,7 +64,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
         // Detect swipe down from top edge (primary delta > 8)
         if (details.primaryDelta != null &&
             details.primaryDelta! > 8 &&
-            details.globalPosition.dy < 120 &&
+            details.globalPosition.dy < 140 &&
             !widget.screenManager.isNavBarVisible &&
             !widget.screenManager.isEditMode) {
           widget.screenManager.toggleNavBar(true);
@@ -81,28 +81,33 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
               top: 0,
               left: 0,
               right: 0,
-              height: 36,
-              child: Semantics(
-                button: true,
-                label: 'Expand navigation bar',
-                child: GestureDetector(
-                  key: const Key('top_nav_grab_handle'),
-                  behavior: HitTestBehavior.translucent,
-                  onTap: () => widget.screenManager.toggleNavBar(true),
-                  onVerticalDragUpdate: (details) {
-                    if (details.primaryDelta != null &&
-                        details.primaryDelta! > 4) {
-                      widget.screenManager.toggleNavBar(true);
-                    }
-                  },
-                  child: Center(
+              child: SafeArea(
+                bottom: false,
+                child: Semantics(
+                  button: true,
+                  label: 'Open navigation bar',
+                  child: GestureDetector(
+                    key: const Key('top_nav_grab_handle'),
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => widget.screenManager.toggleNavBar(true),
+                    onVerticalDragUpdate: (details) {
+                      if (details.primaryDelta != null &&
+                          details.primaryDelta! > 4) {
+                        widget.screenManager.toggleNavBar(true);
+                      }
+                    },
                     child: Container(
-                      width: 56,
-                      height: 5,
-                      margin: const EdgeInsets.only(top: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(100),
-                        borderRadius: BorderRadius.circular(3),
+                      height: 48,
+                      alignment: Alignment.topCenter,
+                      color: Colors.transparent,
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Container(
+                        width: 56,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(120),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
                       ),
                     ),
                   ),

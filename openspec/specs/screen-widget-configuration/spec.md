@@ -72,7 +72,7 @@ The application SHALL render OpenStreetMap, OpenTopoMap, and custom raster tiles
 - **THEN** the map SHALL synchronize the pilot marker position, heading orientation, and active flight breadcrumb polyline.
 
 ### Requirement: In-Place Edit Mode Widget Configuration
-The application SHALL provide an in-place configuration interface within Edit Mode that enables pilots to adjust both placement bounds and widget-specific styling properties across the high-density grid.
+The application SHALL provide an in-place configuration interface within Edit Mode that enables pilots to adjust both placement bounds and widget-specific styling properties across the high-density grid without layout overflows across any supported widget dimensions.
 
 #### Scenario: Opening widget tune dialog
 - **WHEN** a pilot taps the configure/tune button on a widget frame in Edit Mode
@@ -93,7 +93,7 @@ The application SHALL provide an in-place configuration interface within Edit Mo
 
 #### Scenario: Compact widget edit frame rendering
 - **WHEN** a widget is scaled down to a compact size (e.g. 1x1, 2x1, or 2x2)
-- **THEN** the edit frame header and controls SHALL scale or adapt to prevent overlapping or obscuring the inner telemetry contents.
+- **THEN** the edit frame header and controls SHALL scale down using fitted containers and priority icon visibility to prevent any RenderFlex overflow or text clipping.
 
 ### Requirement: Scoped Global Settings Panel
 The primary application Settings panel SHALL be scoped strictly to global concerns (Flight Computer sensor thresholds, Vario audio, Screen management, Cloud sync, and Shell preferences) and SHALL NOT expose widget-specific styling controls.
@@ -210,3 +210,14 @@ The application SHALL display an elevated floating or docked Inspector Panel in 
 - **WHEN** the pilot taps the remove/delete action within the Inspector Panel
 - **THEN** the selected widget SHALL be removed from the active screen configuration
 - **AND** the inspector panel SHALL dismiss with selection cleared.
+
+### Requirement: Accessible Navigation Overlay and Safe Area Anchoring
+The top navigation bar grab handle and status badges SHALL anchor below platform safe area insets and provide minimum 48x48dp interactive touch boundaries and semantic descriptions.
+
+#### Scenario: Status bar safe area separation
+- **WHEN** the application is rendered on a device or emulator with a status bar notch or camera cutout
+- **THEN** the navigation grab handle and top badges SHALL render strictly below system safe area insets without visual overlap or touch collision with system gestures.
+
+#### Scenario: Accessible grab handle tap target
+- **WHEN** an assistive technology or flight pilot taps the top navigation trigger
+- **THEN** the interactive hit target SHALL be at least 48dp in height and width and emit an accessible semantic action label.

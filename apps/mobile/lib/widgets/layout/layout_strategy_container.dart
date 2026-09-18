@@ -67,43 +67,48 @@ class LayoutStrategyContainer extends StatelessWidget {
                       _buildInspectorPanel(context, selectedWidget),
                       const SizedBox(height: 10),
                     ],
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        FloatingActionButton.extended(
-                          key: const Key('btn_add_widget'),
-                          heroTag: 'add_widget_fab',
-                          backgroundColor: Colors.blueAccent,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add Widget'),
-                          tooltip: 'Add new widget to layout',
-                          onPressed: () {
-                            showModalBottomSheet(
-                              context: context,
-                              backgroundColor: Colors.transparent,
-                              builder: (ctx) => WidgetPickerSheet(
-                                screenManager: screenManager,
-                              ),
-                            );
-                          },
-                        ),
-                        _buildLayerSelector(
-                          context,
-                          activeScreen.widgets,
-                          selectedWidget,
-                        ),
-                        FloatingActionButton.extended(
-                          key: const Key('btn_done_editing'),
-                          heroTag: 'done_edit_fab',
-                          backgroundColor: Colors.green,
-                          icon: const Icon(Icons.check),
-                          label: const Text('Done Editing'),
-                          tooltip: 'Save layout and exit edit mode',
-                          onPressed: () {
-                            screenManager.toggleEditMode(false);
-                          },
-                        ),
-                      ],
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          FloatingActionButton.extended(
+                            key: const Key('btn_add_widget'),
+                            heroTag: 'add_widget_fab',
+                            backgroundColor: Colors.blueAccent,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Widget'),
+                            tooltip: 'Add new widget to layout',
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                builder: (ctx) => WidgetPickerSheet(
+                                  screenManager: screenManager,
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _buildLayerSelector(
+                            context,
+                            activeScreen.widgets,
+                            selectedWidget,
+                          ),
+                          const SizedBox(width: 8),
+                          FloatingActionButton.extended(
+                            key: const Key('btn_done_editing'),
+                            heroTag: 'done_edit_fab',
+                            backgroundColor: Colors.green,
+                            icon: const Icon(Icons.check),
+                            label: const Text('Done Editing'),
+                            tooltip: 'Save layout and exit edit mode',
+                            onPressed: () {
+                              screenManager.toggleEditMode(false);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -825,94 +830,109 @@ class LayoutStrategyContainer extends StatelessWidget {
         (telemetryData['flightPoints'] as List<FlightPoint>?) ??
         (telemetryData['activeFlightPoints'] as List<FlightPoint>?);
 
+    final rawHistory = telemetryData['history'];
+    final List<double> history = rawHistory is List<double>
+        ? rawHistory
+        : (rawHistory as List<dynamic>?)
+            ?.map((e) => (e as num).toDouble())
+            .toList() ??
+          const [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
+
     switch (model.type) {
       case WidgetType.altitude:
-        return NumericTextWidget(
-          label: 'Altitude',
-          value: alt.toStringAsFixed(0),
-          unit: 'm',
-          style: model.effectiveNumericStyle,
+        return RepaintBoundary(
+          child: NumericTextWidget(
+            label: 'Altitude',
+            value: alt.toStringAsFixed(0),
+            unit: 'm',
+            style: model.effectiveNumericStyle,
+          ),
         );
       case WidgetType.speed:
-        return NumericTextWidget(
-          label: 'Speed',
-          value: speed.toStringAsFixed(1),
-          unit: 'km/h',
-          style: model.effectiveNumericStyle,
+        return RepaintBoundary(
+          child: NumericTextWidget(
+            label: 'Speed',
+            value: speed.toStringAsFixed(1),
+            unit: 'km/h',
+            style: model.effectiveNumericStyle,
+          ),
         );
       case WidgetType.glide:
-        return NumericTextWidget(
-          label: 'Glide',
-          value: glide.toStringAsFixed(1),
-          unit: 'L/D',
-          style: model.effectiveNumericStyle,
+        return RepaintBoundary(
+          child: NumericTextWidget(
+            label: 'Glide',
+            value: glide.toStringAsFixed(1),
+            unit: 'L/D',
+            style: model.effectiveNumericStyle,
+          ),
         );
       case WidgetType.hag:
-        return NumericTextWidget(
-          label: 'HAG',
-          value: hag.toStringAsFixed(0),
-          unit: 'm AGL',
-          style: model.effectiveNumericStyle,
+        return RepaintBoundary(
+          child: NumericTextWidget(
+            label: 'HAG',
+            value: hag.toStringAsFixed(0),
+            unit: 'm AGL',
+            style: model.effectiveNumericStyle,
+          ),
         );
       case WidgetType.windDirection:
-        return WindDirectionWidget(
-          directionDegrees: windDeg,
-          speedKmH: windSpd,
-          style: model.effectiveWindStyle,
+        return RepaintBoundary(
+          child: WindDirectionWidget(
+            directionDegrees: windDeg,
+            speedKmH: windSpd,
+            style: model.effectiveWindStyle,
+          ),
         );
       case WidgetType.varioBar:
-        return VarioLiftSinkBar(
-          climbRateMs: climb,
-          style: model.effectiveVarioStyle,
+        return RepaintBoundary(
+          child: VarioLiftSinkBar(
+            climbRateMs: climb,
+            style: model.effectiveVarioStyle,
+          ),
         );
       case WidgetType.altitudeChart:
-        // ⚡ Bolt: Lazily parse expensive telemetry array to prevent O(N * W) scaling
-        final history =
-            (telemetryData['history'] as List<dynamic>?)
-                ?.map((e) => (e as num).toDouble())
-                .toList() ??
-            [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
-        return AltitudeSparklineChart(
-          history: history,
-          style: model.effectiveAltitudeChartStyle,
+        return RepaintBoundary(
+          child: AltitudeSparklineChart(
+            history: history,
+            style: model.effectiveAltitudeChartStyle,
+          ),
         );
       case WidgetType.map:
-        final mapHistory =
-            (telemetryData['history'] as List<dynamic>?)
-                ?.map((e) => (e as num).toDouble())
-                .toList() ??
-            const <double>[];
-        return MapWidget(
-          key: ValueKey('map_widget_${model.id}'),
-          style: model.effectiveMapStyle,
-          orientation: model.effectiveMapOrientation,
-          showAirspace: model.effectiveMapShowAirspace,
-          showThermals: model.effectiveMapShowThermals,
-          showTrack: model.effectiveMapShowTrack,
-          showContours: model.effectiveMapShowContours,
-          initialZoom: model.effectiveMapZoomLevel,
-          altitudeM: alt,
-          speedKmh: speed,
-          climbRateMs: climb,
-          headingDeg: heading,
-          altitudeHistory: mapHistory,
-          pilotPosition: pilotPos,
-          trackPoints: trackPoints,
-          flightPoints: flightPoints,
-          mapTrackHistoryMinutes: model.effectiveMapTrackHistoryMinutes,
-          mapTrackShowOlderTail: model.effectiveMapTrackShowOlderTail,
+        return RepaintBoundary(
+          child: MapWidget(
+            key: ValueKey('map_widget_${model.id}'),
+            style: model.effectiveMapStyle,
+            orientation: model.effectiveMapOrientation,
+            showAirspace: model.effectiveMapShowAirspace,
+            showThermals: model.effectiveMapShowThermals,
+            showTrack: model.effectiveMapShowTrack,
+            showContours: model.effectiveMapShowContours,
+            initialZoom: model.effectiveMapZoomLevel,
+            altitudeM: alt,
+            speedKmh: speed,
+            climbRateMs: climb,
+            headingDeg: heading,
+            altitudeHistory: history,
+            pilotPosition: pilotPos,
+            trackPoints: trackPoints,
+            flightPoints: flightPoints,
+            mapTrackHistoryMinutes: model.effectiveMapTrackHistoryMinutes,
+            mapTrackShowOlderTail: model.effectiveMapTrackShowOlderTail,
+          ),
         );
       case WidgetType.thermalMap:
-        return ThermalMapWidget(
-          style: model.effectiveThermalMapStyle,
-          showCore: model.effectiveThermalMapShowCore,
-          historySeconds: model.effectiveThermalMapHistorySeconds,
-          altitudeM: alt,
-          speedKmh: speed,
-          climbRateMs: climb,
-          headingDeg: windDeg,
-          windDirDeg: windDeg,
-          windSpeedKmh: windSpd,
+        return RepaintBoundary(
+          child: ThermalMapWidget(
+            style: model.effectiveThermalMapStyle,
+            showCore: model.effectiveThermalMapShowCore,
+            historySeconds: model.effectiveThermalMapHistorySeconds,
+            altitudeM: alt,
+            speedKmh: speed,
+            climbRateMs: climb,
+            headingDeg: windDeg,
+            windDirDeg: windDeg,
+            windSpeedKmh: windSpd,
+          ),
         );
     }
   }
@@ -1000,18 +1020,19 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
           child: Stack(
             children: [
               // Widget Content (Scales to fill allotted frame space)
-              Positioned.fill(
-                top: headerHeight + 1,
-                bottom: bottomBarHeight + 1,
-                left: 2,
-                right: 2,
-                child: ClipRect(
-                  child: Opacity(
-                    opacity: 0.9,
-                    child: SizedBox.expand(child: widget.child),
+              if (pixelHeight > (headerHeight + bottomBarHeight + 4))
+                Positioned.fill(
+                  top: headerHeight + 1,
+                  bottom: bottomBarHeight + 1,
+                  left: 2,
+                  right: 2,
+                  child: ClipRect(
+                    child: Opacity(
+                      opacity: 0.9,
+                      child: SizedBox.expand(child: widget.child),
+                    ),
                   ),
                 ),
-              ),
 
               // Top Header: Drag Handle & Info & Actions
               Positioned(
@@ -1068,61 +1089,67 @@ class _WidgetEditFrameState extends State<_WidgetEditFrame> {
                           ),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.drag_indicator,
-                              size: isCompact ? 11 : 14,
-                              color: Colors.cyanAccent,
-                            ),
-                            const SizedBox(width: 2),
-                            Expanded(
-                              child: Text(
-                                '$typeName [${model.x},${model.y} ${model.w}x${model.h}]',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: isCompact ? 8 : 9,
-                                  fontWeight: FontWeight.bold,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.drag_indicator,
+                                size: isCompact ? 11 : 14,
+                                color: Colors.cyanAccent,
+                              ),
+                              if (model.w > 1) ...[
+                                const SizedBox(width: 2),
+                                Text(
+                                  '$typeName [${model.x},${model.y} ${model.w}x${model.h}]',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isCompact ? 8 : 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 2),
+                              ],
+                              // Configure Dialog Button
+                              IconButton(
+                                key: Key('btn_config_$id'),
+                                onPressed: () => _showConfigDialog(
+                                  context,
+                                  widget.model,
+                                  widget.screenManager,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 1,
+                                ),
+                                constraints: const BoxConstraints(),
+                                iconSize: isCompact ? 11 : 14,
+                                tooltip: 'Configure Widget',
+                                icon: const Icon(
+                                  Icons.tune,
+                                  color: Colors.white70,
+                                ),
                               ),
-                            ),
-                            // Configure Dialog Button
-                            IconButton(
-                              key: Key('btn_config_$id'),
-                              onPressed: () => _showConfigDialog(
-                                context,
-                                widget.model,
-                                widget.screenManager,
+                              // Delete Button
+                              IconButton(
+                                key: Key('btn_delete_$id'),
+                                onPressed: () =>
+                                    widget.screenManager.removeWidget(id),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 1,
+                                ),
+                                constraints: const BoxConstraints(),
+                                iconSize: isCompact ? 11 : 14,
+                                tooltip: 'Remove Widget',
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.redAccent,
+                                ),
                               ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 1,
-                              ),
-                              constraints: const BoxConstraints(),
-                              iconSize: isCompact ? 11 : 14,
-                              tooltip: 'Configure Widget',
-                              icon: const Icon(
-                                Icons.tune,
-                                color: Colors.white70,
-                              ),
-                            ),
-                            // Delete Button
-                            IconButton(
-                              key: Key('btn_delete_$id'),
-                              onPressed: () =>
-                                  widget.screenManager.removeWidget(id),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 1,
-                              ),
-                              constraints: const BoxConstraints(),
-                              iconSize: isCompact ? 11 : 14,
-                              tooltip: 'Remove Widget',
-                              icon: const Icon(
-                                Icons.close,
-                                color: Colors.redAccent,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import '../models/flight_model.dart';
 import '../models/flight_settings.dart';
@@ -26,6 +27,8 @@ class FlightTrackingService extends ChangeNotifier {
   FlightState _state = FlightState.groundPreflight;
   final List<FlightPoint> _preTakeoffBuffer = [];
   final List<FlightPoint> _activeFlightPoints = [];
+  late final List<FlightPoint> _activeFlightPointsView =
+      UnmodifiableListView(_activeFlightPoints);
 
   DateTime? _takeoffConditionStartTime;
   DateTime? _landingConditionStartTime;
@@ -39,7 +42,7 @@ class FlightTrackingService extends ChangeNotifier {
   FlightState get state => _state;
   FlightSettings get settings => _settings;
   ITelemetrySource? get telemetrySource => _telemetrySource;
-  List<FlightPoint> get activeFlightPoints => List.unmodifiable(_activeFlightPoints);
+  List<FlightPoint> get activeFlightPoints => _activeFlightPointsView;
   FlightModel? get lastCompletedFlight => _lastCompletedFlight;
 
   Stream<FlightState> get stateStream => _stateController.stream;
