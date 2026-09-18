@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.6.1...brandyfly-v0.7.0) (2026-09-18)
+
+
+### Features
+
+* **layout:** add accessibility semantics to drag and resize handles ([#180](https://github.com/markusbrand/brandyfly/issues/180)) ([264f3b7](https://github.com/markusbrand/brandyfly/commit/264f3b7cb8e8f7334aae36f930574a7b64e4351e))
+* **ui:** harden layout ergonomics, eliminate overflows, optimize rendering, and add dense tests ([#183](https://github.com/markusbrand/brandyfly/issues/183)) ([093c029](https://github.com/markusbrand/brandyfly/commit/093c029ad55ff53b62688c6805ebe7eaed12bd2a))
+
 ## [0.6.1](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.6.0...brandyfly-v0.6.1) (2026-09-16)
 
 
