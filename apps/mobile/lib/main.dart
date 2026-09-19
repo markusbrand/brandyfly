@@ -102,13 +102,16 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
         _storageService.initializeSampleFlight().catchError((_) {});
       }
 
-      _uploadService = widget.uploadService ??
+      _uploadService =
+          widget.uploadService ??
           XContestUploadService(
             storageService: _storageService,
             settings: _trackingService.settings,
           );
 
-      _flightCompletedSub = _trackingService.flightCompletedStream.listen((flight) {
+      _flightCompletedSub = _trackingService.flightCompletedStream.listen((
+        flight,
+      ) {
         _onFlightCompleted(flight);
       });
 
@@ -119,7 +122,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
             await widget.native.configureLocalMockFlightMode(widget.config);
           } else {
             _platformVersion =
-                await widget.native.getPlatformVersion() ?? 'Unknown platform version';
+                await widget.native.getPlatformVersion() ??
+                'Unknown platform version';
           }
         } on MissingPluginException {
           _platformVersion = 'Platform Fallback';
@@ -519,11 +523,13 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
               _overlayKey.currentContext?.findRenderObject() as RenderBox?;
           final cardSize = box?.size ?? const Size(280, 50);
           final minX = safePadding.left + 4;
-          final maxX = (constraints.maxWidth - cardSize.width - safePadding.right - 4)
-              .clamp(minX, double.infinity);
+          final maxX =
+              (constraints.maxWidth - cardSize.width - safePadding.right - 4)
+                  .clamp(minX, double.infinity);
           final minY = safePadding.top + 4;
-          final maxY = (constraints.maxHeight - cardSize.height - safePadding.bottom - 4)
-              .clamp(minY, double.infinity);
+          final maxY =
+              (constraints.maxHeight - cardSize.height - safePadding.bottom - 4)
+                  .clamp(minY, double.infinity);
 
           clampedPos = Offset(
             _overlayPosition!.dx.clamp(minX, maxX),
@@ -531,223 +537,247 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
           );
         }
 
-        final overlayCard = GestureDetector(
-          key: const Key('simulation_overlay_card'),
-          behavior: HitTestBehavior.opaque,
-          onPanStart: (details) {
-            if (_overlayPosition == null) {
+        final overlayCard = Semantics(
+          button: false,
+          label: 'Simulation overlay, double tap and drag to move',
+          child: GestureDetector(
+            key: const Key('simulation_overlay_card'),
+            behavior: HitTestBehavior.opaque,
+            onPanStart: (details) {
+              if (_overlayPosition == null) {
+                final RenderBox? box =
+                    _overlayKey.currentContext?.findRenderObject()
+                        as RenderBox?;
+                final RenderBox? rootBox =
+                    context.findRenderObject() as RenderBox?;
+                if (box != null &&
+                    box.hasSize &&
+                    rootBox != null &&
+                    rootBox.hasSize) {
+                  _overlayPosition = rootBox.globalToLocal(
+                    box.localToGlobal(Offset.zero),
+                  );
+                }
+              }
+            },
+            onPanUpdate: (details) {
               final RenderBox? box =
                   _overlayKey.currentContext?.findRenderObject() as RenderBox?;
-              final RenderBox? rootBox =
-                  context.findRenderObject() as RenderBox?;
-              if (box != null && box.hasSize && rootBox != null && rootBox.hasSize) {
-                _overlayPosition = rootBox.globalToLocal(box.localToGlobal(Offset.zero));
-              }
-            }
-          },
-          onPanUpdate: (details) {
-            final RenderBox? box =
-                _overlayKey.currentContext?.findRenderObject() as RenderBox?;
-            final cardSize = box?.size ?? const Size(280, 50);
+              final cardSize = box?.size ?? const Size(280, 50);
 
-            final minX = safePadding.left + 4;
-            final maxX = (constraints.maxWidth - cardSize.width - safePadding.right - 4)
-                .clamp(minX, double.infinity);
-            final minY = safePadding.top + 4;
-            final maxY = (constraints.maxHeight - cardSize.height - safePadding.bottom - 4)
-                .clamp(minY, double.infinity);
+              final minX = safePadding.left + 4;
+              final maxX =
+                  (constraints.maxWidth -
+                          cardSize.width -
+                          safePadding.right -
+                          4)
+                      .clamp(minX, double.infinity);
+              final minY = safePadding.top + 4;
+              final maxY =
+                  (constraints.maxHeight -
+                          cardSize.height -
+                          safePadding.bottom -
+                          4)
+                      .clamp(minY, double.infinity);
 
-            final currentPos = _overlayPosition ??
-                Offset(
-                  (constraints.maxWidth - cardSize.width - safePadding.right - 8)
-                      .clamp(minX, maxX),
-                  safePadding.top + 8,
-                );
+              final currentPos =
+                  _overlayPosition ??
+                  Offset(
+                    (constraints.maxWidth -
+                            cardSize.width -
+                            safePadding.right -
+                            8)
+                        .clamp(minX, maxX),
+                    safePadding.top + 8,
+                  );
 
-            final newX = (currentPos.dx + details.delta.dx).clamp(minX, maxX);
-            final newY = (currentPos.dy + details.delta.dy).clamp(minY, maxY);
+              final newX = (currentPos.dx + details.delta.dx).clamp(minX, maxX);
+              final newY = (currentPos.dy + details.delta.dy).clamp(minY, maxY);
 
-            setState(() {
-              _overlayPosition = Offset(newX, newY);
-            });
-          },
-          child: Container(
-            key: _overlayKey,
-            constraints: const BoxConstraints(maxWidth: 360),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.blueGrey.shade900.withAlpha(220),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isReplaying
-                    ? Colors.cyanAccent.withAlpha(140)
-                    : Colors.orangeAccent.withAlpha(140),
-                width: 1.2,
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black54,
-                  blurRadius: 10,
-                  offset: Offset(0, 3),
+              setState(() {
+                _overlayPosition = Offset(newX, newY);
+              });
+            },
+            child: Container(
+              key: _overlayKey,
+              constraints: const BoxConstraints(maxWidth: 360),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade900.withAlpha(220),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isReplaying
+                      ? Colors.cyanAccent.withAlpha(140)
+                      : Colors.orangeAccent.withAlpha(140),
+                  width: 1.2,
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'BrandyFly',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      _ModeChip(
-                        label: isReplaying ? 'REPLAY' : 'SIMULATED',
-                        color: isReplaying ? Colors.cyanAccent : Colors.orange,
-                      ),
-                      if (!isReplaying) ...[
-                        IconButton(
-                          icon: const Icon(
-                            Icons.skip_next,
-                            size: 16,
-                            color: Colors.orangeAccent,
-                          ),
-                          padding: const EdgeInsets.all(2),
-                          constraints: const BoxConstraints(),
-                          tooltip: 'Advance scenario',
-                          onPressed: widget.onNext,
-                        ),
-                        const SizedBox(width: 2),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.restart_alt,
-                            size: 16,
-                            color: Colors.white70,
-                          ),
-                          padding: const EdgeInsets.all(2),
-                          constraints: const BoxConstraints(),
-                          tooltip: 'Reset replay',
-                          onPressed: widget.onReset,
-                        ),
-                        const SizedBox(width: 2),
-                        IconButton(
-                          key: Key(
-                            _isSessionMinimized
-                                ? 'btn_expand_mock_session'
-                                : 'btn_minimize_mock_session',
-                          ),
-                          icon: Icon(
-                            _isSessionMinimized
-                                ? Icons.expand_more
-                                : Icons.expand_less,
-                            size: 18,
-                            color: Colors.white70,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          tooltip: _isSessionMinimized
-                              ? 'Expand mock flight session'
-                              : 'Minimize mock flight session',
-                          onPressed: () => setState(
-                            () => _isSessionMinimized = !_isSessionMinimized,
-                          ),
-                        ),
-                      ],
-                    ],
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black54,
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
                   ),
-                ),
-                if (!isReplaying && !_isSessionMinimized) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Mock flight session (${widget.config.sessionLabel})',
-                          style: const TextStyle(
-                            color: Colors.orangeAccent,
+                        const Text(
+                          'BrandyFly',
+                          style: TextStyle(
+                            color: Colors.white70,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Fixture: ${widget.config.fixtureVersion}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
+                        const SizedBox(width: 4),
+                        _ModeChip(
+                          label: isReplaying ? 'REPLAY' : 'SIMULATED',
+                          color: isReplaying
+                              ? Colors.cyanAccent
+                              : Colors.orange,
                         ),
-                        Text(
-                          'Seed: ${widget.config.seed}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
+                        if (!isReplaying) ...[
+                          IconButton(
+                            icon: const Icon(
+                              Icons.skip_next,
+                              size: 16,
+                              color: Colors.orangeAccent,
+                            ),
+                            padding: const EdgeInsets.all(2),
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Advance scenario',
+                            onPressed: widget.onNext,
                           ),
-                        ),
-                        Text(
-                          'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
+                          const SizedBox(width: 2),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.restart_alt,
+                              size: 16,
+                              color: Colors.white70,
+                            ),
+                            padding: const EdgeInsets.all(2),
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Reset replay',
+                            onPressed: widget.onReset,
                           ),
-                        ),
-                        Text(
-                          'Provenance: ${widget.config.provenance}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
+                          const SizedBox(width: 2),
+                          IconButton(
+                            key: Key(
+                              _isSessionMinimized
+                                  ? 'btn_expand_mock_session'
+                                  : 'btn_minimize_mock_session',
+                            ),
+                            icon: Icon(
+                              _isSessionMinimized
+                                  ? Icons.expand_more
+                                  : Icons.expand_less,
+                              size: 18,
+                              color: Colors.white70,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: _isSessionMinimized
+                                ? 'Expand mock flight session'
+                                : 'Minimize mock flight session',
+                            onPressed: () => setState(
+                              () => _isSessionMinimized = !_isSessionMinimized,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Session label: ${widget.config.sessionLabel}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        Text(
-                          'Replay hash: ${widget.replay.canonicalReplayHash}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        Text(
-                          'Marker: ${frame.sessionMarker}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        Text(
-                          frame.title,
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.cyanAccent,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
+                  if (!isReplaying && !_isSessionMinimized) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Mock flight session (${widget.config.sessionLabel})',
+                            style: const TextStyle(
+                              color: Colors.orangeAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Fixture: ${widget.config.fixtureVersion}',
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            'Seed: ${widget.config.seed}',
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            'Provenance: ${widget.config.provenance}',
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            'Session label: ${widget.config.sessionLabel}',
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            'Replay hash: ${widget.replay.canonicalReplayHash}',
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            'Marker: ${frame.sessionMarker}',
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            frame.title,
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );
@@ -793,4 +823,3 @@ class _ModeChip extends StatelessWidget {
     );
   }
 }
-
