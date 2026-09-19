@@ -370,12 +370,16 @@ class _MapWidgetState extends State<MapWidget> {
         children: [
           // 1. Map Canvas / MapLibre GL Base Map
           Positioned.fill(
-            child: GestureDetector(
-              key: const Key('map_gesture_detector'),
-              behavior: HitTestBehavior.opaque,
-              onPanStart: _onPanStart,
-              onPanUpdate: _onPanUpdate,
-              child: _buildMapBackground(_cameraCenter),
+            child: Semantics(
+              button: false,
+              label: 'Flight map, double tap and drag to pan',
+              child: GestureDetector(
+                key: const Key('map_gesture_detector'),
+                behavior: HitTestBehavior.opaque,
+                onPanStart: _onPanStart,
+                onPanUpdate: _onPanUpdate,
+                child: _buildMapBackground(_cameraCenter),
+              ),
             ),
           ),
 
