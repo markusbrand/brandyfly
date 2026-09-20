@@ -119,30 +119,34 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
         children: [
           // Interactive Pan & Zoom Custom Canvas
           Positioned.fill(
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                setState(() {
-                  _panOffset += details.delta;
-                  _centerOnPilot = false;
-                });
-                _startRecenterTimer();
-              },
-              child: CustomPaint(
-                key: const Key('canvas_thermal_map'),
-                painter: _ThermalMapPainter(
-                  style: widget.style,
-                  showCore: widget.showCore,
-                  historySeconds: widget.historySeconds,
-                  zoomLevel: _zoomLevel,
-                  panOffset: _panOffset,
-                  altitudeM: widget.altitudeM,
-                  speedKmh: widget.speedKmh,
-                  climbRateMs: widget.climbRateMs,
-                  headingDeg: widget.headingDeg,
-                  windDirDeg: widget.windDirDeg,
-                  windSpeedKmh: widget.windSpeedKmh,
-                  trackPoints: widget.trackPoints,
-                  pulseAnimation: _pulseController,
+            child: Semantics(
+              button: false,
+              label: 'Interactive thermal map canvas',
+              child: GestureDetector(
+                onPanUpdate: (details) {
+                  setState(() {
+                    _panOffset += details.delta;
+                    _centerOnPilot = false;
+                  });
+                  _startRecenterTimer();
+                },
+                child: CustomPaint(
+                  key: const Key('canvas_thermal_map'),
+                  painter: _ThermalMapPainter(
+                    style: widget.style,
+                    showCore: widget.showCore,
+                    historySeconds: widget.historySeconds,
+                    zoomLevel: _zoomLevel,
+                    panOffset: _panOffset,
+                    altitudeM: widget.altitudeM,
+                    speedKmh: widget.speedKmh,
+                    climbRateMs: widget.climbRateMs,
+                    headingDeg: widget.headingDeg,
+                    windDirDeg: widget.windDirDeg,
+                    windSpeedKmh: widget.windSpeedKmh,
+                    trackPoints: widget.trackPoints,
+                    pulseAnimation: _pulseController,
+                  ),
                 ),
               ),
             ),
