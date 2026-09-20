@@ -41,3 +41,6 @@
 ## 2026-09-09 - Avoid `Vec::remove(0)` in Bounded Queue Operations
 **Learning:** Using `Vec::remove(0)` to drop the oldest item or pop elements from the front of a queue shifts every subsequent element in memory, resulting in O(N) operations per push/pop when capacity is reached. Switching the underlying storage to `VecDeque` converts `pop_front()` and `push_back()` into O(1) ring buffer operations.
 **Action:** Always use `std::collections::VecDeque` instead of `Vec` for FIFO queues or bounded buffers where items are inserted at the back and removed from the front.
+## 2024-05-17 - Optimize map overlay painter
+**Learning:** Found that `_FlightOverlayPainter` unconditionally returned `true` for `shouldRepaint`, causing severe CPU/GPU churn during 60Hz rendering and draining the battery by executing map drawing logic even when the state hadn't changed. Also observed `Paint` objects being redundantly allocated inside `paint()` and helper methods.
+**Action:** When implementing `CustomPainter` for frequently updated UI like map overlays, explicitly compare state dependencies (primitives via `!=`, lists via `listEquals`) in `shouldRepaint` instead of unconditionally returning `true`. Also, always cache `Paint` objects (using `static final` where possible, or instance-level caching) to prevent per-frame garbage collection pressure.

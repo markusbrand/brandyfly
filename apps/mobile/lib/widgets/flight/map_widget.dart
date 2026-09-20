@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart' hide Marker;
 
@@ -743,6 +744,43 @@ class _FlightOverlayPainter extends CustomPainter {
   final int mapTrackHistoryMinutes;
   final bool mapTrackShowOlderTail;
 
+  // ⚡ Bolt: Cache Paint objects statically to prevent per-frame GC allocations
+  static final Paint _haloPaint = Paint()
+    ..color = Colors.cyanAccent.withAlpha(45)
+    ..style = PaintingStyle.fill;
+
+  static final Paint _outlinePaint = Paint()
+    ..color = Colors.black87
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.5;
+
+  static final Paint _bodyPaint = Paint()
+    ..color = Colors.cyanAccent
+    ..style = PaintingStyle.fill;
+
+  static final Paint _fillPaint = Paint()
+    ..color = const Color(0xFFEF4444).withAlpha(35)
+    ..style = PaintingStyle.fill;
+
+  static final Paint _borderPaint = Paint()
+    ..color = const Color(0xFFEF4444).withAlpha(180)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+
+  static final Paint _trackPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3.5
+    ..strokeCap = StrokeCap.round;
+
+  static final Paint _circlePaint = Paint()
+    ..color = const Color(0xFFF97316).withAlpha(200)
+    ..style = PaintingStyle.fill;
+
+  static final Paint _ringPaint = Paint()
+    ..color = const Color(0xFFFACC15)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+
   Offset _toScreen(LatLng point, Size size) {
     if (mapController != null) {
       try {
@@ -831,16 +869,8 @@ class _FlightOverlayPainter extends CustomPainter {
     }
     path.close();
 
-    final fillPaint = Paint()
-      ..color = const Color(0xFFEF4444).withAlpha(35)
-      ..style = PaintingStyle.fill;
-    final borderPaint = Paint()
-      ..color = const Color(0xFFEF4444).withAlpha(180)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    canvas.drawPath(path, fillPaint);
-    canvas.drawPath(path, borderPaint);
+    canvas.drawPath(path, _fillPaint);
+    canvas.drawPath(path, _borderPaint);
   }
 
   void _paintFlightTrack(Canvas canvas, Size size) {
@@ -852,29 +882,16 @@ class _FlightOverlayPainter extends CustomPainter {
       final p2 = _toScreen(LatLng(points[i].latitude, points[i].longitude), size);
       final color = MapWidget.getVarioTrackColor(points[i].vario);
 
-      final trackPaint = Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.5
-        ..strokeCap = StrokeCap.round;
-
-      canvas.drawLine(p1, p2, trackPaint);
+      _trackPaint.color = color;
+      canvas.drawLine(p1, p2, _trackPaint);
     }
   }
 
   void _paintThermals(Canvas canvas, Size size) {
-    final circlePaint = Paint()
-      ..color = const Color(0xFFF97316).withAlpha(200)
-      ..style = PaintingStyle.fill;
-    final ringPaint = Paint()
-      ..color = const Color(0xFFFACC15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
     for (final th in defaultMockThermalHotspots) {
       final pos = _toScreen(th.$1, size);
-      canvas.drawCircle(pos, 8, circlePaint);
-      canvas.drawCircle(pos, 8, ringPaint);
+      canvas.drawCircle(pos, 8, _circlePaint);
+      canvas.drawCircle(pos, 8, _ringPaint);
     }
   }
 
@@ -889,10 +906,7 @@ class _FlightOverlayPainter extends CustomPainter {
     canvas.rotate(rotate);
 
     // Halo
-    final haloPaint = Paint()
-      ..color = Colors.cyanAccent.withAlpha(45)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset.zero, 18, haloPaint);
+    canvas.drawCircle(Offset.zero, 18, _haloPaint);
 
     // Glider Arrow
     final path = Path()
@@ -902,19 +916,25 @@ class _FlightOverlayPainter extends CustomPainter {
       ..lineTo(8, 8)
       ..close();
 
-    final outlinePaint = Paint()
-      ..color = Colors.black87
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-    final bodyPaint = Paint()
-      ..color = Colors.cyanAccent
-      ..style = PaintingStyle.fill;
-
-    canvas.drawPath(path, outlinePaint);
-    canvas.drawPath(path, bodyPaint);
+    canvas.drawPath(path, _outlinePaint);
+    canvas.drawPath(path, _bodyPaint);
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_FlightOverlayPainter old) => true;
+  bool shouldRepaint(_FlightOverlayPainter old) {
+    return old.pilotPosition != pilotPosition ||
+        old.cameraCenter != cameraCenter ||
+        old.orientation != orientation ||
+        old.headingDeg != headingDeg ||
+        old.zoom != zoom ||
+        old.showAirspace != showAirspace ||
+        old.showTrack != showTrack ||
+        old.showThermals != showThermals ||
+        old.climbRateMs != climbRateMs ||
+        old.mapTrackHistoryMinutes != mapTrackHistoryMinutes ||
+        old.mapTrackShowOlderTail != mapTrackShowOlderTail ||
+        !listEquals(old.flightPoints, flightPoints) ||
+        !listEquals(old.trackPoints, trackPoints);
+  }
 }
