@@ -67,38 +67,22 @@ class MapWidget extends StatefulWidget {
     if (vario <= -3.0) return const Color(0xFF991B1B); // Deep Dark Red
     if (vario < -1.5) {
       final t = (vario - (-3.0)) / (-1.5 - (-3.0));
-      return Color.lerp(
-        const Color(0xFF991B1B),
-        const Color(0xFFEF4444),
-        t,
-      )!;
+      return Color.lerp(const Color(0xFF991B1B), const Color(0xFFEF4444), t)!;
     }
     if (vario < -0.5) {
       final t = (vario - (-1.5)) / (-0.5 - (-1.5));
-      return Color.lerp(
-        const Color(0xFFEF4444),
-        const Color(0xFFFCA5A5),
-        t,
-      )!;
+      return Color.lerp(const Color(0xFFEF4444), const Color(0xFFFCA5A5), t)!;
     }
     if (vario <= 0.5) {
       return const Color(0xFF94A3B8); // Neutral Slate Grey
     }
     if (vario < 1.5) {
       final t = (vario - 0.5) / (1.5 - 0.5);
-      return Color.lerp(
-        const Color(0xFF86EFAC),
-        const Color(0xFF22C55E),
-        t,
-      )!;
+      return Color.lerp(const Color(0xFF86EFAC), const Color(0xFF22C55E), t)!;
     }
     if (vario < 3.5) {
       final t = (vario - 1.5) / (3.5 - 1.5);
-      return Color.lerp(
-        const Color(0xFF22C55E),
-        const Color(0xFF15803D),
-        t,
-      )!;
+      return Color.lerp(const Color(0xFF22C55E), const Color(0xFF15803D), t)!;
     }
     return const Color(0xFF15803D); // Dark Emerald Green
   }
@@ -162,9 +146,7 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   Future<void> _initMapStyle() async {
-    final style = await _mapService.buildStyleJson(
-      regionId: widget.regionId,
-    );
+    final style = await _mapService.buildStyleJson(regionId: widget.regionId);
     if (mounted) {
       setState(() {
         _styleJson = style;
@@ -224,29 +206,39 @@ class _MapWidgetState extends State<MapWidget> {
         ? widget.headingDeg
         : 0.0;
     if (animate) {
-      _mapService.animateCamera(
-        position: _cameraCenter,
-        zoom: _currentZoom,
-        bearing: bearing,
-      ).whenComplete(() {
-        if (!mounted) return;
-        _programmaticMoveTimer?.cancel();
-        _programmaticMoveTimer = Timer(const Duration(milliseconds: 300), () {
-          if (mounted) _isProgrammaticMove = false;
-        });
-      });
+      _mapService
+          .animateCamera(
+            position: _cameraCenter,
+            zoom: _currentZoom,
+            bearing: bearing,
+          )
+          .whenComplete(() {
+            if (!mounted) return;
+            _programmaticMoveTimer?.cancel();
+            _programmaticMoveTimer = Timer(
+              const Duration(milliseconds: 300),
+              () {
+                if (mounted) _isProgrammaticMove = false;
+              },
+            );
+          });
     } else {
-      _mapService.moveCamera(
-        position: _cameraCenter,
-        zoom: _currentZoom,
-        bearing: bearing,
-      ).whenComplete(() {
-        if (!mounted) return;
-        _programmaticMoveTimer?.cancel();
-        _programmaticMoveTimer = Timer(const Duration(milliseconds: 100), () {
-          if (mounted) _isProgrammaticMove = false;
-        });
-      });
+      _mapService
+          .moveCamera(
+            position: _cameraCenter,
+            zoom: _currentZoom,
+            bearing: bearing,
+          )
+          .whenComplete(() {
+            if (!mounted) return;
+            _programmaticMoveTimer?.cancel();
+            _programmaticMoveTimer = Timer(
+              const Duration(milliseconds: 100),
+              () {
+                if (mounted) _isProgrammaticMove = false;
+              },
+            );
+          });
     }
   }
 
@@ -256,10 +248,7 @@ class _MapWidgetState extends State<MapWidget> {
       _currentZoom = newZoom;
     });
 
-    _mapService.moveCamera(
-      position: _cameraCenter,
-      zoom: newZoom,
-    );
+    _mapService.moveCamera(position: _cameraCenter, zoom: newZoom);
 
     widget.onZoomChanged?.call(newZoom);
     if (delta > 0) {
@@ -285,7 +274,8 @@ class _MapWidgetState extends State<MapWidget> {
 
   void _onMapEvent(MapEvent event) {
     if (event is MapEventStartMoveCamera) {
-      if (event.reason == CameraChangeReason.apiGesture || !_isProgrammaticMove) {
+      if (event.reason == CameraChangeReason.apiGesture ||
+          !_isProgrammaticMove) {
         if (_centerOnPilot) {
           setState(() {
             _centerOnPilot = false;
@@ -370,12 +360,16 @@ class _MapWidgetState extends State<MapWidget> {
         children: [
           // 1. Map Canvas / MapLibre GL Base Map
           Positioned.fill(
-            child: GestureDetector(
-              key: const Key('map_gesture_detector'),
-              behavior: HitTestBehavior.opaque,
-              onPanStart: _onPanStart,
-              onPanUpdate: _onPanUpdate,
-              child: _buildMapBackground(_cameraCenter),
+            child: Semantics(
+              button: false,
+              label: 'Interactive map canvas',
+              child: GestureDetector(
+                key: const Key('map_gesture_detector'),
+                behavior: HitTestBehavior.opaque,
+                onPanStart: _onPanStart,
+                onPanUpdate: _onPanUpdate,
+                child: _buildMapBackground(_cameraCenter),
+              ),
             ),
           ),
 
@@ -488,11 +482,7 @@ class _MapWidgetState extends State<MapWidget> {
           ),
 
           // 5. North / Orientation Compass Widget
-          Positioned(
-            top: 8,
-            right: 8,
-            child: _buildCompassIndicator(),
-          ),
+          Positioned(top: 8, right: 8, child: _buildCompassIndicator()),
 
           // 6. In-flight Zoom Steppers & Recenter Toolbar
           Positioned(
@@ -527,11 +517,7 @@ class _MapWidgetState extends State<MapWidget> {
           ),
 
           // 7. Dynamic Scale Bar & Altitude / Speed HUD
-          Positioned(
-            bottom: 8,
-            left: 52,
-            child: _buildScaleAndLegend(),
-          ),
+          Positioned(bottom: 8, left: 52, child: _buildScaleAndLegend()),
         ],
       ),
     );
@@ -622,11 +608,7 @@ class _MapWidgetState extends State<MapWidget> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 30,
-                height: 2,
-                color: Colors.white70,
-              ),
+              Container(width: 30, height: 2, color: Colors.white70),
               const SizedBox(width: 4),
               Text(
                 '${scaleKm.toStringAsFixed(1)} km',
@@ -690,13 +672,28 @@ class _MapWidgetState extends State<MapWidget> {
     final now = DateTime.now();
     final latSteps = [0.015, 0.010, 0.006, 0.003, 0.001, 0.0];
     final lngSteps = [0.018, 0.012, 0.008, 0.003, 0.001, 0.0];
-    final varioProfile = [3.2, 2.4, 1.6, 0.8, 0.2, -0.3, -0.8, -1.6, -2.4, 0.5, 1.2, 2.8];
+    final varioProfile = [
+      3.2,
+      2.4,
+      1.6,
+      0.8,
+      0.2,
+      -0.3,
+      -0.8,
+      -1.6,
+      -2.4,
+      0.5,
+      1.2,
+      2.8,
+    ];
 
     final mock = <FlightPoint>[];
     for (var i = 0; i < latSteps.length; i++) {
       mock.add(
         FlightPoint(
-          timestamp: now.subtract(Duration(minutes: (latSteps.length - i - 1) * 1)),
+          timestamp: now.subtract(
+            Duration(minutes: (latSteps.length - i - 1) * 1),
+          ),
           latitude: p.latitude - latSteps[i],
           longitude: p.longitude - lngSteps[i],
           altitude: 1450.0 + (i * 12),
@@ -762,7 +759,9 @@ class _FlightOverlayPainter extends CustomPainter {
     double latToMercatorY(double lat) {
       final clamped = lat.clamp(-85.05112878, 85.05112878);
       final sinLat = math.sin(clamped * math.pi / 180.0);
-      return (0.5 - math.log((1.0 + sinLat) / (1.0 - sinLat)) / (4.0 * math.pi)) * worldSize;
+      return (0.5 -
+              math.log((1.0 + sinLat) / (1.0 - sinLat)) / (4.0 * math.pi)) *
+          worldSize;
     }
 
     final centerLatY = latToMercatorY(cameraCenter.latitude);
@@ -848,8 +847,14 @@ class _FlightOverlayPainter extends CustomPainter {
     if (points.isEmpty) return;
 
     for (int i = 1; i < points.length; i++) {
-      final p1 = _toScreen(LatLng(points[i - 1].latitude, points[i - 1].longitude), size);
-      final p2 = _toScreen(LatLng(points[i].latitude, points[i].longitude), size);
+      final p1 = _toScreen(
+        LatLng(points[i - 1].latitude, points[i - 1].longitude),
+        size,
+      );
+      final p2 = _toScreen(
+        LatLng(points[i].latitude, points[i].longitude),
+        size,
+      );
       final color = MapWidget.getVarioTrackColor(points[i].vario);
 
       final trackPaint = Paint()
