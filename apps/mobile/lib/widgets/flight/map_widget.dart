@@ -847,17 +847,17 @@ class _FlightOverlayPainter extends CustomPainter {
     final points = flightPoints;
     if (points.isEmpty) return;
 
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+
     for (int i = 1; i < points.length; i++) {
       final p1 = _toScreen(LatLng(points[i - 1].latitude, points[i - 1].longitude), size);
       final p2 = _toScreen(LatLng(points[i].latitude, points[i].longitude), size);
       final color = MapWidget.getVarioTrackColor(points[i].vario);
 
-      final trackPaint = Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.5
-        ..strokeCap = StrokeCap.round;
-
+      trackPaint.color = color;
       canvas.drawLine(p1, p2, trackPaint);
     }
   }
@@ -916,5 +916,19 @@ class _FlightOverlayPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_FlightOverlayPainter old) => true;
+  bool shouldRepaint(_FlightOverlayPainter old) {
+    return old.pilotPosition != pilotPosition ||
+        old.cameraCenter != cameraCenter ||
+        old.orientation != orientation ||
+        old.headingDeg != headingDeg ||
+        old.zoom != zoom ||
+        old.showAirspace != showAirspace ||
+        old.showTrack != showTrack ||
+        old.showThermals != showThermals ||
+        old.flightPoints != flightPoints ||
+        old.trackPoints != trackPoints ||
+        old.climbRateMs != climbRateMs ||
+        old.mapTrackHistoryMinutes != mapTrackHistoryMinutes ||
+        old.mapTrackShowOlderTail != mapTrackShowOlderTail;
+  }
 }
