@@ -76,7 +76,8 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
 
           // Drag & tap trigger handle at top of screen for swipe down
           if (!widget.screenManager.isNavBarVisible &&
-              !widget.screenManager.isEditMode)
+              !widget.screenManager.isEditMode &&
+              !widget.screenManager.isSettingsVisible)
             Positioned(
               top: 0,
               left: 0,
