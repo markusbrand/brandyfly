@@ -51,7 +51,9 @@ All non-trivial changes, feature additions, bug fixes, and architectural adjustm
    - Use `openspec-sync-specs` if specs need syncing prior to archiving.
 
 6. **Post-Archive Commit, Push & Pull Request**:
-   - Immediately following `openspec archive`, commit all remaining changes/spec promotions (`git commit -m "chore(openspec): archive <change-name>"`).
+   - Immediately following `openspec archive`, open the newly promoted spec file in `openspec/specs/` and replace the `TBD` placeholder in the `## Purpose` section with a proper description.
+   - Run `npx openspec validate --all --strict` one final time to ensure the promoted spec is valid.
+   - Commit all remaining changes (`git commit -m "chore(openspec): archive <change-name>"`).
    - Push the feature branch to the GitHub remote repository (`git push -u origin <branch-name>`).
    - Create a GitHub Pull Request (using `gh pr create` or GitHub CLI/API) targeting `main` (or `master`). Include PR details and status (whether pending review or already merged).
 
