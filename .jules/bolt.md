@@ -41,3 +41,7 @@
 ## 2026-09-09 - Avoid `Vec::remove(0)` in Bounded Queue Operations
 **Learning:** Using `Vec::remove(0)` to drop the oldest item or pop elements from the front of a queue shifts every subsequent element in memory, resulting in O(N) operations per push/pop when capacity is reached. Switching the underlying storage to `VecDeque` converts `pop_front()` and `push_back()` into O(1) ring buffer operations.
 **Action:** Always use `std::collections::VecDeque` instead of `Vec` for FIFO queues or bounded buffers where items are inserted at the back and removed from the front.
+
+## $(date +%Y-%m-%d) - Optimize CustomPainter Repaints and Allocations
+**Learning:** In Flutter `CustomPainter`, unconditionally returning `true` from `shouldRepaint` causes the canvas to be expensively redrawn on every frame tick, even when the data hasn't changed. Furthermore, allocating `Paint` objects inside the `paint()` method or conditionally recreating them causes per-frame GC allocations leading to jank.
+**Action:** Always implement `shouldRepaint` with precise reference equality checks (`!=`) for all properties that affect the rendering output. Additionally, extract all `Paint` allocations to `static final` class properties to guarantee zero per-frame object allocations while preserving `const` constructor optimizations.
