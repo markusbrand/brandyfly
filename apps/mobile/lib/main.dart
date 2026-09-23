@@ -206,7 +206,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_screenManager, _replayService]),
+      animation: _screenManager,
       builder: (context, _) {
         return MaterialApp(
           title: 'BrandyFly',
@@ -236,32 +236,35 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                   children: [
                     TopNavBarOverlay(
                       screenManager: _screenManager,
-                      child: _screenManager.isSettingsVisible
-                          ? UISettingsPanel(
-                              screenManager: _screenManager,
-                              trackingService: _trackingService,
-                              uploadService: _uploadService,
-                            )
-                          : widget.config.enabled
-                          ? _MockFlightView(
-                              config: widget.config,
-                              replay: _mockReplay!,
-                              screenManager: _screenManager,
-                              replayService: _replayService,
-                              trackingService: _trackingService,
-                              onNext: () => setState(() {
-                                _mockReplay!.advance();
-                              }),
-                              onReset: () => setState(() {
-                                _mockReplay!.reset();
-                              }),
-                            )
-                          : _LiveFlightView(
-                              platformVersion: _platformVersion ?? 'Unknown',
-                              screenManager: _screenManager,
-                              replayService: _replayService,
-                              trackingService: _trackingService,
-                            ),
+                      child: AnimatedBuilder(
+                        animation: _replayService,
+                        builder: (context, _) => _screenManager.isSettingsVisible
+                            ? UISettingsPanel(
+                                screenManager: _screenManager,
+                                trackingService: _trackingService,
+                                uploadService: _uploadService,
+                              )
+                            : widget.config.enabled
+                            ? _MockFlightView(
+                                config: widget.config,
+                                replay: _mockReplay!,
+                                screenManager: _screenManager,
+                                replayService: _replayService,
+                                trackingService: _trackingService,
+                                onNext: () => setState(() {
+                                  _mockReplay!.advance();
+                                }),
+                                onReset: () => setState(() {
+                                  _mockReplay!.reset();
+                                }),
+                              )
+                            : _LiveFlightView(
+                                platformVersion: _platformVersion ?? 'Unknown',
+                                screenManager: _screenManager,
+                                replayService: _replayService,
+                                trackingService: _trackingService,
+                              ),
+                      ),
                     ),
 
                     // Floating Bottom Replay HUD when Replay Mode is active
@@ -564,7 +567,7 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
                 Offset(
                   (constraints.maxWidth - cardSize.width - safePadding.right - 8)
                       .clamp(minX, maxX),
-                  safePadding.top + 8,
+                  safePadding.top + 56,
                 );
 
             final newX = (currentPos.dx + details.delta.dx).clamp(minX, maxX);

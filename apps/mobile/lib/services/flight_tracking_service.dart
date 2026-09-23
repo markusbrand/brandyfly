@@ -67,6 +67,12 @@ class FlightTrackingService extends ChangeNotifier {
 
   void processTelemetrySnapshot(TelemetrySnapshot snapshot) {
     processPoint(snapshot.toFlightPoint());
+    
+    // Pass the snapshot along if we need its advanced thermal/wind fields
+    // Right now, the UI consumes telemetry via a separate provider or stream,
+    // so `FlightTrackingService` mainly deals with basic track points.
+    // However, if we need to store thermal states for replay:
+    // ...
   }
 
   void updateSettings(FlightSettings newSettings) {
