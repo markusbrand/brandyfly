@@ -41,3 +41,10 @@
 ## 2026-09-09 - Avoid `Vec::remove(0)` in Bounded Queue Operations
 **Learning:** Using `Vec::remove(0)` to drop the oldest item or pop elements from the front of a queue shifts every subsequent element in memory, resulting in O(N) operations per push/pop when capacity is reached. Switching the underlying storage to `VecDeque` converts `pop_front()` and `push_back()` into O(1) ring buffer operations.
 **Action:** Always use `std::collections::VecDeque` instead of `Vec` for FIFO queues or bounded buffers where items are inserted at the back and removed from the front.
+## 2026-09-22 - Fix per-frame Paint allocation in for loop
+**Learning:** In Flutter `CustomPainter.paint` loops, when drawing large amounts of dynamic elements like points on a map using a `for` loop, allocating a new `Paint` object for every element dynamically creates massive Garbage Collection churn per frame, especially at 60Hz.
+**Action:** Always allocate mutable `Paint` objects outside of iteration loops (or cache them) and update only the necessary properties (e.g. `color`) inside the loop before passing the `Paint` object to Canvas operations.
+
+## 2026-09-22 - Prevent unconditional repaints via exhaustive equality check
+**Learning:** `CustomPainter.shouldRepaint` that unconditionally returns `true` skips Flutter's optimization layers, causing it to repaint on every rebuild of the tree, even when the widget data hasn't changed.
+**Action:** Always verify all passed-in fields inside `shouldRepaint` by checking for field equality. When lists are immutable in state management, reference equality (`!=`) works well to avoid expensive repaints.

@@ -15,3 +15,6 @@
 ## 2024-09-08 - Required Semantics for Custom Grab Handles
 **Learning:** Custom interactive regions in Flutter, like drag/grab handles implemented purely with `GestureDetector` and basic `Container` shapes, are completely invisible and un-actionable to screen readers by default.
 **Action:** When implementing custom grab handles or toggles using `GestureDetector`, always wrap them in a `Semantics(button: true, label: '...')` widget to ensure they are properly identified and described to screen reader users.
+## 2026-09-23 - Semantics on Non-Button Interactive Canvases
+**Learning:** In Flutter, using `GestureDetector` for non-standard interactive visual areas (like pan/zoom maps, draggable overlays, or global tap barriers) makes them completely invisible and un-actionable to screen readers.
+**Action:** Always wrap these `GestureDetector` instances in a `Semantics` widget, providing a descriptive `label` and setting `button: true` or `button: false` depending on the context, ensuring accessibility for screen reader users.
