@@ -103,6 +103,31 @@ void main() {
       expect(manager.config.screens.any((s) => s.id == 'thermaling'), false);
     });
 
+    test('removing an inactive screen preserves active screen and widget selection', () {
+      final manager = ScreenManagerService();
+      manager.addScreen('Cross Country');
+      expect(manager.activeScreen.name, 'Cross Country');
+      final activeId = manager.activeScreen.id;
+
+      // Select a widget if one exists or add and select one
+      manager.addWidget(WidgetType.altitude);
+      final widgetId = manager.activeScreen.widgets.first.id;
+      manager.toggleEditMode(true);
+      manager.selectWidget(widgetId);
+      expect(manager.selectedWidgetId, widgetId);
+
+      // Remove inactive screen 'thermaling'
+      manager.removeScreen('thermaling');
+      expect(manager.config.screens.any((s) => s.id == 'thermaling'), false);
+      expect(manager.activeScreen.id, activeId);
+      expect(manager.selectedWidgetId, widgetId);
+
+      // Removing non-existent screen is a safe no-op
+      manager.removeScreen('invalid_non_existent_id');
+      expect(manager.activeScreen.id, activeId);
+      expect(manager.selectedWidgetId, widgetId);
+    });
+
     test('adds and removes flight widgets', () {
       final manager = ScreenManagerService();
       final initialWidgetCount = manager.activeScreen.widgets.length;

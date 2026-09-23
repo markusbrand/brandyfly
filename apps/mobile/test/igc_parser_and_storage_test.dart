@@ -188,5 +188,51 @@ G00000000000000000000000000000000
       // Point 3 (-2m in 1s -> -2.0 m/s sink)
       expect(flight.points[2].vario, -2.0);
     });
+
+    test('Correctly serializes and parses negative altitudes (sub-sea-level)', () {
+      final flight = FlightModel(
+        id: 'dead_sea_flight',
+        title: 'Dead Sea Soaring',
+        date: DateTime.utc(2026, 8, 20, 10, 0, 0),
+        points: [
+          FlightPoint(
+            timestamp: DateTime.utc(2026, 8, 20, 10, 0, 0),
+            latitude: 31.5,
+            longitude: 35.5,
+            altitude: -50.0,
+            gnssAltitude: -45.0,
+            vario: 0.0,
+            speed: 30.0,
+            heading: 90.0,
+          ),
+        ],
+        statistics: FlightStatistics.empty(),
+      );
+
+      final generated = parser.generateIgc(flight);
+      expect(generated, contains('-0050'));
+      expect(generated, contains('-0045'));
+
+      final reparsed = parser.parseIgc(generated);
+      expect(reparsed.points.first.altitude, -50.0);
+      expect(reparsed.points.first.gnssAltitude, -45.0);
+    });
+
+    test('Handles midnight UTC rollover without producing negative durations', () {
+      const igcMidnightCrossing = '''AXFH000
+HFDTE150826
+B2355004731478N01341504EA0150001500000000030090
+B2359594731478N01341504EA0150001500000000030090
+B0005004731478N01341504EA0150001500000000030090
+G00000000000000000000000000000000
+''';
+      final flight = parser.parseIgc(igcMidnightCrossing);
+      expect(flight.points.length, 3);
+      expect(flight.points[0].timestamp, DateTime.utc(2026, 8, 15, 23, 55, 0));
+      expect(flight.points[1].timestamp, DateTime.utc(2026, 8, 15, 23, 59, 59));
+      expect(flight.points[2].timestamp, DateTime.utc(2026, 8, 16, 0, 5, 0));
+      expect(flight.statistics.duration, const Duration(minutes: 10));
+      expect(flight.statistics.duration.isNegative, isFalse);
+    });
   });
 }
