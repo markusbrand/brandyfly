@@ -1,0 +1,11 @@
+{
+  "name": "opencode-auto-commit-plugin",
+  "version": "1.0.0",
+  "description": "Local OpenCode plugin that auto-commits and optionally pushes at session idle/close.",
+  "type": "module",
+  "private": true,
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@opencode/plugin": "^2.0.15"
+  }
+}
