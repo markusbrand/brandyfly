@@ -313,46 +313,48 @@ impl SyntheticReplayGenerator {
     fn generate_thermaling_spiral(&self, duration_s: usize) -> Vec<SensorEvent> {
         let mut events = Vec::with_capacity(duration_s * 2); // roughly 2Hz
         let mut current_time_ns = self.base_timestamp_ns;
-        
+
         let mut lat = 47.0; // Start somewhere
         let mut lon = 8.0;
         let mut alt = 1500.0;
         let mut heading_deg = 0.0;
-        
+
         // Wind 15km/h from West (270) -> pushes East (90)
         let wind_speed_ms = 15.0 / 3.6;
         let wind_dir_rad = 270.0 * std::f64::consts::PI / 180.0;
         let wind_vx = (wind_dir_rad + std::f64::consts::PI).sin() * wind_speed_ms;
         let wind_vy = (wind_dir_rad + std::f64::consts::PI).cos() * wind_speed_ms;
-        
+
         let turn_rate_deg_s = 15.0; // 24 seconds per 360
         let airspeed_ms = 10.0; // 36 km/h airspeed
-        
+
         for seq in 1..=duration_s as u64 {
             current_time_ns += 1_000_000_000;
-            
+
             // Gliding for first 30 seconds
             let (turn_rate, climb_rate) = if seq < 30 {
                 (0.0, -1.0)
             } else {
                 (turn_rate_deg_s, 2.0)
             };
-            
+
             heading_deg = (heading_deg + turn_rate) % 360.0;
             let heading_rad = heading_deg * std::f64::consts::PI / 180.0;
-            
+
             // Ground speed components
             let gnd_vx = heading_rad.sin() * airspeed_ms + wind_vx;
             let gnd_vy = heading_rad.cos() * airspeed_ms + wind_vy;
             let gnd_speed = (gnd_vx * gnd_vx + gnd_vy * gnd_vy).sqrt();
-            let ground_bearing_deg = (f64::atan2(gnd_vx, gnd_vy) * 180.0 / std::f64::consts::PI + 360.0) % 360.0;
-            
+            let ground_bearing_deg =
+                (f64::atan2(gnd_vx, gnd_vy) * 180.0 / std::f64::consts::PI + 360.0) % 360.0;
+
             // Update lat/lon
             let r_earth = 6371000.0;
             lat += (gnd_vy / r_earth) * (180.0 / std::f64::consts::PI);
-            lon += (gnd_vx / (r_earth * (lat * std::f64::consts::PI / 180.0).cos())) * (180.0 / std::f64::consts::PI);
+            lon += (gnd_vx / (r_earth * (lat * std::f64::consts::PI / 180.0).cos()))
+                * (180.0 / std::f64::consts::PI);
             alt += climb_rate;
-            
+
             // Output GPS and Baro events
             events.push(SensorEvent {
                 schema_version: NATIVE_PIPELINE_SCHEMA_VERSION,
@@ -370,8 +372,8 @@ impl SyntheticReplayGenerator {
                     accuracy_m: 2.0,
                 },
             });
-            
-            let pressure = 1013.25 * (1.0 - (alt as f64) / 44330.0).powf(1.0 / 0.19029495);
+
+            let pressure = 1013.25 * (1.0 - alt / 44330.0_f64).powf(1.0 / 0.19029495);
             events.push(SensorEvent {
                 schema_version: NATIVE_PIPELINE_SCHEMA_VERSION,
                 source_id: SensorSourceId::Barometer,
@@ -384,7 +386,7 @@ impl SyntheticReplayGenerator {
                     temperature_c: Some(15.0),
                 },
             });
-            
+
             events.push(SensorEvent {
                 schema_version: NATIVE_PIPELINE_SCHEMA_VERSION,
                 source_id: SensorSourceId::Variometer,
@@ -398,7 +400,7 @@ impl SyntheticReplayGenerator {
                 },
             });
         }
-        
+
         events.sort_by_key(|e| e.native_received_timestamp_ns);
         events
     }

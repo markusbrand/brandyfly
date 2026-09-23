@@ -202,9 +202,9 @@ impl RateLimitedKpiPublisher {
 }
 
 use crate::circling::CirclingStateDetector;
-use crate::wind::WindEstimator;
-use crate::thermal::{ThermalCoreCalculator, TrackPoint, ThermalStateSnapshot};
+use crate::thermal::{ThermalCoreCalculator, ThermalStateSnapshot, TrackPoint};
 use crate::wind::Position;
+use crate::wind::WindEstimator;
 
 /// Core processing engine connecting bounded queues, validation, audio control, and KPI snapshots.
 pub struct BoundedFlightPipeline {
@@ -336,16 +336,20 @@ impl BoundedFlightPipeline {
                 self.last_altitude_m = *altitude_m;
                 self.last_ground_speed_kmh = ground_speed_mps * 3.6;
                 self.last_bearing_deg = *bearing_deg;
-                
+
                 let time_ms = event.native_received_timestamp_ns / 1_000_000;
-                let is_circling = match self.circling_detector.update(time_ms, *bearing_deg as f64) {
-                    crate::circling::FlightState::Circling(_) => true,
-                    _ => false,
+                let is_circling = matches!(
+                    self.circling_detector.update(time_ms, *bearing_deg as f64),
+                    crate::circling::FlightState::Circling(_)
+                );
+
+                let pos = Position {
+                    lat: *latitude_deg,
+                    lon: *longitude_deg,
                 };
-                
-                let pos = Position { lat: *latitude_deg, lon: *longitude_deg };
-                self.wind_estimator.update(time_ms, *bearing_deg as f64, pos, is_circling);
-                
+                self.wind_estimator
+                    .update(time_ms, *bearing_deg as f64, pos, is_circling);
+
                 self.thermal_calculator.add_point(TrackPoint {
                     timestamp_ms: time_ms,
                     position: pos,
@@ -365,7 +369,7 @@ impl BoundedFlightPipeline {
         let audio_cmd = self.compute_audio_command(core_processed_ns);
         let audio_reaction_ns = Some(core_processed_ns + 1_500_000); // 1.5ms audio dispatch
         self.audio_control.update(audio_cmd);
-        
+
         // Update thermal snapshot based on updated state
         if let Some(time_ms) = self.last_baro_time_ns.map(|ns| ns / 1_000_000) {
             let state = self.circling_detector.state();
@@ -668,22 +672,25 @@ mod tests {
 
     #[test]
     fn pipeline_maintains_determinism_with_thermal_drift() {
-        let mut pipeline1 = BoundedFlightPipeline::new(100, OverflowPolicy::DropNewest, 100_000_000);
-        let mut pipeline2 = BoundedFlightPipeline::new(100, OverflowPolicy::DropNewest, 100_000_000);
+        let mut pipeline1 =
+            BoundedFlightPipeline::new(100, OverflowPolicy::DropNewest, 100_000_000);
+        let mut pipeline2 =
+            BoundedFlightPipeline::new(100, OverflowPolicy::DropNewest, 100_000_000);
         let generator = crate::replay_fixtures::SyntheticReplayGenerator::new(42, 1_000_000_000);
-        
-        let spiral_events = generator.generate_fixture(crate::replay_fixtures::SyntheticReplayScenario::ThermalingSpiral);
-        
+
+        let spiral_events = generator
+            .generate_fixture(crate::replay_fixtures::SyntheticReplayScenario::ThermalingSpiral);
+
         let mut clock_ns = 1_000_000_000;
         for event in spiral_events {
             pipeline1.ingest(event.clone());
             pipeline2.ingest(event);
-            
+
             pipeline1.step(clock_ns);
             pipeline2.step(clock_ns);
             clock_ns += 50_000_000;
         }
-        
+
         let snap1 = pipeline1.last_thermal_snapshot.unwrap();
         let snap2 = pipeline2.last_thermal_snapshot.unwrap();
         assert_eq!(snap1, snap2);

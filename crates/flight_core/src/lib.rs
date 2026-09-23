@@ -4,11 +4,11 @@ pub mod benchmark;
 pub mod bounded_pipeline;
 
 pub mod circling;
-pub mod wind;
-pub mod thermal;
 pub mod durable_recorder;
 pub mod procedural_generator;
 pub mod replay_fixtures;
+pub mod thermal;
+pub mod wind;
 
 pub use benchmark::{BenchmarkConfig, run_pipeline_benchmark};
 pub use bounded_pipeline::{
