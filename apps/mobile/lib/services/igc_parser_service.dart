@@ -17,6 +17,9 @@ class IGCParserService {
     // Format: I, then 2-digit count of extensions, then for each: startByte (2 digits), endByte (2 digits), 3-char code
     final Map<String, ({int start, int end})> extensions = {};
 
+    DateTime currentDate = flightDate ?? DateTime.now();
+    int? lastSecondsOfDay;
+
     for (final rawLine in lines) {
       final line = rawLine.trim();
       if (line.isEmpty) continue;
@@ -30,6 +33,7 @@ class IGCParserService {
           var year = int.tryParse(dateStr.substring(4, 6)) ?? 26;
           year += (year < 70) ? 2000 : 1900;
           flightDate = DateTime.utc(year, month, day);
+          currentDate = flightDate;
         }
       } else if (line.startsWith('HFPLTPILOT:') || line.startsWith('HFPLTPILOTINCHARGE:')) {
         final parts = line.split(':');
@@ -43,7 +47,16 @@ class IGCParserService {
       } else if (line.startsWith('I')) {
         _parseIRecord(line, extensions);
       } else if (line.startsWith('B') && line.length >= 35) {
-        final pt = _parseBRecord(line, flightDate ?? DateTime.now(), extensions, points.lastOrNull);
+        final hh = int.tryParse(line.substring(1, 3)) ?? 0;
+        final mm = int.tryParse(line.substring(3, 5)) ?? 0;
+        final ss = int.tryParse(line.substring(5, 7)) ?? 0;
+        final secondsOfDay = hh * 3600 + mm * 60 + ss;
+        if (lastSecondsOfDay != null && secondsOfDay < lastSecondsOfDay - 43200) {
+          currentDate = currentDate.add(const Duration(days: 1));
+        }
+        lastSecondsOfDay = secondsOfDay;
+
+        final pt = _parseBRecord(line, currentDate, extensions, points.lastOrNull);
         if (pt != null) {
           points.add(pt);
         }
@@ -150,8 +163,8 @@ class IGCParserService {
       final validityChar = line.substring(24, 25).toUpperCase();
       final isValidFix = validityChar == 'A';
 
-      final pressAlt = double.tryParse(line.substring(25, 30)) ?? 0.0;
-      final gnssAlt = double.tryParse(line.substring(30, 35)) ?? pressAlt;
+      final pressAlt = _parseAltitude(line.substring(25, 30)) ?? 0.0;
+      final gnssAlt = _parseAltitude(line.substring(30, 35)) ?? pressAlt;
 
       double vario = 0.0;
       double speed = 0.0;
@@ -282,8 +295,8 @@ class IGCParserService {
       final lonMinThousandths = (lonMin * 1000).round().clamp(0, 59999);
       final lonStr = '${lonDeg.toString().padLeft(3, '0')}${lonMinThousandths.toString().padLeft(5, '0')}$lonHemi';
 
-      final pressAlt = pt.altitude.round().clamp(-1000, 99999).toString().padLeft(5, '0');
-      final gnssAlt = (pt.gnssAltitude ?? pt.altitude).round().clamp(-1000, 99999).toString().padLeft(5, '0');
+      final pressAlt = _formatAltitude(pt.altitude);
+      final gnssAlt = _formatAltitude(pt.gnssAltitude ?? pt.altitude);
 
       final fxa = '000';
       final varRaw = (pt.vario * 10).round();
@@ -296,6 +309,29 @@ class IGCParserService {
 
     buffer.writeln('G00000000000000000000000000000000');
     return buffer.toString();
+  }
+
+  static double? _parseAltitude(String raw) {
+    final trimmed = raw.trim();
+    final direct = double.tryParse(trimmed);
+    if (direct != null) return direct;
+    if (trimmed.contains('-')) {
+      final clean = trimmed.replaceAll(' ', '');
+      final parts = clean.split('-');
+      if (parts.length == 2) {
+        final numPart = double.tryParse(parts[1]);
+        if (numPart != null) return -numPart;
+      }
+    }
+    return null;
+  }
+
+  static String _formatAltitude(num altitude) {
+    final clamped = altitude.round().clamp(-9999, 99999);
+    if (clamped < 0) {
+      return '-${clamped.abs().toString().padLeft(4, '0')}';
+    }
+    return clamped.toString().padLeft(5, '0');
   }
 
   static double calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {

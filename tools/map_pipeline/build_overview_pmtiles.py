@@ -39,14 +39,14 @@ def create_directory(entries):
     for _, _, length, _ in entries:
         out.extend(encode_varint(length))
         
-    # 4. offsets (delta encoded)
-    last_offset = 0
-    for _, _, length, offset in entries:
-        if offset == last_offset:
+    # 4. offsets
+    next_byte = 0
+    for i, (_, _, length, offset) in enumerate(entries):
+        if i > 0 and offset == next_byte:
             out.extend(encode_varint(0))
         else:
-            out.extend(encode_varint(offset - last_offset + 1))
-        last_offset = offset + length
+            out.extend(encode_varint(offset + 1))
+        next_byte = offset + length
 
     return gzip.compress(bytes(out))
 
