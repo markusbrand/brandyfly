@@ -120,16 +120,19 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
         children: [
           // Interactive Pan & Zoom Custom Canvas
           Positioned.fill(
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                setState(() {
-                  _panOffset += details.delta;
-                  _centerOnPilot = false;
-                });
-                _startRecenterTimer();
-              },
-              child: CustomPaint(
-                key: const Key('canvas_thermal_map'),
+            child: Semantics(
+              button: false,
+              label: 'Interactive thermal map canvas',
+              child: GestureDetector(
+                onPanUpdate: (details) {
+                  setState(() {
+                    _panOffset += details.delta;
+                    _centerOnPilot = false;
+                  });
+                  _startRecenterTimer();
+                },
+                child: CustomPaint(
+                  key: const Key('canvas_thermal_map'),
                 painter: _ThermalMapPainter(
                   style: widget.style,
                   showCore: widget.showCore,
@@ -147,6 +150,7 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
                   useAirmassTrack: _useAirmassTrack,
                 ),
               ),
+            ),
             ),
           ),
 

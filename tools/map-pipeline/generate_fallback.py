@@ -44,13 +44,13 @@ def create_directory(entries: list[tuple[int, int, int, int]]) -> bytes:
     for _, _, length, _ in entries:
         out.extend(encode_varint(length))
         
-    last_offset = 0
-    for _, _, length, offset in entries:
-        if offset == last_offset:
+    next_byte = 0
+    for i, (_, _, length, offset) in enumerate(entries):
+        if i > 0 and offset == next_byte:
             out.extend(encode_varint(0))
         else:
-            out.extend(encode_varint(offset - last_offset + 1))
-        last_offset = offset + length
+            out.extend(encode_varint(offset + 1))
+        next_byte = offset + length
 
     return gzip.compress(bytes(out))
 
