@@ -201,8 +201,12 @@ impl RateLimitedKpiPublisher {
     }
 }
 
+use crate::circling::CirclingStateDetector;
+use crate::wind::WindEstimator;
+use crate::thermal::{ThermalCoreCalculator, TrackPoint, ThermalStateSnapshot};
+use crate::wind::Position;
+
 /// Core processing engine connecting bounded queues, validation, audio control, and KPI snapshots.
-#[derive(Debug)]
 pub struct BoundedFlightPipeline {
     queue: BoundedEventQueue,
     audio_control: LatestValueAudioControl,
@@ -215,8 +219,13 @@ pub struct BoundedFlightPipeline {
     last_climb_rate_mps: f32,
     last_ground_speed_kmh: f32,
     last_bearing_deg: f32,
-    last_pressure_hpa: Option<f64>,
-    last_baro_time_ns: Option<u64>,
+    pub last_pressure_hpa: Option<f64>,
+    pub last_baro_time_ns: Option<u64>,
+    pub last_thermal_snapshot: Option<ThermalStateSnapshot>,
+    // Flight Mode detectors
+    circling_detector: CirclingStateDetector,
+    wind_estimator: WindEstimator,
+    thermal_calculator: ThermalCoreCalculator,
 }
 
 impl BoundedFlightPipeline {
@@ -239,6 +248,10 @@ impl BoundedFlightPipeline {
             last_bearing_deg: 0.0,
             last_pressure_hpa: None,
             last_baro_time_ns: None,
+            last_thermal_snapshot: None,
+            circling_detector: CirclingStateDetector::new(),
+            wind_estimator: WindEstimator::new(),
+            thermal_calculator: ThermalCoreCalculator::new(),
         }
     }
 
@@ -313,8 +326,8 @@ impl BoundedFlightPipeline {
                 self.last_baro_time_ns = Some(event.native_received_timestamp_ns);
             }
             SensorPayload::Gps {
-                latitude_deg: _,
-                longitude_deg: _,
+                latitude_deg,
+                longitude_deg,
                 altitude_m,
                 ground_speed_mps,
                 bearing_deg,
@@ -323,6 +336,21 @@ impl BoundedFlightPipeline {
                 self.last_altitude_m = *altitude_m;
                 self.last_ground_speed_kmh = ground_speed_mps * 3.6;
                 self.last_bearing_deg = *bearing_deg;
+                
+                let time_ms = event.native_received_timestamp_ns / 1_000_000;
+                let is_circling = match self.circling_detector.update(time_ms, *bearing_deg as f64) {
+                    crate::circling::FlightState::Circling(_) => true,
+                    _ => false,
+                };
+                
+                let pos = Position { lat: *latitude_deg, lon: *longitude_deg };
+                self.wind_estimator.update(time_ms, *bearing_deg as f64, pos, is_circling);
+                
+                self.thermal_calculator.add_point(TrackPoint {
+                    timestamp_ms: time_ms,
+                    position: pos,
+                    climb_rate_ms: self.last_climb_rate_mps as f64,
+                });
             }
             SensorPayload::Variometer {
                 climb_rate_mps,
@@ -337,6 +365,19 @@ impl BoundedFlightPipeline {
         let audio_cmd = self.compute_audio_command(core_processed_ns);
         let audio_reaction_ns = Some(core_processed_ns + 1_500_000); // 1.5ms audio dispatch
         self.audio_control.update(audio_cmd);
+        
+        // Update thermal snapshot based on updated state
+        if let Some(time_ms) = self.last_baro_time_ns.map(|ns| ns / 1_000_000) {
+            let state = self.circling_detector.state();
+            let wind = self.wind_estimator.estimate();
+            let core_estimate = self.thermal_calculator.calculate(time_ms, wind);
+            self.last_thermal_snapshot = Some(ThermalStateSnapshot {
+                timestamp_ms: time_ms,
+                state,
+                wind,
+                core_estimate,
+            });
+        }
 
         // Submit KPI snapshot
         let kpi = KpiSnapshot {
@@ -623,5 +664,28 @@ mod tests {
         let kpi = pipeline.poll_kpi_snapshot().expect("kpi snapshot");
         assert!(kpi.altitude_m > 1500.0);
         assert!(kpi.climb_rate_mps > 0.0);
+    }
+
+    #[test]
+    fn pipeline_maintains_determinism_with_thermal_drift() {
+        let mut pipeline1 = BoundedFlightPipeline::new(100, OverflowPolicy::DropNewest, 100_000_000);
+        let mut pipeline2 = BoundedFlightPipeline::new(100, OverflowPolicy::DropNewest, 100_000_000);
+        let generator = crate::replay_fixtures::SyntheticReplayGenerator::new(42, 1_000_000_000);
+        
+        let spiral_events = generator.generate_fixture(crate::replay_fixtures::SyntheticReplayScenario::ThermalingSpiral);
+        
+        let mut clock_ns = 1_000_000_000;
+        for event in spiral_events {
+            pipeline1.ingest(event.clone());
+            pipeline2.ingest(event);
+            
+            pipeline1.step(clock_ns);
+            pipeline2.step(clock_ns);
+            clock_ns += 50_000_000;
+        }
+        
+        let snap1 = pipeline1.last_thermal_snapshot.unwrap();
+        let snap2 = pipeline2.last_thermal_snapshot.unwrap();
+        assert_eq!(snap1, snap2);
     }
 }

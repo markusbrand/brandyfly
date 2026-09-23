@@ -34,6 +34,9 @@ class TelemetrySnapshot {
     this.windSpeedKmh,
     this.isStale = false,
     this.isValid = true,
+    this.isCircling = false,
+    this.thermalCoreLat,
+    this.thermalCoreLon,
   });
 
   final DateTime timestamp;
@@ -50,6 +53,9 @@ class TelemetrySnapshot {
   final double? windSpeedKmh;
   final bool isStale;
   final bool isValid;
+  final bool isCircling;
+  final double? thermalCoreLat;
+  final double? thermalCoreLon;
 
   FlightPoint toFlightPoint() {
     return FlightPoint(
@@ -87,6 +93,7 @@ class TelemetrySnapshot {
       windSpeedKmh: windSpeedKmh ?? 12.0,
       isStale: isStale,
       isValid: true,
+      isCircling: false,
     );
   }
 
@@ -108,6 +115,9 @@ class TelemetrySnapshot {
       'trackPoints': trackPoints ?? [LatLng(latitude, longitude)],
       'history': history ?? [altitude],
       'isStale': isStale,
+      'isCircling': isCircling,
+      if (thermalCoreLat != null) 'coreLat': thermalCoreLat,
+      if (thermalCoreLon != null) 'coreLon': thermalCoreLon,
     };
   }
 }
