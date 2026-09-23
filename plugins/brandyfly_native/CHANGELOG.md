@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_native-v0.2.0...brandyfly_native-v0.3.0) (2026-09-23)
+
+
+### Features
+
+* implement dynamic thermal assistant with wind drift compensation ([#202](https://github.com/markusbrand/brandyfly/issues/202)) ([930d129](https://github.com/markusbrand/brandyfly/commit/930d12977b24623c44d97f711217e871d5bd6b9b))
+
 ## [0.2.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_native-v0.1.0...brandyfly_native-v0.2.0) (2026-09-10)
 
 
