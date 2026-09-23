@@ -118,16 +118,20 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           // Tap outside dismiss barrier when nav bar is visible
           if (widget.screenManager.isNavBarVisible)
             Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => widget.screenManager.toggleNavBar(false),
-                onVerticalDragUpdate: (details) {
-                  if (details.primaryDelta != null &&
-                      details.primaryDelta! < -4) {
-                    widget.screenManager.toggleNavBar(false);
-                  }
-                },
-                child: Container(color: Colors.black.withAlpha(80)),
+              child: Semantics(
+                button: true,
+                label: 'Dismiss navigation bar',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => widget.screenManager.toggleNavBar(false),
+                  onVerticalDragUpdate: (details) {
+                    if (details.primaryDelta != null &&
+                        details.primaryDelta! < -4) {
+                      widget.screenManager.toggleNavBar(false);
+                    }
+                  },
+                  child: Container(color: Colors.black.withAlpha(80)),
+                ),
               ),
             ),
 
