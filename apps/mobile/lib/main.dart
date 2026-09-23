@@ -531,12 +531,15 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
           );
         }
 
-        final overlayCard = GestureDetector(
-          key: const Key('simulation_overlay_card'),
-          behavior: HitTestBehavior.opaque,
-          onPanStart: (details) {
-            if (_overlayPosition == null) {
-              final RenderBox? box =
+        final overlayCard = Semantics(
+          button: true,
+          label: 'Move simulation overlay',
+          child: GestureDetector(
+            key: const Key('simulation_overlay_card'),
+            behavior: HitTestBehavior.opaque,
+            onPanStart: (details) {
+              if (_overlayPosition == null) {
+                final RenderBox? box =
                   _overlayKey.currentContext?.findRenderObject() as RenderBox?;
               final RenderBox? rootBox =
                   context.findRenderObject() as RenderBox?;
@@ -749,6 +752,7 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
                 ],
               ],
             ),
+          ),
           ),
         );
 
