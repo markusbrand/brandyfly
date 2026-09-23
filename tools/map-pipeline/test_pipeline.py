@@ -21,7 +21,7 @@ import unittest
 
 from checksums import compute_file_info, compute_sha256, compute_directory_checksums
 from generate_catalog import generate_catalog
-from generate_fallback import generate_direct_pmtiles, MAX_FALLBACK_SIZE_BYTES
+from generate_fallback import generate_direct_pmtiles, create_directory, MAX_FALLBACK_SIZE_BYTES
 from generate_vector_tiles import calculate_expanded_bounds
 from run_pipeline import run_pipeline
 from validate_catalog import validate_catalog_schema, verify_local_files
@@ -225,6 +225,64 @@ regions:
                 cat = json.load(f)
             self.assertEqual(len(cat["regions"]), 1)
             self.assertEqual(cat["regions"][0]["id"], "alps-east")
+
+    def test_pmtiles_v3_directory_offset_encoding(self):
+        """
+        Verifies PMTiles v3 Section A.1/A.2 directory offset encoding compliance:
+        - First entry or non-contiguous entries are encoded as absolute (offset + 1)
+        - Contiguous entries (offset == prev_offset + prev_length) are encoded as 0
+        - Deduplication (offset < prev_offset + prev_length) does not cause negative varints
+        """
+        entries = [
+            (0, 1, 100, 0),    # tile 0: offset 0, len 100 (ends at 100)
+            (1, 1, 50, 100),   # tile 1: offset 100, len 50 (contiguous -> varint 0)
+            (2, 1, 80, 300),   # tile 2: offset 300, len 80 (non-contiguous -> varint 301)
+            (3, 1, 100, 0),    # tile 3: offset 0, len 100 (deduplication -> varint 1)
+        ]
+        compressed_dir = create_directory(entries)
+        uncompressed = gzip.decompress(compressed_dir)
+
+        # Decode varints
+        def decode_varint(buffer, offset):
+            res = 0
+            shift = 0
+            while True:
+                byte = buffer[offset]
+                offset += 1
+                res |= (byte & 0x7F) << shift
+                if not (byte & 0x80):
+                    break
+                shift += 7
+            return res, offset
+
+        cursor = 0
+        num_entries, cursor = decode_varint(uncompressed, cursor)
+        self.assertEqual(num_entries, 4)
+
+        # Skip tile_id deltas (4), run_lengths (4), lengths (4)
+        lengths = []
+        for _ in range(4): # tile_ids
+            _, cursor = decode_varint(uncompressed, cursor)
+        for _ in range(4): # run_lengths
+            _, cursor = decode_varint(uncompressed, cursor)
+        for _ in range(4): # lengths
+            l, cursor = decode_varint(uncompressed, cursor)
+            lengths.append(l)
+
+        # Read decoded offsets per PMTiles v3 spec section A.2
+        decoded_offsets = []
+        for i in range(num_entries):
+            val, cursor = decode_varint(uncompressed, cursor)
+            if val == 0:
+                if i == 0:
+                    decoded_offsets.append(0)
+                else:
+                    decoded_offsets.append(decoded_offsets[i - 1] + lengths[i - 1])
+            else:
+                decoded_offsets.append(val - 1)
+
+        expected_offsets = [0, 100, 300, 0]
+        self.assertEqual(decoded_offsets, expected_offsets)
 
 
 if __name__ == "__main__":

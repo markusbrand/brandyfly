@@ -126,11 +126,19 @@ class ScreenManagerService extends ChangeNotifier {
 
   void removeScreen(String screenId) {
     if (_config.screens.length <= 1) return; // Keep at least one screen
-    _selectedWidgetId = null;
+    final screenExists = _config.screens.any((s) => s.id == screenId);
+    if (!screenExists) return;
+
     final updatedScreens = _config.screens
         .where((s) => s.id != screenId)
         .toList();
-    final nextActive = updatedScreens.first.id;
+
+    String nextActive = _config.activeScreenId;
+    if (_config.activeScreenId == screenId) {
+      _selectedWidgetId = null;
+      nextActive = updatedScreens.first.id;
+    }
+
     _config = _config.copyWith(
       screens: updatedScreens,
       activeScreenId: nextActive,
