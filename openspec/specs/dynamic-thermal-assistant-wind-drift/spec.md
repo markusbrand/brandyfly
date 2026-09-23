@@ -1,7 +1,7 @@
 # dynamic-thermal-assistant-wind-drift Specification
 
 ## Purpose
-TBD - created by archiving change dynamic-thermal-assistant-wind-drift. Update Purpose after archive.
+The dynamic thermal assistant with wind drift compensation provides the pilot with an XCtrack-grade visual thermal core map. It calculates and compensates for wind drift during circling, identifies the strongest lift area (the thermal core), and displays a high-contrast visualizer. This helps the pilot center the thermal more effectively and maximize climb efficiency in turbulent or windy conditions.
 
 ## Requirements
 
