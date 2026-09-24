@@ -49,12 +49,12 @@ void main() {
             FlightScreenModel(
               id: 'screen_1',
               name: 'Alpine Map Screen',
-              widgets: const [],
+              widgets: [],
             ),
             FlightScreenModel(
               id: 'screen_2',
               name: 'Thermal Assist Screen',
-              widgets: const [],
+              widgets: [],
             ),
           ],
         ),
@@ -89,12 +89,12 @@ void main() {
             FlightScreenModel(
               id: 'screen_1',
               name: 'Alpine Map Screen',
-              widgets: const [],
+              widgets: [],
             ),
             FlightScreenModel(
               id: 'screen_2',
               name: 'Thermal Assist Screen',
-              widgets: const [],
+              widgets: [],
             ),
           ],
         ),
