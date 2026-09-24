@@ -44,7 +44,7 @@ class ScreenManagerService extends ChangeNotifier {
 
   void toggleNavBar([bool? visible]) {
     _isNavBarVisible = visible ?? !_isNavBarVisible;
-    print('DEBUG: toggleNavBar called, new state is $_isNavBarVisible');
+    // print('DEBUG: toggleNavBar called, new state is $_isNavBarVisible');
     notifyListeners();
   }
 
@@ -85,14 +85,14 @@ class ScreenManagerService extends ChangeNotifier {
   }
 
   void setActiveScreen(String screenId) {
-    print('DEBUG: setActiveScreen called with $screenId, current is ${_config.activeScreenId}');
+    // print('DEBUG: setActiveScreen called with $screenId, current is ${_config.activeScreenId}');
     if (_config.activeScreenId == screenId) {
-      print('DEBUG: Already active, returning');
+      // print('DEBUG: Already active, returning');
       return;
     }
     _selectedWidgetId = null;
     _config = _config.copyWith(activeScreenId: screenId);
-    print('DEBUG: Set activeScreenId to ${_config.activeScreenId}');
+    // print('DEBUG: Set activeScreenId to ${_config.activeScreenId}');
     _saveAndNotify();
   }
 

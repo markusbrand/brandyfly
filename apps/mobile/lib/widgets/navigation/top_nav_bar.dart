@@ -359,7 +359,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 ),
                 onSelected: (selected) {
-                  print('DEBUG: ChoiceChip onSelected($selected) for ${screen.id}');
+                  // print('DEBUG: ChoiceChip onSelected($selected) for ${screen.id}');
                   if (selected) {
                     widget.screenManager.setActiveScreen(screen.id);
                     widget.screenManager.toggleNavBar(false);
