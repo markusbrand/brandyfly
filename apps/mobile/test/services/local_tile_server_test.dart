@@ -60,7 +60,13 @@ void main() {
       }
       expect(bytes.isNotEmpty, isTrue);
       final decompressed = gzip.decode(bytes);
-      expect(decompressed, equals([0x1a, 0x04, 0x74, 0x65, 0x73, 0x74]));
+      expect(
+        decompressed,
+        equals([
+          0x1a, 0x24, 0x08, 0x01, 0x12, 0x05, 0x77, 0x61, 0x74, 0x65, 0x72,
+          0x18, 0x02, 0x22, 0x00, 0x28, 0x80, 0x20, 0x78, 0x02
+        ]),
+      );
     });
 
     test('serves /tiles.json with correct TileJSON schema and tiles URL', () async {

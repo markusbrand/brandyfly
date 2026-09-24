@@ -55,11 +55,14 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, "global_overview.pmtiles")
 
-    # Sample minimal MVT tile (empty gzip-compressed layer)
-    dummy_tile = gzip.compress(b"\x1a\x04test")
-    
+    # Base minimal MVT tile (valid specification-compliant vector layer)
+    # Binary protobuf encoding for vector tile layer "water"
+    minimal_mvt_tile = gzip.compress(
+        b"\x1a\x24\x08\x01\x12\x05water\x18\x02\x22\x00\x28\x80\x20\x78\x02"
+    )
+
     # Directory with tile 0 (z=0, x=0, y=0 -> tile_id = 0)
-    entries = [(0, 1, len(dummy_tile), 0)]
+    entries = [(0, 1, len(minimal_mvt_tile), 0)]
     dir_bytes = create_directory(entries)
     
     metadata = {
@@ -97,7 +100,7 @@ def main():
     leaf_length = 0
     
     data_offset = meta_offset + meta_length
-    data_length = len(dummy_tile)
+    data_length = len(minimal_mvt_tile)
 
     header = bytearray(127)
     # Magic bytes "PMTiles"
@@ -136,7 +139,7 @@ def main():
         f.write(header)
         f.write(dir_bytes)
         f.write(meta_bytes)
-        f.write(dummy_tile)
+        f.write(minimal_mvt_tile)
         
     print(f"Generated {output_file} ({os.path.getsize(output_file)} bytes)")
 
