@@ -234,7 +234,7 @@ The application SHALL display an elevated floating or docked Inspector Panel in 
 - **AND** the inspector panel SHALL dismiss with selection cleared.
 
 ### Requirement: Accessible Navigation Overlay and Safe Area Anchoring
-The top navigation bar grab handle and status badges SHALL anchor below platform safe area insets and provide minimum 48x48dp interactive touch boundaries and semantic descriptions.
+The top navigation bar grab handle and status badges SHALL anchor below platform safe area insets and provide minimum 48x48dp interactive touch boundaries and semantic descriptions. The overlay layer MUST NOT swallow touch events or gestures intended for UI elements (such as `ChoiceChip` selectors) that reside on layers beneath it in the widget tree.
 
 #### Scenario: Status bar safe area separation
 - **WHEN** the application is rendered on a device or emulator with a status bar notch or camera cutout
@@ -243,6 +243,10 @@ The top navigation bar grab handle and status badges SHALL anchor below platform
 #### Scenario: Accessible grab handle tap target
 - **WHEN** an assistive technology or flight pilot taps the top navigation trigger
 - **THEN** the interactive hit target SHALL be at least 48dp in height and width and emit an accessible semantic action label.
+
+#### Scenario: Overlay touch passthrough to ChoiceChips
+- **WHEN** the top navigation overlay is expanded and the user taps on a `ChoiceChip` (e.g. Normal Flight Screen, Alpine Map Screen)
+- **THEN** the tap event SHALL correctly pass through the parent gesture arena of the `TopNavBarOverlay` and trigger the selection of the underlying chip.
 
 ### Requirement: Persistent Widget Stack Depth and Layer Placement Policy
 The application SHALL maintain widget rendering order based on each widget's position within the active screen widget collection, persisting this order across sessions, and applying default placement policies when adding new widgets.
@@ -258,3 +262,32 @@ The application SHALL maintain widget rendering order based on each widget's pos
 #### Scenario: Preserving stack order in flight mode
 - **WHEN** the screen is rendered during operative flight, simulation, or replay mode
 - **THEN** widgets SHALL render strictly according to their stored stack list sequence without hardcoded type overrides.
+
+### Requirement: Simulation overlay touch passthrough
+The simulation control overlay SHALL NOT intercept touch events on the flight instrument widgets beneath it. The overlay SHALL only capture gestures within its own visible card bounds, allowing pilots to interact with map widgets, instrument panels, and other flight controls while the simulation overlay is visible.
+
+#### Scenario: Tapping a map widget beneath the simulation overlay
+- **WHEN** the simulation control overlay is visible and the pilot taps on a visible area of a map widget that is not obscured by the overlay card
+- **THEN** the tap SHALL be received by the map widget and the simulation overlay SHALL NOT consume the gesture event
+
+#### Scenario: Dragging the simulation overlay card
+- **WHEN** the pilot drags within the visible bounds of the simulation overlay card
+- **THEN** the overlay card SHALL reposition according to the drag gesture and the underlying flight instruments SHALL NOT receive the drag event
+
+### Requirement: Modular layout container architecture
+The layout strategy container implementation SHALL be decomposed into focused architectural units: a layout engine responsible for grid computation and strategy selection, an edit-mode inspector panel, a widget configuration dialog, and a widget content renderer. Each unit SHALL be maintainable and testable independently.
+
+#### Scenario: Layout engine computes grid without UI concerns
+- **WHEN** the layout container renders a flight screen with any layout strategy
+- **THEN** the grid cell dimensions, content height, and widget positioning SHALL be computed by a dedicated layout engine that does not contain edit-mode inspector UI, configuration dialog code, or widget content rendering logic
+
+#### Scenario: Widget configuration dialog is independently importable
+- **WHEN** a developer needs to modify the widget configuration dialog
+- **THEN** the dialog SHALL reside in its own Dart file and SHALL be importable and testable without importing the entire layout container
+
+### Requirement: Safe unbounded constraint handling in layout container
+The layout container SHALL handle unbounded vertical constraints (e.g., when embedded inside a scrollable parent) by falling back to a reasonable default cell height rather than computing `infinity / N` which causes a fatal layout crash.
+
+#### Scenario: Layout container inside unbounded vertical parent
+- **WHEN** the `LayoutStrategyContainer` receives `constraints.maxHeight == double.infinity`
+- **THEN** the container SHALL use a fallback cell height value and SHALL NOT crash or produce infinite layout dimensions

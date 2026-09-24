@@ -59,18 +59,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
   Widget build(BuildContext context) {
     final style = widget.screenManager.config.navBarStyle;
 
-    return GestureDetector(
-      onVerticalDragUpdate: (details) {
-        // Detect swipe down from top edge (primary delta > 8)
-        if (details.primaryDelta != null &&
-            details.primaryDelta! > 8 &&
-            details.globalPosition.dy < 140 &&
-            !widget.screenManager.isNavBarVisible &&
-            !widget.screenManager.isEditMode) {
-          widget.screenManager.toggleNavBar(true);
-        }
-      },
-      child: Stack(
+    final stack = Stack(
         children: [
           widget.child,
 
@@ -153,8 +142,21 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             ),
           ),
         ],
-      ),
-    );
+      );
+
+    if (!widget.screenManager.isNavBarVisible && !widget.screenManager.isEditMode) {
+      return GestureDetector(
+        onVerticalDragUpdate: (details) {
+          if (details.primaryDelta != null &&
+              details.primaryDelta! > 8 &&
+              details.globalPosition.dy < 140) {
+            widget.screenManager.toggleNavBar(true);
+          }
+        },
+        child: stack,
+      );
+    }
+    return stack;
   }
 
   Widget _buildNavBarContent(BuildContext context, NavBarStyle style) {
@@ -357,6 +359,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 ),
                 onSelected: (selected) {
+                  // print('DEBUG: ChoiceChip onSelected($selected) for ${screen.id}');
                   if (selected) {
                     widget.screenManager.setActiveScreen(screen.id);
                     widget.screenManager.toggleNavBar(false);

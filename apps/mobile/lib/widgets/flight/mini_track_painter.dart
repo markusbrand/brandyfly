@@ -17,6 +17,7 @@ class MiniTrackPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.width < 40 || size.height < 40) return;
     if (points.length < 2) return;
 
     var minLat = points.first.latitude;
