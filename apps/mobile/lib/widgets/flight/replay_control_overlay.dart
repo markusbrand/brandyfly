@@ -45,6 +45,7 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
         final elapsed = widget.replayService.elapsedDuration;
         final total = widget.replayService.totalDuration;
         final progress = widget.replayService.progressRatio;
+        final safeProgress = progress.isNaN ? 0.0 : progress.clamp(0.0, 1.0);
         final isPlaying = widget.replayService.isPlaying;
         final speed = widget.replayService.speedMultiplier;
         final flightTitle =
@@ -213,7 +214,7 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                                   thumbColor: Colors.cyanAccent,
                                 ),
                                 child: Slider(
-                                  value: progress,
+                                  value: safeProgress,
                                   onChanged: (val) {
                                     widget.replayService.seekToRatio(val);
                                   },

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../models/ui_config.dart';
 
@@ -175,6 +176,7 @@ class _SparklinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
     if (history.isEmpty) return;
 
     if (drawGrid) {
@@ -230,8 +232,7 @@ class _SparklinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SparklinePainter oldDelegate) {
-    // ⚡ Bolt: Use reference equality instead of listEquals for large arrays to prevent O(N) overhead on the UI thread
-    return oldDelegate.history != history ||
+    return !listEquals(oldDelegate.history, history) ||
         oldDelegate.lineColor != lineColor ||
         oldDelegate.isFilled != isFilled ||
         oldDelegate.drawGrid != drawGrid;

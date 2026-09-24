@@ -205,102 +205,103 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _screenManager,
-      builder: (context, _) {
-        return MaterialApp(
-          title: 'BrandyFly',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.blue,
-              brightness: Brightness.dark,
-            ),
-          ),
-          themeMode: ThemeMode.dark,
-          home: _startupError != null
-              ? _StartupErrorView(message: _startupError!)
-              : _loading
-              ? const _LoadingView()
-              : _screenManager.isFlightsScreenVisible
-              ? FlightsScreen(
-                  storageService: _storageService,
-                  uploadService: _uploadService,
-                  onStartReplay: _startReplay,
-                  onClose: () => _screenManager.toggleFlightsScreen(false),
-                )
-              : Stack(
-                  children: [
-                    TopNavBarOverlay(
-                      screenManager: _screenManager,
-                      child: AnimatedBuilder(
-                        animation: _replayService,
-                        builder: (context, _) => _screenManager.isSettingsVisible
-                            ? UISettingsPanel(
-                                screenManager: _screenManager,
-                                trackingService: _trackingService,
-                                uploadService: _uploadService,
-                              )
-                            : widget.config.enabled
-                            ? _MockFlightView(
-                                config: widget.config,
-                                replay: _mockReplay!,
-                                screenManager: _screenManager,
-                                replayService: _replayService,
-                                trackingService: _trackingService,
-                                onNext: () => setState(() {
-                                  _mockReplay!.advance();
-                                }),
-                                onReset: () => setState(() {
-                                  _mockReplay!.reset();
-                                }),
-                              )
-                            : _LiveFlightView(
-                                platformVersion: _platformVersion ?? 'Unknown',
-                                screenManager: _screenManager,
-                                replayService: _replayService,
-                                trackingService: _trackingService,
-                              ),
-                      ),
-                    ),
-
-                    // Floating Bottom Replay HUD when Replay Mode is active
-                    if (_screenManager.isReplayActive)
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: ReplayControlOverlay(
-                          replayService: _replayService,
-                          onExit: _exitReplay,
-                        ),
-                      ),
-
-                    // Floating Mock Flight Session & Mode Controller Overlay
-                    if (widget.config.enabled &&
-                        !_screenManager.isSettingsVisible &&
-                        !_screenManager.isNavBarVisible)
-                      Positioned.fill(
-                        child: _SimulationControlOverlay(
+    return MaterialApp(
+      title: 'BrandyFly',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+      ),
+      themeMode: ThemeMode.dark,
+      home: AnimatedBuilder(
+        animation: _screenManager,
+        builder: (context, _) {
+          if (_startupError != null) {
+            return _StartupErrorView(message: _startupError!);
+          }
+          if (_loading) {
+            return const _LoadingView();
+          }
+          if (_screenManager.isFlightsScreenVisible) {
+            return FlightsScreen(
+              storageService: _storageService,
+              uploadService: _uploadService,
+              onStartReplay: _startReplay,
+              onClose: () => _screenManager.toggleFlightsScreen(false),
+            );
+          }
+          return Stack(
+            children: [
+              TopNavBarOverlay(
+                screenManager: _screenManager,
+                child: AnimatedBuilder(
+                  animation: _replayService,
+                  builder: (context, _) => _screenManager.isSettingsVisible
+                      ? UISettingsPanel(
+                          screenManager: _screenManager,
+                          trackingService: _trackingService,
+                          uploadService: _uploadService,
+                        )
+                      : widget.config.enabled
+                      ? _MockFlightView(
                           config: widget.config,
                           replay: _mockReplay!,
                           screenManager: _screenManager,
                           replayService: _replayService,
+                          trackingService: _trackingService,
                           onNext: () => setState(() {
                             _mockReplay!.advance();
                           }),
                           onReset: () => setState(() {
                             _mockReplay!.reset();
                           }),
+                        )
+                      : _LiveFlightView(
+                          platformVersion: _platformVersion ?? 'Unknown',
+                          screenManager: _screenManager,
+                          replayService: _replayService,
+                          trackingService: _trackingService,
                         ),
-                      ),
-                  ],
                 ),
-        );
-      },
+              ),
+
+              // Floating Bottom Replay HUD when Replay Mode is active
+              if (_screenManager.isReplayActive)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: ReplayControlOverlay(
+                    replayService: _replayService,
+                    onExit: _exitReplay,
+                  ),
+                ),
+
+              // Floating Mock Flight Session & Mode Controller Overlay
+              if (widget.config.enabled &&
+                  !_screenManager.isSettingsVisible &&
+                  !_screenManager.isNavBarVisible)
+                _SimulationControlOverlay(
+                  config: widget.config,
+                  replay: _mockReplay!,
+                  screenManager: _screenManager,
+                  replayService: _replayService,
+                  onNext: () => setState(() {
+                    _mockReplay!.advance();
+                  }),
+                  onReset: () => setState(() {
+                    _mockReplay!.reset();
+                  }),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -503,6 +504,11 @@ class _SimulationControlOverlay extends StatefulWidget {
 }
 
 class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
+  static const _detailTextStyle = TextStyle(
+    fontSize: 8.5,
+    color: Colors.white70,
+  );
+
   bool _isSessionMinimized = false;
   Offset? _overlayPosition;
   final GlobalKey _overlayKey = GlobalKey();
@@ -694,52 +700,31 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
                         const SizedBox(height: 2),
                         Text(
                           'Fixture: ${widget.config.fixtureVersion}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
+                          style: _detailTextStyle,
                         ),
                         Text(
                           'Seed: ${widget.config.seed}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
+                          style: _detailTextStyle,
                         ),
                         Text(
                           'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
+                          style: _detailTextStyle,
                         ),
                         Text(
                           'Provenance: ${widget.config.provenance}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
+                          style: _detailTextStyle,
                         ),
                         Text(
                           'Session label: ${widget.config.sessionLabel}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
+                          style: _detailTextStyle,
                         ),
                         Text(
                           'Replay hash: ${widget.replay.canonicalReplayHash}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
+                          style: _detailTextStyle,
                         ),
                         Text(
                           'Marker: ${frame.sessionMarker}',
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.white70,
-                          ),
+                          style: _detailTextStyle,
                         ),
                         Text(
                           frame.title,

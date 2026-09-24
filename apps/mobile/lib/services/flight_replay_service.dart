@@ -18,6 +18,9 @@ class FlightReplayService extends ChangeNotifier {
   int _speedMultiplier = 1; // 1x, 2x, 3x, 4x, 5x, 6x, 7x, 8x
   Timer? _playbackTimer;
 
+  List<LatLng> _trackCache = [];
+  List<FlightPoint> _flightPointsCache = [];
+
   final List<double> _altitudeHistory = [];
 
   FlightModel? get flight => _flight;
@@ -71,16 +74,8 @@ class FlightReplayService extends ChangeNotifier {
       };
     }
 
-    final track = _flight?.points
-            .take(_currentIndex + 1)
-            .map((p) => LatLng(p.latitude, p.longitude))
-            .toList() ??
-        <LatLng>[];
-
-    final fullFlightPoints = _flight?.points
-            .take(_currentIndex + 1)
-            .toList() ??
-        <FlightPoint>[];
+    final track = List<LatLng>.unmodifiable(_trackCache);
+    final fullFlightPoints = List<FlightPoint>.unmodifiable(_flightPointsCache);
 
     return {
       'altitude': pt.altitude,
@@ -104,8 +99,12 @@ class FlightReplayService extends ChangeNotifier {
     _flight = flight;
     _currentIndex = 0;
     _altitudeHistory.clear();
+    _trackCache.clear();
+    _flightPointsCache.clear();
     if (flight.points.isNotEmpty) {
       _altitudeHistory.add(flight.points.first.altitude);
+      _trackCache = [LatLng(flight.points.first.latitude, flight.points.first.longitude)];
+      _flightPointsCache = [flight.points.first];
     }
     notifyListeners();
   }
@@ -164,6 +163,8 @@ class FlightReplayService extends ChangeNotifier {
     if (_flight == null || _flight!.points.isEmpty) return;
     _currentIndex = index.clamp(0, _flight!.points.length - 1);
     _rebuildAltitudeHistory();
+    _trackCache = _flight!.points.take(_currentIndex + 1).map((p) => LatLng(p.latitude, p.longitude)).toList();
+    _flightPointsCache = _flight!.points.take(_currentIndex + 1).toList();
     notifyListeners();
   }
 
@@ -182,6 +183,11 @@ class FlightReplayService extends ChangeNotifier {
       _currentIndex = 0;
     } else {
       _currentIndex += steps;
+      if (_currentIndex < _flight!.points.length) {
+        final p = _flight!.points[_currentIndex];
+        _trackCache.add(LatLng(p.latitude, p.longitude));
+        _flightPointsCache.add(p);
+      }
     }
     _rebuildAltitudeHistory();
     notifyListeners();

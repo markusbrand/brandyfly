@@ -228,6 +228,7 @@ class _FlightsScreenState extends State<FlightsScreen>
     final dateStr = flight.date.toLocal().toString().substring(0, 10);
 
     return Card(
+      key: ValueKey(flight.id),
       margin: const EdgeInsets.only(bottom: 12),
       color: const Color(0xFF1E293B),
       shape: RoundedRectangleBorder(
