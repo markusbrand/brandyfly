@@ -9,7 +9,9 @@
 - Docker with BuildKit for backend container validation
 - Xcode for iOS builds and the Android SDK for Android builds
 - Linux desktop preview needs the Flutter Linux desktop dependencies (clang,
-  cmake, ninja, pkg-config, gtk3 development headers)
+  cmake, ninja, pkg-config, gtk3 development headers). Note the map rendering
+  (MapLibre) is not supported on Linux desktop; use an Android emulator as the
+  default run target.
 
 ## Validation
 
@@ -75,6 +77,25 @@ Releases and changelogs are managed automatically across monorepo packages using
 
 When conventional commits (e.g. `feat:`, `fix:`, `feat(mobile):`) are pushed to `main`, Release Please maintains release PRs for affected packages. Merging a release PR automatically tags the release and publishes GitHub Releases.
 
+## Running the app
+
+The default container for running the app is the **Android emulator** (`brandyfly_test_device`),
+because MapLibre map rendering is not supported on the Linux desktop target. To launch a fresh
+emulator session (headless mode is used in CI/automation, windowed for interactive work):
+
+```sh
+flutter emulators --launch brandyfly_test_device
+```
+
+or directly:
+
+```sh
+~/Android/Sdk/emulator/emulator -avd brandyfly_test_device
+```
+
+OpenSpec changes require genuine MapLibre GL rendering to verify map behavior, so the Android
+emulator (or a physical device) is the required environment for those checks.
+
 ## Local mock flight mode
 
 Run the mobile app with deterministic synthetic flight data and mocked
@@ -82,7 +103,7 @@ interfaces on a development laptop:
 
 ```sh
 cd apps/mobile
-flutter run --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true
+flutter run -d android --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true
 ```
 
 Optional defines:
