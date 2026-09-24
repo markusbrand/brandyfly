@@ -48,3 +48,7 @@
 ## 2026-09-22 - Prevent unconditional repaints via exhaustive equality check
 **Learning:** `CustomPainter.shouldRepaint` that unconditionally returns `true` skips Flutter's optimization layers, causing it to repaint on every rebuild of the tree, even when the widget data hasn't changed.
 **Action:** Always verify all passed-in fields inside `shouldRepaint` by checking for field equality. When lists are immutable in state management, reference equality (`!=`) works well to avoid expensive repaints.
+
+## 2026-09-24 - Verification of Paint Object Reuse in CustomPainter Loops
+**Learning:** In Flutter `CustomPainter.paint` loops, instantiating `Paint` objects inside `for` loops (e.g. for flight track polyline segments) creates massive per-frame heap allocations and Garbage Collection pressure on 60Hz hot paths. Instantiating a single `Paint` object outside the loop and updating its properties (e.g., `trackPaint.color = color`) per iteration eliminates heap churn while preserving rendering behavior.
+**Action:** Always instantiate `Paint` objects outside iteration loops in `CustomPainter` methods and mutate properties in-place inside loops.
