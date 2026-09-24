@@ -59,7 +59,19 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
   Widget build(BuildContext context) {
     final style = widget.screenManager.config.navBarStyle;
 
-    final stack = Stack(
+    return GestureDetector(
+      onVerticalDragUpdate: widget.screenManager.isNavBarVisible ||
+              widget.screenManager.isEditMode
+          ? null
+          : (details) {
+              // Detect swipe down from top edge (primary delta > 8)
+              if (details.primaryDelta != null &&
+                  details.primaryDelta! > 8 &&
+                  details.globalPosition.dy < 140) {
+                widget.screenManager.toggleNavBar(true);
+              }
+            },
+      child: Stack(
         children: [
           widget.child,
 
@@ -142,32 +154,29 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             ),
           ),
         ],
-      );
-
-    if (!widget.screenManager.isNavBarVisible && !widget.screenManager.isEditMode) {
-      return GestureDetector(
-        onVerticalDragUpdate: (details) {
-          if (details.primaryDelta != null &&
-              details.primaryDelta! > 8 &&
-              details.globalPosition.dy < 140) {
-            widget.screenManager.toggleNavBar(true);
-          }
-        },
-        child: stack,
-      );
-    }
-    return stack;
+      ),
+    );
   }
 
   Widget _buildNavBarContent(BuildContext context, NavBarStyle style) {
+    final Widget content;
     switch (style) {
       case NavBarStyle.translucentDrawer:
-        return _buildTranslucentDrawer(context);
+        content = _buildTranslucentDrawer(context);
+        break;
       case NavBarStyle.floatingPill:
-        return _buildFloatingPill(context);
+        content = _buildFloatingPill(context);
+        break;
       case NavBarStyle.cornerMenu:
-        return _buildCornerMenu(context);
+        content = _buildCornerMenu(context);
+        break;
     }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {},
+      child: content,
+    );
   }
 
   // Option 1: Translucent Drawer (Full width backdrop blur)
@@ -193,6 +202,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
               ],
             ),
             child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -232,6 +242,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
+              key: const Key('nav_pill_btn_close'),
               icon: const Icon(Icons.close, color: Colors.white70),
               tooltip: 'Close',
               onPressed: () => widget.screenManager.toggleNavBar(false),
@@ -240,19 +251,31 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
               child: Center(child: _buildScreenSelectorDropdown(context)),
             ),
             IconButton(
+              key: const Key('nav_pill_btn_flights'),
               icon: const Icon(Icons.flight, color: Colors.lightGreenAccent),
               tooltip: 'Flights',
-              onPressed: () => widget.screenManager.toggleFlightsScreen(true),
+              onPressed: () {
+                widget.screenManager.toggleNavBar(false);
+                widget.screenManager.toggleFlightsScreen(true);
+              },
             ),
             IconButton(
+              key: const Key('nav_pill_btn_edit_mode'),
               icon: const Icon(Icons.edit_note, color: Colors.cyanAccent),
               tooltip: 'Edit Mode',
-              onPressed: () => widget.screenManager.toggleEditMode(true),
+              onPressed: () {
+                widget.screenManager.toggleNavBar(false);
+                widget.screenManager.toggleEditMode(true);
+              },
             ),
             IconButton(
+              key: const Key('nav_pill_btn_settings'),
               icon: const Icon(Icons.settings, color: Colors.white),
               tooltip: 'Settings',
-              onPressed: () => widget.screenManager.toggleSettingsPanel(true),
+              onPressed: () {
+                widget.screenManager.toggleNavBar(false);
+                widget.screenManager.toggleSettingsPanel(true);
+              },
             ),
           ],
         ),
@@ -342,6 +365,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
     final activeId = widget.screenManager.config.activeScreenId;
 
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
@@ -350,6 +374,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(
+                key: Key('nav_chip_${screen.id}'),
                 label: Text(screen.name),
                 selected: isActive,
                 selectedColor: Colors.blueAccent,
@@ -358,17 +383,15 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
                   color: isActive ? Colors.white : Colors.white70,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 ),
-                onSelected: (selected) {
-                  // print('DEBUG: ChoiceChip onSelected($selected) for ${screen.id}');
-                  if (selected) {
-                    widget.screenManager.setActiveScreen(screen.id);
-                    widget.screenManager.toggleNavBar(false);
-                  }
+                onSelected: (_) {
+                  widget.screenManager.setActiveScreen(screen.id);
+                  widget.screenManager.toggleNavBar(false);
                 },
               ),
             );
           }),
           IconButton(
+            key: const Key('nav_btn_add_screen'),
             icon: const Icon(
               Icons.add_to_photos,
               color: Colors.lightBlueAccent,
@@ -387,6 +410,8 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
 
     return DropdownButton<String>(
       value: activeId,
+      isExpanded: true,
+      isDense: true,
       dropdownColor: Colors.blueGrey.shade900,
       underline: const SizedBox(),
       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -394,7 +419,10 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
       items: screens.map((screen) {
         return DropdownMenuItem<String>(
           value: screen.id,
-          child: Text(screen.name),
+          child: Text(
+            screen.name,
+            overflow: TextOverflow.ellipsis,
+          ),
         );
       }).toList(),
       onChanged: (newId) {
@@ -413,6 +441,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
       runSpacing: 8,
       children: [
         ElevatedButton.icon(
+          key: const Key('nav_btn_flights'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.teal.shade700,
             foregroundColor: Colors.white,
@@ -425,6 +454,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           },
         ),
         ElevatedButton.icon(
+          key: const Key('nav_btn_edit_mode'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.cyan.shade700,
             foregroundColor: Colors.white,
@@ -437,6 +467,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
           },
         ),
         ElevatedButton.icon(
+          key: const Key('nav_btn_settings'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blueGrey.shade700,
             foregroundColor: Colors.white,
