@@ -1,6 +1,10 @@
 package server
 
 import (
+	"context"
+	"io"
+	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -97,5 +101,60 @@ func TestCheckHealthInvalidURL(t *testing.T) {
 	err := CheckHealth(":\x7f", time.Second)
 	if err == nil {
 		t.Fatal("CheckHealth() with invalid URL error = nil, want non-nil")
+	}
+}
+
+func TestRunSuccessAndShutdown(t *testing.T) {
+	t.Setenv("BRANDYFLY_HEALTH_TOKEN", "")
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	addr := ln.Addr().String()
+	ln.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	errCh := make(chan error, 1)
+
+	go func() {
+		errCh <- Run(ctx, logger, addr)
+	}()
+
+	url := "http://" + addr + "/healthz"
+	var healthErr error
+	for i := 0; i < 50; i++ {
+		time.Sleep(20 * time.Millisecond)
+		healthErr = CheckHealth(url, 100*time.Millisecond)
+		if healthErr == nil {
+			break
+		}
+	}
+	if healthErr != nil {
+		t.Fatalf("server failed to become healthy at %s: %v", url, healthErr)
+	}
+
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("Run() returned error: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run() timed out waiting for shutdown")
+	}
+}
+
+func TestRunListenError(t *testing.T) {
+	ctx := context.Background()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	err := Run(ctx, logger, "127.0.0.1:-1")
+	if err == nil {
+		t.Fatal("Run() with invalid address error = nil, want non-nil")
 	}
 }
