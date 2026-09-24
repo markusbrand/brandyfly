@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.9.0...brandyfly-v0.10.0) (2026-09-24)
+
+
+### Features
+
+* **mobile:** Add Semantics wrapper to Airmass/Ground toggle ([#221](https://github.com/markusbrand/brandyfly/issues/221)) ([3cb511f](https://github.com/markusbrand/brandyfly/commit/3cb511ff5039efd94110eaed1ec6c0cc2e8f6c40))
+
 ## [0.9.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.8.0...brandyfly-v0.9.0) (2026-09-23)
 
 
