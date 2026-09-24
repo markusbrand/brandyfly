@@ -232,6 +232,7 @@ class LayoutStrategyContainer extends StatelessWidget {
     String? selectedWidgetId,
   ) {
     return LayoutBuilder(
+      key: ValueKey('layout_${screen.id}'),
       builder: (ctx, constraints) {
         final totalWidth = constraints.maxWidth;
         final cellWidth = totalWidth / 8;

@@ -5,7 +5,7 @@
     "brandyfly:style": "alpine_relief",
     "brandyfly:description": "OpenStreetMap OpenMapTiles vector style with hillshade, terrain relief, forests, meadows, rocks, water, trails, aerialways, and peaks."
   },
-  "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   "sources": {
     "openmaptiles": {
       "type": "vector",
@@ -359,7 +359,8 @@
       "minzoom": 12,
       "layout": {
         "text-field": "{name}\n{ele}m",
-        "text-size": 10,
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 15,
         "text-offset": [0, 1.1],
         "text-anchor": "top",
         "text-optional": true
@@ -378,12 +379,13 @@
       "filter": ["in", "class", "city", "town", "village", "hamlet"],
       "layout": {
         "text-field": "{name}",
-        "text-size": 11
+        "text-font": ["Noto Sans Bold"],
+        "text-size": 18
       },
       "paint": {
-        "text-color": "#2c2c2c",
+        "text-color": "#000000",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.5
+        "text-halo-width": 2
       }
     }
   ]

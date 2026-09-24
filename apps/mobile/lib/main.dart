@@ -473,6 +473,13 @@ class _MockFlightView extends StatelessWidget {
           };
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          print('DEBUG: FAB Tapped! Forcing screen to map_screen');
+          screenManager.setActiveScreen('map_screen');
+        },
+        child: const Icon(Icons.map),
+      ),
       body: LayoutStrategyContainer(
         screenManager: screenManager,
         telemetryData: telemetry,
