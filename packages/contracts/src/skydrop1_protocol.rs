@@ -913,4 +913,45 @@ mod tests {
             Ok(())
         );
     }
+
+    #[test]
+    fn sanitize_handles_large_payloads_and_edge_cases() {
+        // Large valid payload exceeding stack buffer (128 bytes) -> heap allocation path
+        let large_valid = "A".repeat(200);
+        assert_eq!(sanitize_skydrop_payload(large_valid.as_bytes()), Ok(()));
+
+        // Large payload with secret marker exceeding stack buffer
+        let large_secret = format!("{}TOKEN=SECRET_KEY", "A".repeat(150));
+        assert_eq!(
+            sanitize_skydrop_payload(large_secret.as_bytes()),
+            Err(SkyDrop1ParseError::SanitizationViolation(
+                "forbidden_credential_detected"
+            ))
+        );
+
+        // Large payload with unredacted coordinates exceeding stack buffer
+        let large_gps = format!("{}$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47", "X".repeat(150));
+        assert_eq!(
+            sanitize_skydrop_payload(large_gps.as_bytes()),
+            Err(SkyDrop1ParseError::SanitizationViolation(
+                "unredacted_private_coordinates_detected"
+            ))
+        );
+
+        // Valid non-ASCII UTF-8 payload (passes UTF-8 check, triggers lowercasing)
+        let non_ascii_utf8 = "$LK8EX1,101325,1500,150,21,95,🚀*3B";
+        assert_eq!(
+            sanitize_skydrop_payload(non_ascii_utf8.as_bytes()),
+            Ok(())
+        );
+
+        // Non-ASCII UTF-8 payload with forbidden secret marker
+        let non_ascii_secret = "$LK8EX1,101325,1500,150,21,95,🚀,BEARER TOKEN*3B";
+        assert_eq!(
+            sanitize_skydrop_payload(non_ascii_secret.as_bytes()),
+            Err(SkyDrop1ParseError::SanitizationViolation(
+                "forbidden_credential_detected"
+            ))
+        );
+    }
 }
