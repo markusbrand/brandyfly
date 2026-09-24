@@ -17,7 +17,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final screenManager = ScreenManagerService(
-        initialConfig: const UIConfig(
+        initialConfig: UIConfig(
           activeScreenId: 'resilience_test',
           screens: [
             FlightScreenModel(
@@ -92,7 +92,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final screenManager = ScreenManagerService(
-        initialConfig: const UIConfig(
+        initialConfig: UIConfig(
           activeScreenId: 'extremes_test',
           screens: [
             FlightScreenModel(
@@ -200,7 +200,7 @@ void main() {
     testWidgets('Telemetry instruments have accessible Semantics labels',
         (tester) async {
       final screenManager = ScreenManagerService(
-        initialConfig: const UIConfig(
+        initialConfig: UIConfig(
           activeScreenId: 'a11y_test',
           screens: [
             FlightScreenModel(

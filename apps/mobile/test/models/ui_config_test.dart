@@ -4,61 +4,70 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('WidgetPlacementModel Serialization & Fallbacks', () {
-    test('effective getters return fallback defaults when styling fields are null', () {
-      const model = WidgetPlacementModel(
-        id: 'w_test',
-        type: WidgetType.altitude,
-        x: 0,
-        y: 0,
-        w: 2,
-        h: 1,
-      );
+    test(
+      'effective getters return fallback defaults when styling fields are null',
+      () {
+        const model = WidgetPlacementModel(
+          id: 'w_test',
+          type: WidgetType.altitude,
+          x: 0,
+          y: 0,
+          w: 2,
+          h: 1,
+        );
 
-      expect(model.numericStyle, isNull);
-      expect(model.effectiveNumericStyle, NumericWidgetStyle.minimalistText);
-      expect(model.effectiveWindStyle, WindWidgetStyle.relativeArrow);
-      expect(model.effectiveVarioStyle, LiftSinkBarStyle.verticalEdgeBar);
-      expect(model.effectiveAltitudeChartStyle, AltitudeChartStyle.minimalSparkline);
-      expect(model.effectiveMapStyle, MapWidgetStyle.topoContours);
-      expect(model.effectiveMapOrientation, MapOrientation.trackUp);
-      expect(model.effectiveMapShowAirspace, isTrue);
-      expect(model.effectiveMapShowThermals, isTrue);
-      expect(model.effectiveMapShowTrack, isTrue);
-      expect(model.effectiveMapShowContours, isTrue);
-      expect(model.mapZoomLevel, isNull);
-      expect(model.effectiveMapZoomLevel, 13.5);
-      expect(model.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
-      expect(model.effectiveThermalMapShowCore, isTrue);
-      expect(model.effectiveThermalMapHistorySeconds, 90);
-      expect(model.effectiveMapTrackHistoryMinutes, 10);
-      expect(model.effectiveMapTrackShowOlderTail, isTrue);
-    });
+        expect(model.numericStyle, isNull);
+        expect(model.effectiveNumericStyle, NumericWidgetStyle.minimalistText);
+        expect(model.effectiveWindStyle, WindWidgetStyle.relativeArrow);
+        expect(model.effectiveVarioStyle, LiftSinkBarStyle.verticalEdgeBar);
+        expect(
+          model.effectiveAltitudeChartStyle,
+          AltitudeChartStyle.minimalSparkline,
+        );
+        expect(model.effectiveMapStyle, MapWidgetStyle.topoContours);
+        expect(model.effectiveMapOrientation, MapOrientation.trackUp);
+        expect(model.effectiveMapShowAirspace, isTrue);
+        expect(model.effectiveMapShowThermals, isTrue);
+        expect(model.effectiveMapShowTrack, isTrue);
+        expect(model.effectiveMapShowContours, isTrue);
+        expect(model.mapZoomLevel, isNull);
+        expect(model.effectiveMapZoomLevel, 13.5);
+        expect(model.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
+        expect(model.effectiveThermalMapShowCore, isTrue);
+        expect(model.effectiveThermalMapHistorySeconds, 90);
+        expect(model.effectiveMapTrackHistoryMinutes, 10);
+        expect(model.effectiveMapTrackShowOlderTail, isTrue);
+      },
+    );
 
-    test('roundtrip serialization preserves thermal map style and configuration', () {
-      const model = WidgetPlacementModel(
-        id: 'w_thermal_custom',
-        type: WidgetType.thermalMap,
-        x: 0,
-        y: 0,
-        w: 4,
-        h: 4,
-        thermalMapStyle: ThermalMapStyle.burnairCore,
-        thermalMapShowCore: false,
-        thermalMapHistorySeconds: 120,
-      );
+    test(
+      'roundtrip serialization preserves thermal map style and configuration',
+      () {
+        const model = WidgetPlacementModel(
+          id: 'w_thermal_custom',
+          type: WidgetType.thermalMap,
+          x: 0,
+          y: 0,
+          w: 4,
+          h: 4,
+          thermalMapStyle: ThermalMapStyle.burnairCore,
+          thermalMapShowCore: false,
+          thermalMapHistorySeconds: 120,
+        );
 
-      final json = model.toJson();
-      final restored = WidgetPlacementModel.fromJson(json);
+        final json = model.toJson();
+        final restored = WidgetPlacementModel.fromJson(json);
 
-      expect(restored.id, 'w_thermal_custom');
-      expect(restored.type, WidgetType.thermalMap);
-      expect(restored.thermalMapStyle, ThermalMapStyle.burnairCore);
-      expect(restored.effectiveThermalMapStyle, ThermalMapStyle.burnairCore);
-      expect(restored.thermalMapShowCore, isFalse);
-      expect(restored.effectiveThermalMapShowCore, isFalse);
-      expect(restored.thermalMapHistorySeconds, 120);
-      expect(restored.effectiveThermalMapHistorySeconds, 120);
-    });
+        expect(restored.id, 'w_thermal_custom');
+        expect(restored.type, WidgetType.thermalMap);
+        expect(restored.thermalMapStyle, ThermalMapStyle.burnairCore);
+        expect(restored.effectiveThermalMapStyle, ThermalMapStyle.burnairCore);
+        expect(restored.thermalMapShowCore, isFalse);
+        expect(restored.effectiveThermalMapShowCore, isFalse);
+        expect(restored.thermalMapHistorySeconds, 120);
+        expect(restored.effectiveThermalMapHistorySeconds, 120);
+      },
+    );
 
     test('roundtrip serialization preserves map track history settings', () {
       const model = WidgetPlacementModel(
@@ -118,69 +127,78 @@ void main() {
       expect(updated.effectiveMapTrackShowOlderTail, isFalse);
     });
 
-    test('roundtrip serialization preserves widget-specific styles and layers', () {
-      const model = WidgetPlacementModel(
-        id: 'w_map_custom',
-        type: WidgetType.map,
-        x: 0,
-        y: 0,
-        w: 4,
-        h: 4,
-        numericStyle: NumericWidgetStyle.retroDigital,
-        windStyle: WindWidgetStyle.windsockIndicator,
-        varioStyle: LiftSinkBarStyle.screenEdgeGlow,
-        altitudeChartStyle: AltitudeChartStyle.detailedGrid,
-        mapStyle: MapWidgetStyle.thermalHeatmap,
-        mapOrientation: MapOrientation.headingUp,
-        mapShowAirspace: false,
-        mapShowThermals: true,
-        mapShowTrack: false,
-        mapShowContours: true,
-        mapZoomLevel: 15.0,
-      );
+    test(
+      'roundtrip serialization preserves widget-specific styles and layers',
+      () {
+        const model = WidgetPlacementModel(
+          id: 'w_map_custom',
+          type: WidgetType.map,
+          x: 0,
+          y: 0,
+          w: 4,
+          h: 4,
+          numericStyle: NumericWidgetStyle.retroDigital,
+          windStyle: WindWidgetStyle.windsockIndicator,
+          varioStyle: LiftSinkBarStyle.screenEdgeGlow,
+          altitudeChartStyle: AltitudeChartStyle.detailedGrid,
+          mapStyle: MapWidgetStyle.thermalHeatmap,
+          mapOrientation: MapOrientation.headingUp,
+          mapShowAirspace: false,
+          mapShowThermals: true,
+          mapShowTrack: false,
+          mapShowContours: true,
+          mapZoomLevel: 15.0,
+        );
 
-      final json = model.toJson();
-      final restored = WidgetPlacementModel.fromJson(json);
+        final json = model.toJson();
+        final restored = WidgetPlacementModel.fromJson(json);
 
-      expect(restored.id, 'w_map_custom');
-      expect(restored.type, WidgetType.map);
-      expect(restored.numericStyle, NumericWidgetStyle.retroDigital);
-      expect(restored.effectiveNumericStyle, NumericWidgetStyle.retroDigital);
-      expect(restored.windStyle, WindWidgetStyle.windsockIndicator);
-      expect(restored.varioStyle, LiftSinkBarStyle.screenEdgeGlow);
-      expect(restored.altitudeChartStyle, AltitudeChartStyle.detailedGrid);
-      expect(restored.mapStyle, MapWidgetStyle.thermalHeatmap);
-      expect(restored.mapOrientation, MapOrientation.headingUp);
-      expect(restored.mapShowAirspace, isFalse);
-      expect(restored.mapShowThermals, isTrue);
-      expect(restored.mapShowTrack, isFalse);
-      expect(restored.mapShowContours, isTrue);
-      expect(restored.mapZoomLevel, 15.0);
-      expect(restored.effectiveMapZoomLevel, 15.0);
-    });
+        expect(restored.id, 'w_map_custom');
+        expect(restored.type, WidgetType.map);
+        expect(restored.numericStyle, NumericWidgetStyle.retroDigital);
+        expect(restored.effectiveNumericStyle, NumericWidgetStyle.retroDigital);
+        expect(restored.windStyle, WindWidgetStyle.windsockIndicator);
+        expect(restored.varioStyle, LiftSinkBarStyle.screenEdgeGlow);
+        expect(restored.altitudeChartStyle, AltitudeChartStyle.detailedGrid);
+        expect(restored.mapStyle, MapWidgetStyle.thermalHeatmap);
+        expect(restored.mapOrientation, MapOrientation.headingUp);
+        expect(restored.mapShowAirspace, isFalse);
+        expect(restored.mapShowThermals, isTrue);
+        expect(restored.mapShowTrack, isFalse);
+        expect(restored.mapShowContours, isTrue);
+        expect(restored.mapZoomLevel, 15.0);
+        expect(restored.effectiveMapZoomLevel, 15.0);
+      },
+    );
 
-    test('fromJson gracefully handles unknown enum strings or missing fields', () {
-      final json = <String, dynamic>{
-        'id': 'w_legacy',
-        'type': 'altitude',
-        'x': 1,
-        'y': 2,
-        'w': 2,
-        'h': 1,
-        'numericStyle': 'invalid_unknown_style',
-        'mapStyle': 'unknown_map_style',
-      };
+    test(
+      'fromJson gracefully handles unknown enum strings or missing fields',
+      () {
+        final json = <String, dynamic>{
+          'id': 'w_legacy',
+          'type': 'altitude',
+          'x': 1,
+          'y': 2,
+          'w': 2,
+          'h': 1,
+          'numericStyle': 'invalid_unknown_style',
+          'mapStyle': 'unknown_map_style',
+        };
 
-      final restored = WidgetPlacementModel.fromJson(json);
-      expect(restored.id, 'w_legacy');
-      expect(restored.type, WidgetType.altitude);
-      expect(restored.numericStyle, isNull);
-      expect(restored.effectiveNumericStyle, NumericWidgetStyle.minimalistText);
-      expect(restored.mapStyle, isNull);
-      expect(restored.effectiveMapStyle, MapWidgetStyle.topoContours);
-      expect(restored.mapZoomLevel, isNull);
-      expect(restored.effectiveMapZoomLevel, 13.5);
-    });
+        final restored = WidgetPlacementModel.fromJson(json);
+        expect(restored.id, 'w_legacy');
+        expect(restored.type, WidgetType.altitude);
+        expect(restored.numericStyle, isNull);
+        expect(
+          restored.effectiveNumericStyle,
+          NumericWidgetStyle.minimalistText,
+        );
+        expect(restored.mapStyle, isNull);
+        expect(restored.effectiveMapStyle, MapWidgetStyle.topoContours);
+        expect(restored.mapZoomLevel, isNull);
+        expect(restored.effectiveMapZoomLevel, 13.5);
+      },
+    );
 
     test('copyWith updates individual properties accurately', () {
       const model = WidgetPlacementModel(
@@ -211,101 +229,102 @@ void main() {
   });
 
   group('FlightScreenModel Serialization & Screen Triggers', () {
-    test('roundtrip serialization preserves layoutStrategy and autoSwitchTrigger', () {
-      const screen = FlightScreenModel(
-        id: 'screen_thermal',
-        name: 'Thermal Radar',
-        layoutStrategy: LayoutStrategyStyle.freeformHud,
-        autoSwitchTrigger: ScreenAutoSwitchTrigger.onThermalCircling,
-        widgets: [
-          WidgetPlacementModel(
-            id: 'tw_vario',
-            type: WidgetType.varioBar,
-            x: 0,
-            y: 0,
-            w: 1,
-            h: 3,
-            varioStyle: LiftSinkBarStyle.analogDial,
-          ),
-        ],
-      );
+    test(
+      'roundtrip serialization preserves layoutStrategy and autoSwitchTrigger',
+      () {
+        final screen = FlightScreenModel(
+          id: 'screen_thermal',
+          name: 'Thermal Radar',
+          layoutStrategy: LayoutStrategyStyle.freeformHud,
+          autoSwitchTrigger: ScreenAutoSwitchTrigger.onThermalCircling,
+          widgets: [
+            WidgetPlacementModel(
+              id: 'tw_vario',
+              type: WidgetType.varioBar,
+              x: 0,
+              y: 0,
+              w: 1,
+              h: 3,
+              varioStyle: LiftSinkBarStyle.analogDial,
+            ),
+          ],
+        );
 
-      final json = screen.toJson();
-      final restored = FlightScreenModel.fromJson(json);
+        final json = screen.toJson();
+        final restored = FlightScreenModel.fromJson(json);
 
-      expect(restored.id, 'screen_thermal');
-      expect(restored.name, 'Thermal Radar');
-      expect(restored.layoutStrategy, LayoutStrategyStyle.freeformHud);
-      expect(restored.autoSwitchTrigger, ScreenAutoSwitchTrigger.onThermalCircling);
-      expect(restored.widgets.length, 1);
-      expect(restored.widgets.first.varioStyle, LiftSinkBarStyle.analogDial);
-    });
+        expect(restored.id, 'screen_thermal');
+        expect(restored.name, 'Thermal Radar');
+        expect(restored.layoutStrategy, LayoutStrategyStyle.freeformHud);
+        expect(
+          restored.autoSwitchTrigger,
+          ScreenAutoSwitchTrigger.onThermalCircling,
+        );
+        expect(restored.widgets.length, 1);
+        expect(restored.widgets.first.varioStyle, LiftSinkBarStyle.analogDial);
+      },
+    );
 
-    test('fromJson handles legacy screens without autoSwitchTrigger or layoutStrategy', () {
-      final json = <String, dynamic>{
-        'id': 'legacy_screen',
-        'name': 'Legacy',
-        'widgets': <dynamic>[],
-      };
+    test(
+      'fromJson handles legacy screens without autoSwitchTrigger or layoutStrategy',
+      () {
+        final json = <String, dynamic>{
+          'id': 'legacy_screen',
+          'name': 'Legacy',
+          'widgets': <dynamic>[],
+        };
 
-      final restored = FlightScreenModel.fromJson(json);
-      expect(restored.id, 'legacy_screen');
-      expect(restored.layoutStrategy, LayoutStrategyStyle.sidebarDashboard);
-      expect(restored.autoSwitchTrigger, ScreenAutoSwitchTrigger.manualOnly);
-      expect(restored.gridResolution, 8);
-      expect(restored.widgets, isEmpty);
-    });
+        final restored = FlightScreenModel.fromJson(json);
+        expect(restored.id, 'legacy_screen');
+        expect(restored.layoutStrategy, LayoutStrategyStyle.sidebarDashboard);
+        expect(restored.autoSwitchTrigger, ScreenAutoSwitchTrigger.manualOnly);
+        expect(restored.gridResolution, 8);
+        expect(restored.widgets, isEmpty);
+      },
+    );
 
-    test('fromJson migrates legacy 4-column coordinates (gridResolution < 8) by scaling 2x', () {
-      final json = <String, dynamic>{
-        'id': 'legacy_4col_screen',
-        'name': 'Legacy 4Col',
-        'widgets': [
-          {
-            'id': 'w_alt',
-            'type': 'altitude',
-            'x': 1,
-            'y': 2,
-            'w': 2,
-            'h': 1,
-          },
-        ],
-      };
+    test(
+      'fromJson migrates legacy 4-column coordinates (gridResolution < 8) by scaling 2x',
+      () {
+        final json = <String, dynamic>{
+          'id': 'legacy_4col_screen',
+          'name': 'Legacy 4Col',
+          'widgets': [
+            {'id': 'w_alt', 'type': 'altitude', 'x': 1, 'y': 2, 'w': 2, 'h': 1},
+          ],
+        };
 
-      final restored = FlightScreenModel.fromJson(json);
-      expect(restored.gridResolution, 8);
-      expect(restored.widgets.length, 1);
-      expect(restored.widgets.first.x, 2);
-      expect(restored.widgets.first.y, 4);
-      expect(restored.widgets.first.w, 4);
-      expect(restored.widgets.first.h, 2);
-    });
+        final restored = FlightScreenModel.fromJson(json);
+        expect(restored.gridResolution, 8);
+        expect(restored.widgets.length, 1);
+        expect(restored.widgets.first.x, 2);
+        expect(restored.widgets.first.y, 4);
+        expect(restored.widgets.first.w, 4);
+        expect(restored.widgets.first.h, 2);
+      },
+    );
 
-    test('fromJson does not rescale widgets when gridResolution is already 8', () {
-      final json = <String, dynamic>{
-        'id': 'res8_screen',
-        'name': 'Res8 Screen',
-        'gridResolution': 8,
-        'widgets': [
-          {
-            'id': 'w_alt',
-            'type': 'altitude',
-            'x': 1,
-            'y': 2,
-            'w': 2,
-            'h': 1,
-          },
-        ],
-      };
+    test(
+      'fromJson does not rescale widgets when gridResolution is already 8',
+      () {
+        final json = <String, dynamic>{
+          'id': 'res8_screen',
+          'name': 'Res8 Screen',
+          'gridResolution': 8,
+          'widgets': [
+            {'id': 'w_alt', 'type': 'altitude', 'x': 1, 'y': 2, 'w': 2, 'h': 1},
+          ],
+        };
 
-      final restored = FlightScreenModel.fromJson(json);
-      expect(restored.gridResolution, 8);
-      expect(restored.widgets.length, 1);
-      expect(restored.widgets.first.x, 1);
-      expect(restored.widgets.first.y, 2);
-      expect(restored.widgets.first.w, 2);
-      expect(restored.widgets.first.h, 1);
-    });
+        final restored = FlightScreenModel.fromJson(json);
+        expect(restored.gridResolution, 8);
+        expect(restored.widgets.length, 1);
+        expect(restored.widgets.first.x, 1);
+        expect(restored.widgets.first.y, 2);
+        expect(restored.widgets.first.w, 2);
+        expect(restored.widgets.first.h, 1);
+      },
+    );
   });
 
   group('UIConfig Serialization & Backward Compatibility', () {
@@ -324,47 +343,178 @@ void main() {
       expect(restored.activeScreenId, config.activeScreenId);
     });
 
-    test('backward compatibility: decodes legacy UIConfig JSON containing global widget styling fields without error', () {
-      final legacyJson = {
-        'navBarStyle': 'floatingPill',
-        'layoutStrategyStyle': 'snapToGrid',
-        'numericWidgetStyle': 'highContrastBox',
-        'windWidgetStyle': 'miniCompassRose',
-        'liftSinkBarStyle': 'analogDial',
-        'altitudeChartStyle': 'filledAreaGraph',
-        'mapWidgetStyle': 'satelliteTerrain',
-        'mapOrientation': 'northUp',
-        'mapShowAirspace': false,
-        'activeScreenId': 'normal_flight',
-        'screens': [
-          {
-            'id': 'normal_flight',
-            'name': 'Normal Flight Screen',
-            'layoutStrategy': 'snapToGrid',
-            'widgets': [
-              {
-                'id': 'w1',
-                'type': 'altitude',
-                'x': 0,
-                'y': 0,
-                'w': 2,
-                'h': 1,
-              }
-            ]
+    test(
+      'backward compatibility: decodes legacy UIConfig JSON containing global widget styling fields without error',
+      () {
+        final legacyJson = {
+          'navBarStyle': 'floatingPill',
+          'layoutStrategyStyle': 'snapToGrid',
+          'numericWidgetStyle': 'highContrastBox',
+          'windWidgetStyle': 'miniCompassRose',
+          'liftSinkBarStyle': 'analogDial',
+          'altitudeChartStyle': 'filledAreaGraph',
+          'mapWidgetStyle': 'satelliteTerrain',
+          'mapOrientation': 'northUp',
+          'mapShowAirspace': false,
+          'activeScreenId': 'normal_flight',
+          'screens': [
+            {
+              'id': 'normal_flight',
+              'name': 'Normal Flight Screen',
+              'layoutStrategy': 'snapToGrid',
+              'widgets': [
+                {
+                  'id': 'w1',
+                  'type': 'altitude',
+                  'x': 0,
+                  'y': 0,
+                  'w': 2,
+                  'h': 1,
+                },
+              ],
+            },
+          ],
+        };
+
+        final jsonString = jsonEncode(legacyJson);
+        final restored = UIConfig.decodeJson(jsonString);
+
+        expect(restored.navBarStyle, NavBarStyle.floatingPill);
+        expect(restored.screens.length, 1);
+        expect(restored.screens.first.widgets.first.type, WidgetType.altitude);
+        expect(
+          restored.screens.first.widgets.first.effectiveNumericStyle,
+          NumericWidgetStyle.minimalistText,
+        );
+        expect(restored.screens.first.widgets.first.x, 0);
+        expect(
+          restored.screens.first.widgets.first.w,
+          4,
+        ); // Scaled from 2 to 4 on 8-col grid
+        expect(
+          restored.screens.first.widgets.first.h,
+          2,
+        ); // Scaled from 1 to 2 on 8-col grid
+      },
+    );
+  });
+
+  group('FlightScreenModel maxBottomGrid Caching & Performance Benchmark', () {
+    test('calculates and caches maxBottomGrid correctly', () {
+      final emptyScreen = FlightScreenModel(
+        id: 'empty',
+        name: 'Empty Screen',
+        widgets: [],
+      );
+      expect(emptyScreen.maxBottomGrid, 8);
+
+      final customScreen = FlightScreenModel(
+        id: 'custom',
+        name: 'Custom Screen',
+        widgets: const [
+          WidgetPlacementModel(
+            id: 'w1',
+            type: WidgetType.altitude,
+            x: 0,
+            y: 0,
+            w: 2,
+            h: 2,
+          ),
+          WidgetPlacementModel(
+            id: 'w2',
+            type: WidgetType.speed,
+            x: 0,
+            y: 6,
+            w: 2,
+            h: 6,
+          ),
+        ],
+      );
+      expect(customScreen.maxBottomGrid, 12);
+    });
+
+    test(
+      'copyWith preserves cached maxBottomGrid when widgets list is unchanged',
+      () {
+        final screen = FlightScreenModel(
+          id: 's1',
+          name: 'Original',
+          widgets: const [
+            WidgetPlacementModel(
+              id: 'w1',
+              type: WidgetType.altitude,
+              x: 0,
+              y: 5,
+              w: 2,
+              h: 5,
+            ),
+          ],
+        );
+        expect(screen.maxBottomGrid, 10);
+
+        final renamed = screen.copyWith(name: 'Renamed');
+        expect(renamed.maxBottomGrid, 10);
+
+        final updatedWidgets = screen.copyWith(
+          widgets: const [
+            WidgetPlacementModel(
+              id: 'w1',
+              type: WidgetType.altitude,
+              x: 0,
+              y: 0,
+              w: 2,
+              h: 2,
+            ),
+          ],
+        );
+        expect(updatedWidgets.maxBottomGrid, 8);
+      },
+    );
+
+    test('benchmarks maxBottomGrid access performance vs iterative loop', () {
+      final widgets = List.generate(
+        100,
+        (i) => WidgetPlacementModel(
+          id: 'w_$i',
+          type: WidgetType.speed,
+          x: (i % 8),
+          y: i,
+          w: 1,
+          h: 2,
+        ),
+      );
+      final screen = FlightScreenModel(
+        id: 'perf_screen',
+        name: 'Perf Screen',
+        widgets: widgets,
+      );
+
+      final stopwatchCached = Stopwatch()..start();
+      int cachedMax = 0;
+      for (int i = 0; i < 100000; i++) {
+        cachedMax += screen.maxBottomGrid;
+      }
+      stopwatchCached.stop();
+
+      final stopwatchUncached = Stopwatch()..start();
+      int uncachedMax = 0;
+      for (int i = 0; i < 100000; i++) {
+        int maxBottom = 8;
+        for (final w in screen.widgets) {
+          final bottom = w.y + w.h;
+          if (bottom > maxBottom) {
+            maxBottom = bottom;
           }
-        ]
-      };
+        }
+        uncachedMax += maxBottom;
+      }
+      stopwatchUncached.stop();
 
-      final jsonString = jsonEncode(legacyJson);
-      final restored = UIConfig.decodeJson(jsonString);
-
-      expect(restored.navBarStyle, NavBarStyle.floatingPill);
-      expect(restored.screens.length, 1);
-      expect(restored.screens.first.widgets.first.type, WidgetType.altitude);
-      expect(restored.screens.first.widgets.first.effectiveNumericStyle, NumericWidgetStyle.minimalistText);
-      expect(restored.screens.first.widgets.first.x, 0);
-      expect(restored.screens.first.widgets.first.w, 4); // Scaled from 2 to 4 on 8-col grid
-      expect(restored.screens.first.widgets.first.h, 2); // Scaled from 1 to 2 on 8-col grid
+      expect(cachedMax, equals(uncachedMax));
+      expect(
+        stopwatchCached.elapsedMicroseconds,
+        lessThan(stopwatchUncached.elapsedMicroseconds),
+      );
     });
   });
 }

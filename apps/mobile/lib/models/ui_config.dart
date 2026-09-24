@@ -159,12 +159,10 @@ class WidgetPlacementModel {
   ThermalMapStyle get effectiveThermalMapStyle =>
       thermalMapStyle ?? ThermalMapStyle.xctrackBubbles;
   bool get effectiveThermalMapShowCore => thermalMapShowCore ?? true;
-  int get effectiveThermalMapHistorySeconds =>
-      thermalMapHistorySeconds ?? 90;
+  int get effectiveThermalMapHistorySeconds => thermalMapHistorySeconds ?? 90;
   int get effectiveMapTrackHistoryMinutes =>
       mapTrackHistoryMinutes ?? 10; // 0 = full flight
-  bool get effectiveMapTrackShowOlderTail =>
-      mapTrackShowOlderTail ?? true;
+  bool get effectiveMapTrackShowOlderTail => mapTrackShowOlderTail ?? true;
 
   WidgetPlacementModel copyWith({
     String? id,
@@ -252,8 +250,9 @@ class WidgetPlacementModel {
     NumericWidgetStyle? numStyle;
     if (json['numericStyle'] is String) {
       try {
-        numStyle =
-            NumericWidgetStyle.values.byName(json['numericStyle'] as String);
+        numStyle = NumericWidgetStyle.values.byName(
+          json['numericStyle'] as String,
+        );
       } catch (_) {}
     }
 
@@ -290,16 +289,18 @@ class WidgetPlacementModel {
     MapOrientation? mOrientation;
     if (json['mapOrientation'] is String) {
       try {
-        mOrientation =
-            MapOrientation.values.byName(json['mapOrientation'] as String);
+        mOrientation = MapOrientation.values.byName(
+          json['mapOrientation'] as String,
+        );
       } catch (_) {}
     }
 
     ThermalMapStyle? tStyle;
     if (json['thermalMapStyle'] is String) {
       try {
-        tStyle =
-            ThermalMapStyle.values.byName(json['thermalMapStyle'] as String);
+        tStyle = ThermalMapStyle.values.byName(
+          json['thermalMapStyle'] as String,
+        );
       } catch (_) {}
     }
 
@@ -331,14 +332,26 @@ class WidgetPlacementModel {
 }
 
 class FlightScreenModel {
-  const FlightScreenModel({
+  FlightScreenModel({
     required this.id,
     required this.name,
     this.layoutStrategy = LayoutStrategyStyle.sidebarDashboard,
     this.autoSwitchTrigger = ScreenAutoSwitchTrigger.manualOnly,
     this.gridResolution = 8,
     required this.widgets,
-  });
+    int? maxBottomGrid,
+  }) : maxBottomGrid = maxBottomGrid ?? _computeMaxBottomGrid(widgets);
+
+  static int _computeMaxBottomGrid(List<WidgetPlacementModel> widgets) {
+    int maxBottom = 8;
+    for (final w in widgets) {
+      final bottom = w.y + w.h;
+      if (bottom > maxBottom) {
+        maxBottom = bottom;
+      }
+    }
+    return maxBottom;
+  }
 
   final String id;
   final String name;
@@ -346,6 +359,7 @@ class FlightScreenModel {
   final ScreenAutoSwitchTrigger autoSwitchTrigger;
   final int gridResolution;
   final List<WidgetPlacementModel> widgets;
+  final int maxBottomGrid;
 
   FlightScreenModel copyWith({
     String? id,
@@ -362,6 +376,7 @@ class FlightScreenModel {
       autoSwitchTrigger: autoSwitchTrigger ?? this.autoSwitchTrigger,
       gridResolution: gridResolution ?? this.gridResolution,
       widgets: widgets ?? this.widgets,
+      maxBottomGrid: widgets == null ? maxBottomGrid : null,
     );
   }
 
@@ -394,19 +409,17 @@ class FlightScreenModel {
     }
 
     final rawWidgets = (json['widgets'] as List<dynamic>? ?? [])
-        .map(
-          (w) => WidgetPlacementModel.fromJson(w as Map<String, dynamic>),
-        )
+        .map((w) => WidgetPlacementModel.fromJson(w as Map<String, dynamic>))
         .toList();
 
     final gridRes = json['gridResolution'] as int? ?? 4;
     final migratedWidgets = (gridRes < 8 && rawWidgets.isNotEmpty)
-        ? rawWidgets.map((w) => w.copyWith(
-            x: w.x * 2,
-            y: w.y * 2,
-            w: w.w * 2,
-            h: w.h * 2,
-          )).toList()
+        ? rawWidgets
+              .map(
+                (w) =>
+                    w.copyWith(x: w.x * 2, y: w.y * 2, w: w.w * 2, h: w.h * 2),
+              )
+              .toList()
         : rawWidgets;
 
     return FlightScreenModel(
@@ -416,6 +429,7 @@ class FlightScreenModel {
       autoSwitchTrigger: trigger,
       gridResolution: 8,
       widgets: migratedWidgets,
+      maxBottomGrid: _computeMaxBottomGrid(migratedWidgets),
     );
   }
 }
@@ -441,7 +455,7 @@ class UIConfig {
       thermalingStyle: ThermalingStyle.assistantDisplay,
       settingsStyle: SettingsStyle.categorizedList,
       activeScreenId: 'normal_flight',
-      screens: const [
+      screens: [
         FlightScreenModel(
           id: 'normal_flight',
           name: 'Normal Flight Screen',
@@ -616,8 +630,9 @@ class UIConfig {
     ThermalingStyle therm = ThermalingStyle.assistantDisplay;
     if (json['thermalingStyle'] is String) {
       try {
-        therm =
-            ThermalingStyle.values.byName(json['thermalingStyle'] as String);
+        therm = ThermalingStyle.values.byName(
+          json['thermalingStyle'] as String,
+        );
       } catch (_) {}
     }
 
@@ -635,8 +650,10 @@ class UIConfig {
       activeScreenId: json['activeScreenId'] as String? ?? 'normal_flight',
       screens: json['screens'] != null
           ? (json['screens'] as List<dynamic>)
-              .map((s) => FlightScreenModel.fromJson(s as Map<String, dynamic>))
-              .toList()
+                .map(
+                  (s) => FlightScreenModel.fromJson(s as Map<String, dynamic>),
+                )
+                .toList()
           : defaultConfig().screens,
     );
   }
