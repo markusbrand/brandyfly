@@ -492,6 +492,18 @@ class _ThermalMapPainter extends CustomPainter {
   void _drawXCtrackBubbles(Canvas canvas, List<ThermalPoint> points) {
     if (points.isEmpty) return;
 
+    final now = DateTime.now();
+    final historyDecayFactor = historySeconds > 0 ? 0.6 / historySeconds : 0.0;
+
+    // Pre-calculate wind drift velocity vector outside inner loops if airmass track is enabled
+    double wx = 0.0;
+    double wy = 0.0;
+    if (useAirmassTrack) {
+      final windVx = (windDirDeg + 180) * math.pi / 180.0;
+      wx = math.sin(windVx) * (windSpeedKmh / 3.6);
+      wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
+    }
+
     // Draw connecting faint path
     final path = Path();
     for (int i = 0; i < points.length; i++) {
@@ -499,19 +511,11 @@ class _ThermalMapPainter extends CustomPainter {
       double py = points[i].dy;
 
       if (useAirmassTrack) {
-        // Apply wind correction to shift point back to its airmass location.
-        // Wait, the thermal points should probably carry their own timestamps
-        // and we drift them relative to current time?
-        // In Dart we have historySeconds and timestamp on each point.
-        final ageSec =
-            DateTime.now().difference(points[i].timestamp).inMilliseconds /
-            1000.0;
-        final windVx = (windDirDeg + 180) * math.pi / 180.0;
-        final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
-        final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
-        // Assuming map scale is 1 unit = 1 meter, we can drift by vx * t.
-        px += wx * ageSec;
-        py += wy * ageSec;
+         // Apply wind correction to shift point back to its airmass location.
+         final ageSec = now.difference(points[i].timestamp).inMilliseconds / 1000.0;
+         // Assuming map scale is 1 unit = 1 meter, we can drift by vx * t.
+         px += wx * ageSec;
+         py += wy * ageSec;
       }
 
       final pt = Offset(px, py);
@@ -526,12 +530,11 @@ class _ThermalMapPainter extends CustomPainter {
     canvas.drawPath(path, _pathPaint);
 
     // Draw bubbles
-    final now = DateTime.now();
     for (int i = 0; i < points.length; i++) {
       final p = points[i];
       final ageSec = now.difference(p.timestamp).inMilliseconds / 1000.0;
-      final ageDecay = (1.0 - (ageSec / historySeconds) * 0.6).clamp(0.3, 1.0);
-
+      final ageDecay = (1.0 - (ageSec * historyDecayFactor)).clamp(0.3, 1.0);
+      
       final climb = p.climbRateMs;
 
       Color bColor;
@@ -559,11 +562,8 @@ class _ThermalMapPainter extends CustomPainter {
       double px = p.dx;
       double py = p.dy;
       if (useAirmassTrack) {
-        final windVx = (windDirDeg + 180) * math.pi / 180.0;
-        final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
-        final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
-        px += wx * ageSec;
-        py += wy * ageSec;
+         px += wx * ageSec;
+         py += wy * ageSec;
       }
       final pt = Offset(px, py);
 
@@ -605,25 +605,31 @@ class _ThermalMapPainter extends CustomPainter {
 
     final now = DateTime.now();
 
+    double wx = 0.0;
+    double wy = 0.0;
+    if (useAirmassTrack) {
+      final windVx = (windDirDeg + 180) * math.pi / 180.0;
+      wx = math.sin(windVx) * (windSpeedKmh / 3.6);
+      wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
+    }
+
     for (final p in points) {
-      if (p.climbRateMs > 0.5) {
-        final weight = math.pow(p.climbRateMs, 2).toDouble();
+      final climb = p.climbRateMs;
+      if (climb > 0.5) {
+        final weight = climb * climb;
         double px = p.dx;
         double py = p.dy;
 
         if (useAirmassTrack) {
-          final ageSec = now.difference(p.timestamp).inMilliseconds / 1000.0;
-          final windVx = (windDirDeg + 180) * math.pi / 180.0;
-          final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
-          final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
-          px += wx * ageSec;
-          py += wy * ageSec;
+           final ageSec = now.difference(p.timestamp).inMilliseconds / 1000.0;
+           px += wx * ageSec;
+           py += wy * ageSec;
         }
 
         weightedX += px * weight;
         weightedY += py * weight;
         totalWeight += weight;
-        if (p.climbRateMs > maxClimb) maxClimb = p.climbRateMs;
+        if (climb > maxClimb) maxClimb = climb;
       }
     }
 
@@ -726,6 +732,7 @@ class _ThermalMapPainter extends CustomPainter {
     if (points.isEmpty) return;
 
     final now = DateTime.now();
+    final historyDecayFactor = historySeconds > 0 ? 0.6 / historySeconds : 0.0;
 
     // Draw continuous color-graded ribbon segments
     for (int i = 0; i < points.length - 1; i++) {
@@ -733,7 +740,7 @@ class _ThermalMapPainter extends CustomPainter {
       final p2 = points[i + 1];
       final avgClimb = (p1.climbRateMs + p2.climbRateMs) / 2.0;
       final ageSec = now.difference(p1.timestamp).inMilliseconds / 1000.0;
-      final ageDecay = (1.0 - (ageSec / historySeconds) * 0.6).clamp(0.3, 1.0);
+      final ageDecay = (1.0 - (ageSec * historyDecayFactor)).clamp(0.3, 1.0);
       final alpha = _calculateAlpha(avgClimb, ageDecay);
 
       final isLift = avgClimb >= 0;

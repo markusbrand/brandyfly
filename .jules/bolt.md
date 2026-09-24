@@ -64,3 +64,6 @@
 ## 2026-09-24 - Single-Pass Longitude Wrapping Modulo Math
 **Learning:** Replacing while loops for floating-point longitude wrapping with modulo math `(lng + 180.0) % 360.0 - 180.0` provides a constant O(1) single-expression computation.
 **Action:** Use `(lng + 180.0) % 360.0 - 180.0` for geographic longitude normalization across map panning and telemetry processing routines.
+## 2026-09-24 - Thermal Map Loop DateTime Benchmark Findings
+**Learning:** In Dart/AOT, `DateTime.difference()` is implemented natively and optimized at the VM level. Pre-computing or caching integer timestamp fields (`millisecondsSinceEpoch`) or hoisting simple arithmetic outside loops can actually degrade performance due to additional field accesses, object overhead, or VM optimization disruption.
+**Action:** Always benchmark proposed micro-optimizations in Dart before applying them; do not assume integer timestamps or manual loop hoisting are faster than native Dart `DateTime` arithmetic.
