@@ -20,10 +20,10 @@ class LocalTileServer {
     String? onlineTerrainFallbackUrlTemplate,
     this.cacheDirectoryPath,
     HttpClient? httpClient,
-  })  : _configuredOnlineFallbackUrlTemplate = onlineFallbackUrlTemplate,
-        _configuredOnlineTerrainFallbackUrlTemplate =
-            onlineTerrainFallbackUrlTemplate,
-        _httpClient = httpClient ?? HttpClient() {
+  }) : _configuredOnlineFallbackUrlTemplate = onlineFallbackUrlTemplate,
+       _configuredOnlineTerrainFallbackUrlTemplate =
+           onlineTerrainFallbackUrlTemplate,
+       _httpClient = httpClient ?? HttpClient() {
     _httpClient.connectionTimeout = const Duration(seconds: 3);
     _httpClient.autoUncompress = false;
   }
@@ -69,7 +69,8 @@ class LocalTileServer {
 
   /// Asynchronously queries OpenFreeMap for the currently active snapshot URL template.
   Future<void> discoverSnapshot() async {
-    if (!onlineFallbackEnabled || _configuredOnlineFallbackUrlTemplate != null) {
+    if (!onlineFallbackEnabled ||
+        _configuredOnlineFallbackUrlTemplate != null) {
       return;
     }
     try {
@@ -149,7 +150,9 @@ class LocalTileServer {
           _setOnlinePreviewActive(false);
           debugPrint('[LocalTileServer] Loaded primary archive: $path');
         } catch (e) {
-          debugPrint('[LocalTileServer] Failed to open primary archive $path: $e');
+          debugPrint(
+            '[LocalTileServer] Failed to open primary archive $path: $e',
+          );
         }
       }
     }
@@ -172,7 +175,9 @@ class LocalTileServer {
           _fallbackReader = await PMTilesReader.open(file);
           debugPrint('[LocalTileServer] Loaded fallback archive: $path');
         } catch (e) {
-          debugPrint('[LocalTileServer] Failed to open fallback archive $path: $e');
+          debugPrint(
+            '[LocalTileServer] Failed to open fallback archive $path: $e',
+          );
         }
       }
     }
@@ -195,7 +200,9 @@ class LocalTileServer {
           _terrainReader = await PMTilesReader.open(file);
           debugPrint('[LocalTileServer] Loaded terrain archive: $path');
         } catch (e) {
-          debugPrint('[LocalTileServer] Failed to open terrain archive $path: $e');
+          debugPrint(
+            '[LocalTileServer] Failed to open terrain archive $path: $e',
+          );
         }
       }
     }
@@ -262,7 +269,9 @@ class LocalTileServer {
         return await file.readAsBytes();
       }
     } catch (e) {
-      debugPrint('[LocalTileServer] Error reading cached vector tile $z/$x/$y: $e');
+      debugPrint(
+        '[LocalTileServer] Error reading cached vector tile $z/$x/$y: $e',
+      );
     }
     return null;
   }
@@ -277,13 +286,20 @@ class LocalTileServer {
         return await file.readAsBytes();
       }
     } catch (e) {
-      debugPrint('[LocalTileServer] Error reading cached terrain tile $z/$x/$y: $e');
+      debugPrint(
+        '[LocalTileServer] Error reading cached terrain tile $z/$x/$y: $e',
+      );
     }
     return null;
   }
 
   /// Persists a downloaded vector tile to the local disk cache.
-  Future<void> _saveVectorTileToDiskCache(int z, int x, int y, Uint8List bytes) async {
+  Future<void> _saveVectorTileToDiskCache(
+    int z,
+    int x,
+    int y,
+    Uint8List bytes,
+  ) async {
     try {
       final cacheDir = await _getCacheDirectoryPath();
       if (cacheDir == null) return;
@@ -291,12 +307,19 @@ class LocalTileServer {
       await file.parent.create(recursive: true);
       await file.writeAsBytes(bytes, flush: true);
     } catch (e) {
-      debugPrint('[LocalTileServer] Failed to write vector tile cache for $z/$x/$y: $e');
+      debugPrint(
+        '[LocalTileServer] Failed to write vector tile cache for $z/$x/$y: $e',
+      );
     }
   }
 
   /// Persists a downloaded terrain raster tile to the local disk cache.
-  Future<void> _saveTerrainTileToDiskCache(int z, int x, int y, Uint8List bytes) async {
+  Future<void> _saveTerrainTileToDiskCache(
+    int z,
+    int x,
+    int y,
+    Uint8List bytes,
+  ) async {
     try {
       final cacheDir = await _getCacheDirectoryPath();
       if (cacheDir == null) return;
@@ -304,7 +327,9 @@ class LocalTileServer {
       await file.parent.create(recursive: true);
       await file.writeAsBytes(bytes, flush: true);
     } catch (e) {
-      debugPrint('[LocalTileServer] Failed to write terrain tile cache for $z/$x/$y: $e');
+      debugPrint(
+        '[LocalTileServer] Failed to write terrain tile cache for $z/$x/$y: $e',
+      );
     }
   }
 
@@ -349,8 +374,9 @@ class LocalTileServer {
         return;
       }
 
-      final vectorMatch =
-          RegExp(r'^/tiles/(\d+)/(\d+)/(\d+)\.pbf$').firstMatch(path);
+      final vectorMatch = RegExp(
+        r'^/tiles/(\d+)/(\d+)/(\d+)\.pbf$',
+      ).firstMatch(path);
       if (vectorMatch != null) {
         final z = int.parse(vectorMatch.group(1)!);
         final x = int.parse(vectorMatch.group(2)!);
@@ -359,8 +385,9 @@ class LocalTileServer {
         return;
       }
 
-      final terrainMatch =
-          RegExp(r'^/terrain/(\d+)/(\d+)/(\d+)\.png$').firstMatch(path);
+      final terrainMatch = RegExp(
+        r'^/terrain/(\d+)/(\d+)/(\d+)\.png$',
+      ).firstMatch(path);
       if (terrainMatch != null) {
         final z = int.parse(terrainMatch.group(1)!);
         final x = int.parse(terrainMatch.group(2)!);
@@ -436,7 +463,9 @@ class LocalTileServer {
           return;
         }
       } catch (e) {
-        debugPrint('[LocalTileServer] Fallback tile fetch error ($z/$x/$y): $e');
+        debugPrint(
+          '[LocalTileServer] Fallback tile fetch error ($z/$x/$y): $e',
+        );
       }
     }
 
@@ -475,7 +504,9 @@ class LocalTileServer {
           return;
         }
       } catch (e) {
-        debugPrint('[LocalTileServer] Terrain archive fetch error ($z/$x/$y): $e');
+        debugPrint(
+          '[LocalTileServer] Terrain archive fetch error ($z/$x/$y): $e',
+        );
       }
     }
 
@@ -498,29 +529,42 @@ class LocalTileServer {
   }
 
   /// Serves compressed vector tile payload directly to MapLibre.
-  Future<void> _serveVectorBytes(HttpRequest request, Uint8List tileBytes) async {
+  Future<void> _serveVectorBytes(
+    HttpRequest request,
+    Uint8List tileBytes,
+  ) async {
     final response = request.response;
     response.statusCode = HttpStatus.ok;
-    response.headers.set(HttpHeaders.contentTypeHeader, 'application/x-protobuf');
+    response.headers.set(
+      HttpHeaders.contentTypeHeader,
+      'application/x-protobuf',
+    );
     if (_isGzip(tileBytes)) {
       response.headers.set(HttpHeaders.contentEncodingHeader, 'gzip');
     }
-    response.headers.set(HttpHeaders.cacheControlHeader, 'public, max-age=86400');
-    response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
+    response.headers.set(
+      HttpHeaders.cacheControlHeader,
+      'public, max-age=86400',
+    );
     response.add(tileBytes);
     await response.close();
   }
 
   /// Serves raster PNG terrain tile payload directly to MapLibre.
-  Future<void> _serveRasterBytes(HttpRequest request, Uint8List tileBytes) async {
+  Future<void> _serveRasterBytes(
+    HttpRequest request,
+    Uint8List tileBytes,
+  ) async {
     final response = request.response;
     response.statusCode = HttpStatus.ok;
     response.headers.set(HttpHeaders.contentTypeHeader, 'image/png');
     if (_isGzip(tileBytes)) {
       response.headers.set(HttpHeaders.contentEncodingHeader, 'gzip');
     }
-    response.headers.set(HttpHeaders.cacheControlHeader, 'public, max-age=86400');
-    response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
+    response.headers.set(
+      HttpHeaders.cacheControlHeader,
+      'public, max-age=86400',
+    );
     response.add(tileBytes);
     await response.close();
   }
@@ -545,9 +589,9 @@ class LocalTileServer {
           .getUrl(Uri.parse(upstreamUrl))
           .timeout(const Duration(seconds: 3));
       upstreamReq.headers.set(HttpHeaders.acceptEncodingHeader, 'gzip');
-      final upstreamResp = await upstreamReq
-          .close()
-          .timeout(const Duration(seconds: 3));
+      final upstreamResp = await upstreamReq.close().timeout(
+        const Duration(seconds: 3),
+      );
 
       if (upstreamResp.statusCode == HttpStatus.ok) {
         final builder = BytesBuilder();
@@ -584,9 +628,9 @@ class LocalTileServer {
       final upstreamReq = await _httpClient
           .getUrl(Uri.parse(upstreamUrl))
           .timeout(const Duration(seconds: 3));
-      final upstreamResp = await upstreamReq
-          .close()
-          .timeout(const Duration(seconds: 3));
+      final upstreamResp = await upstreamReq.close().timeout(
+        const Duration(seconds: 3),
+      );
 
       if (upstreamResp.statusCode == HttpStatus.ok) {
         final builder = BytesBuilder();
@@ -606,11 +650,14 @@ class LocalTileServer {
     return false;
   }
 
-  void _respondJson(HttpRequest request, int status, Map<String, dynamic> data) {
+  void _respondJson(
+    HttpRequest request,
+    int status,
+    Map<String, dynamic> data,
+  ) {
     final response = request.response;
     response.statusCode = status;
     response.headers.contentType = ContentType.json;
-    response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
     response.write(jsonEncode(data));
     response.close();
   }

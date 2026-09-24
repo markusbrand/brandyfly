@@ -15,3 +15,8 @@
 **Vulnerability:** Security headers (like `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`) were set at the end of the `GET /healthz` route handler. When the handler returned early (e.g., during a 401 Unauthorized check via `http.Error`), these headers were bypassed, leaving error responses unprotected against MIME-sniffing and framing attacks.
 **Learning:** Setting security headers locally inside route handlers is error-prone because early returns or error handling paths often skip the header-setting logic.
 **Prevention:** Always enforce standard security headers globally via a middleware (e.g., `SecurityHeadersMiddleware`) that wraps all route handlers. This ensures headers are consistently applied to all responses, including errors and early returns.
+
+## 2026-09-24 - Overly Permissive CORS Policy on Local Ephemeral HTTP Server
+**Vulnerability:** The embedded loopback HTTP server (`LocalTileServer`) set wildcard CORS headers (`Access-Control-Allow-Origin: *`) on vector tile, terrain, and health responses.
+**Learning:** CORS headers are unnecessary for local mobile/native clients (like MapLibre Native) accessing a loopback socket. If a browser running on the same device discovers the ephemeral port, wildcard CORS headers allow scripts in any web page to read response payloads from the local HTTP server.
+**Prevention:** Omit `Access-Control-Allow-Origin` headers or strictly restrict allowed origins on local embedded HTTP servers to prevent cross-origin reading by local browsers or webviews.
