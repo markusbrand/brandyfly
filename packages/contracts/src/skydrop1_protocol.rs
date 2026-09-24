@@ -311,14 +311,17 @@ pub fn sanitize_skydrop_payload(raw_bytes: &[u8]) -> Result<(), SkyDrop1ParseErr
     }
 
     // Check for unredacted NMEA GPS coordinates (GPGGA, GPRMC, GNGGA sentences with actual coordinates)
-    if (lower_str.contains("$gpgga")
-        || lower_str.contains("$gprmc")
-        || lower_str.contains("$gngga"))
-        && (lower_str.contains(",n,")
-            || lower_str.contains(",s,")
-            || lower_str.contains(",e,")
-            || lower_str.contains(",w,"))
-    {
+    const UNREDACTED_GPS_SENTENCES: [&str; 3] = ["$gpgga", "$gprmc", "$gngga"];
+    const COORDINATE_DIRECTION_MARKERS: [&str; 4] = [",n,", ",s,", ",e,", ",w,"];
+
+    let has_gps_sentence = UNREDACTED_GPS_SENTENCES
+        .iter()
+        .any(|sentence| lower_str.contains(sentence));
+    let has_direction_marker = COORDINATE_DIRECTION_MARKERS
+        .iter()
+        .any(|marker| lower_str.contains(marker));
+
+    if has_gps_sentence && has_direction_marker {
         return Err(SkyDrop1ParseError::SanitizationViolation(
             "unredacted_private_coordinates_detected",
         ));
