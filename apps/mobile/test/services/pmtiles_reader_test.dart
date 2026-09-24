@@ -95,7 +95,13 @@ void main() {
 
         // Payload is gzip-compressed MVT layer
         final decompressed = gzip.decode(tileBytes);
-        expect(decompressed, equals([0x1a, 0x04, 0x74, 0x65, 0x73, 0x74])); // \x1a\x04test
+        expect(
+          decompressed,
+          equals([
+            0x1a, 0x24, 0x08, 0x01, 0x12, 0x05, 0x77, 0x61, 0x74, 0x65, 0x72,
+            0x18, 0x02, 0x22, 0x00, 0x28, 0x80, 0x20, 0x78, 0x02
+          ]),
+        );
 
         // Non-existent tile at zoom 1 returns null
         final missingTile = await reader.getTile(1, 0, 0);
