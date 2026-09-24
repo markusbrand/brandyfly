@@ -43,7 +43,7 @@ void main() {
         'ChoiceChip click on currently active screen activates and dismisses drawer',
         (tester) async {
       final screenManager = ScreenManagerService(
-        initialConfig: const UIConfig(
+        initialConfig: UIConfig(
           activeScreenId: 'screen_1',
           screens: [
             FlightScreenModel(
@@ -83,7 +83,7 @@ void main() {
         'ChoiceChip click on inactive screen activates it and dismisses drawer',
         (tester) async {
       final screenManager = ScreenManagerService(
-        initialConfig: const UIConfig(
+        initialConfig: UIConfig(
           activeScreenId: 'screen_1',
           screens: [
             FlightScreenModel(
