@@ -61,3 +61,6 @@
 ## 2026-09-23 - Precalculate min/max bounds and loop-invariant scaling in sparkline painters
 **Learning:** Performing multiple list iterations inside `CustomPainter.paint()` (e.g. one O(N) pass to calculate min/max bounds and a second pass to construct the `Path`) wastes CPU cycles on every frame paint. Furthermore, evaluating loop-invariant scaling math inside the path construction loop redundantly re-computes offsets for every element.
 **Action:** Move min/max and range calculations to constructor initializer list / static helper functions so bounds are calculated once per painter instantiation. In addition, factor out loop-invariant scaling constants (`scaleY` and base offsets) before starting the path construction loop.
+## 2026-09-24 - Single-Pass Longitude Wrapping Modulo Math
+**Learning:** Replacing while loops for floating-point longitude wrapping with modulo math `(lng + 180.0) % 360.0 - 180.0` provides a constant O(1) single-expression computation.
+**Action:** Use `(lng + 180.0) % 360.0 - 180.0` for geographic longitude normalization across map panning and telemetry processing routines.
