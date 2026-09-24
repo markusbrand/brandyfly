@@ -5,17 +5,18 @@ import '../../models/ui_config.dart';
 
 /// Data model representing a point along the thermaling track
 class ThermalPoint {
-  const ThermalPoint({
+  ThermalPoint({
     required this.dx,
     required this.dy,
     required this.climbRateMs,
     required this.timestamp,
     this.altitudeM,
-  });
+  }) : offset = Offset(dx, dy);
 
   final double
   dx; // Offset in meters or relative canvas units from thermal origin
   final double dy;
+  final Offset offset;
   final double climbRateMs;
   final DateTime timestamp;
   final double? altitudeM;
@@ -750,7 +751,7 @@ class _ThermalMapPainter extends CustomPainter {
 
       _ribbonPaint.color = baseColor.withAlpha(alpha);
 
-      canvas.drawLine(Offset(p1.dx, p1.dy), Offset(p2.dx, p2.dy), _ribbonPaint);
+      canvas.drawLine(p1.offset, p2.offset, _ribbonPaint);
     }
 
     // Draw milestone circles and peak markers
@@ -758,7 +759,7 @@ class _ThermalMapPainter extends CustomPainter {
       final p = points[i];
       final isLift = p.climbRateMs >= 0;
       final color = isLift ? const Color(0xFF00E676) : const Color(0xFFFF1744);
-      final pt = Offset(p.dx, p.dy);
+      final pt = p.offset;
 
       canvas.drawCircle(pt, 5.0, _milestoneWhitePaint);
       _milestoneColorPaint.color = color;
