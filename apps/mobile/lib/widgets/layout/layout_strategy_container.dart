@@ -237,14 +237,8 @@ class LayoutStrategyContainer extends StatelessWidget {
         final totalWidth = constraints.maxWidth;
         final cellWidth = totalWidth / 8;
 
-        // Calculate minimum canvas height to accommodate all widgets
-        int maxBottomGrid = 8;
-        for (final w in screen.widgets) {
-          final bottom = w.y + w.h;
-          if (bottom > maxBottomGrid) {
-            maxBottomGrid = bottom;
-          }
-        }
+        // Minimum canvas height cached at FlightScreenModel level (O(1) lookup on layout)
+        final maxBottomGrid = screen.maxBottomGrid;
         final effectiveMaxHeight = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : 600.0;
@@ -635,9 +629,9 @@ class LayoutStrategyContainer extends StatelessWidget {
     final List<double> history = rawHistory is List<double>
         ? rawHistory
         : (rawHistory as List<dynamic>?)
-            ?.map((e) => (e as num).toDouble())
-            .toList() ??
-          const [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
+                  ?.map((e) => (e as num).toDouble())
+                  .toList() ??
+              const [1400.0, 1410.0, 1430.0, 1425.0, 1450.0];
 
     switch (model.type) {
       case WidgetType.altitude:
