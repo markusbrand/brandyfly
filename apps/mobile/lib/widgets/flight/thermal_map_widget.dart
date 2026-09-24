@@ -13,7 +13,8 @@ class ThermalPoint {
     this.altitudeM,
   });
 
-  final double dx; // Offset in meters or relative canvas units from thermal origin
+  final double
+  dx; // Offset in meters or relative canvas units from thermal origin
   final double dy;
   final double climbRateMs;
   final DateTime timestamp;
@@ -133,24 +134,24 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
                 },
                 child: CustomPaint(
                   key: const Key('canvas_thermal_map'),
-                painter: _ThermalMapPainter(
-                  style: widget.style,
-                  showCore: widget.showCore,
-                  historySeconds: widget.historySeconds,
-                  zoomLevel: _zoomLevel,
-                  panOffset: _panOffset,
-                  altitudeM: widget.altitudeM,
-                  speedKmh: widget.speedKmh,
-                  climbRateMs: widget.climbRateMs,
-                  headingDeg: widget.headingDeg,
-                  windDirDeg: widget.windDirDeg,
-                  windSpeedKmh: widget.windSpeedKmh,
-                  trackPoints: widget.trackPoints,
-                  pulseAnimation: _pulseController,
-                  useAirmassTrack: _useAirmassTrack,
+                  painter: _ThermalMapPainter(
+                    style: widget.style,
+                    showCore: widget.showCore,
+                    historySeconds: widget.historySeconds,
+                    zoomLevel: _zoomLevel,
+                    panOffset: _panOffset,
+                    altitudeM: widget.altitudeM,
+                    speedKmh: widget.speedKmh,
+                    climbRateMs: widget.climbRateMs,
+                    headingDeg: widget.headingDeg,
+                    windDirDeg: widget.windDirDeg,
+                    windSpeedKmh: widget.windSpeedKmh,
+                    trackPoints: widget.trackPoints,
+                    pulseAnimation: _pulseController,
+                    useAirmassTrack: _useAirmassTrack,
+                  ),
                 ),
               ),
-            ),
             ),
           ),
 
@@ -193,7 +194,10 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withAlpha(160),
                     borderRadius: BorderRadius.circular(4),
@@ -206,8 +210,8 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
                         widget.style == ThermalMapStyle.burnairCore
                             ? Icons.adjust
                             : (widget.style == ThermalMapStyle.navigatorRibbon
-                                ? Icons.timeline
-                                : Icons.bubble_chart),
+                                  ? Icons.timeline
+                                  : Icons.bubble_chart),
                         color: const Color(0xFF00E676),
                         size: 13,
                       ),
@@ -224,25 +228,32 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
                   ),
                 ),
                 const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _useAirmassTrack = !_useAirmassTrack;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withAlpha(160),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.white24, width: 0.8),
-                    ),
-                    child: Text(
-                      _useAirmassTrack ? 'AIRMASS' : 'GROUND',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                Semantics(
+                  button: true,
+                  label: 'Toggle airmass or ground track',
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _useAirmassTrack = !_useAirmassTrack;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(160),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.white24, width: 0.8),
+                      ),
+                      child: Text(
+                        _useAirmassTrack ? 'AIRMASS' : 'GROUND',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -313,7 +324,9 @@ class _ThermalMapPainter extends CustomPainter {
     required this.trackPoints,
     required this.pulseAnimation,
     required this.useAirmassTrack,
-  }) : super(repaint: pulseAnimation); // ⚡ Bolt: Bind animation to repaint property to skip widget rebuilds
+  }) : super(
+         repaint: pulseAnimation,
+       ); // ⚡ Bolt: Bind animation to repaint property to skip widget rebuilds
 
   final ThermalMapStyle style;
   final bool showCore;
@@ -348,8 +361,7 @@ class _ThermalMapPainter extends CustomPainter {
   final Paint _pulseRingPaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 2.0;
-  final Paint _coreCenterPaint = Paint()
-    ..style = PaintingStyle.fill;
+  final Paint _coreCenterPaint = Paint()..style = PaintingStyle.fill;
   final Paint _coreInnerDotPaint = Paint()..color = Colors.white;
   final Paint _driftPaint = Paint()
     ..strokeWidth = 2.0
@@ -366,8 +378,7 @@ class _ThermalMapPainter extends CustomPainter {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.0;
   final Paint _wingShadowPaint = Paint()..color = Colors.black87;
-  final Paint _wingFillPaint = Paint()
-    ..style = PaintingStyle.fill;
+  final Paint _wingFillPaint = Paint()..style = PaintingStyle.fill;
   final Paint _wingOutlinePaint = Paint()
     ..color = Colors.white
     ..style = PaintingStyle.stroke
@@ -440,7 +451,9 @@ class _ThermalMapPainter extends CustomPainter {
       final tRatio = i / totalPoints;
       final angle = (tRatio * 5 * math.pi) - (headingDeg * math.pi / 180.0);
       final ageSeconds = (1.0 - tRatio) * historySeconds;
-      final timestamp = now.subtract(Duration(milliseconds: (ageSeconds * 1000).toInt()));
+      final timestamp = now.subtract(
+        Duration(milliseconds: (ageSeconds * 1000).toInt()),
+      );
 
       // Circling coordinates relative to glider at origin
       final px = turnRadius * math.cos(angle) + (1.0 - tRatio) * 15;
@@ -484,23 +497,25 @@ class _ThermalMapPainter extends CustomPainter {
     for (int i = 0; i < points.length; i++) {
       double px = points[i].dx;
       double py = points[i].dy;
-      
+
       if (useAirmassTrack) {
-         // Apply wind correction to shift point back to its airmass location.
-         // Wait, the thermal points should probably carry their own timestamps 
-         // and we drift them relative to current time?
-         // In Dart we have historySeconds and timestamp on each point.
-         final ageSec = DateTime.now().difference(points[i].timestamp).inMilliseconds / 1000.0;
-         final windVx = (windDirDeg + 180) * math.pi / 180.0;
-         final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
-         final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
-         // Assuming map scale is 1 unit = 1 meter, we can drift by vx * t.
-         px += wx * ageSec;
-         py += wy * ageSec;
+        // Apply wind correction to shift point back to its airmass location.
+        // Wait, the thermal points should probably carry their own timestamps
+        // and we drift them relative to current time?
+        // In Dart we have historySeconds and timestamp on each point.
+        final ageSec =
+            DateTime.now().difference(points[i].timestamp).inMilliseconds /
+            1000.0;
+        final windVx = (windDirDeg + 180) * math.pi / 180.0;
+        final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
+        final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
+        // Assuming map scale is 1 unit = 1 meter, we can drift by vx * t.
+        px += wx * ageSec;
+        py += wy * ageSec;
       }
-      
+
       final pt = Offset(px, py);
-      
+
       if (i == 0) {
         path.moveTo(pt.dx, pt.dy);
       } else {
@@ -508,10 +523,7 @@ class _ThermalMapPainter extends CustomPainter {
       }
     }
     _pathPaint.color = Colors.white.withAlpha(40);
-    canvas.drawPath(
-      path,
-      _pathPaint,
-    );
+    canvas.drawPath(path, _pathPaint);
 
     // Draw bubbles
     final now = DateTime.now();
@@ -519,13 +531,13 @@ class _ThermalMapPainter extends CustomPainter {
       final p = points[i];
       final ageSec = now.difference(p.timestamp).inMilliseconds / 1000.0;
       final ageDecay = (1.0 - (ageSec / historySeconds) * 0.6).clamp(0.3, 1.0);
-      
+
       final climb = p.climbRateMs;
-      
+
       Color bColor;
       double bRadius;
       int bAlpha;
-      
+
       if (climb > 1.5) {
         bColor = const Color(0xFF00E676); // Bright Green
         bRadius = 12.0 + ((climb - 1.5) * 1.5).clamp(0.0, 4.0);
@@ -547,11 +559,11 @@ class _ThermalMapPainter extends CustomPainter {
       double px = p.dx;
       double py = p.dy;
       if (useAirmassTrack) {
-         final windVx = (windDirDeg + 180) * math.pi / 180.0;
-         final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
-         final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
-         px += wx * ageSec;
-         py += wy * ageSec;
+        final windVx = (windDirDeg + 180) * math.pi / 180.0;
+        final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
+        final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
+        px += wx * ageSec;
+        py += wy * ageSec;
       }
       final pt = Offset(px, py);
 
@@ -560,22 +572,18 @@ class _ThermalMapPainter extends CustomPainter {
       canvas.drawCircle(pt, bRadius, _bubblePaint);
 
       // Outer outline for high contrast
-      _bubbleOutlinePaint.color = Colors.black87.withAlpha((180 * ageDecay).toInt().clamp(0, 255));
-      _bubbleOutlinePaint.strokeWidth = 1.2;
-      canvas.drawCircle(
-        pt,
-        bRadius,
-        _bubbleOutlinePaint,
+      _bubbleOutlinePaint.color = Colors.black87.withAlpha(
+        (180 * ageDecay).toInt().clamp(0, 255),
       );
+      _bubbleOutlinePaint.strokeWidth = 1.2;
+      canvas.drawCircle(pt, bRadius, _bubbleOutlinePaint);
 
       // Center bright core dot for strong thermals
       if (climb >= 2.5) {
-        _coreDotPaint.color = Colors.white.withAlpha((bAlpha * 0.9).toInt().clamp(0, 255));
-        canvas.drawCircle(
-          pt,
-          bRadius * 0.35,
-          _coreDotPaint,
+        _coreDotPaint.color = Colors.white.withAlpha(
+          (bAlpha * 0.9).toInt().clamp(0, 255),
         );
+        canvas.drawCircle(pt, bRadius * 0.35, _coreDotPaint);
       }
     }
   }
@@ -594,7 +602,7 @@ class _ThermalMapPainter extends CustomPainter {
     double weightedX = 0.0;
     double weightedY = 0.0;
     double maxClimb = 0.0;
-    
+
     final now = DateTime.now();
 
     for (final p in points) {
@@ -602,16 +610,16 @@ class _ThermalMapPainter extends CustomPainter {
         final weight = math.pow(p.climbRateMs, 2).toDouble();
         double px = p.dx;
         double py = p.dy;
-        
+
         if (useAirmassTrack) {
-           final ageSec = now.difference(p.timestamp).inMilliseconds / 1000.0;
-           final windVx = (windDirDeg + 180) * math.pi / 180.0;
-           final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
-           final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
-           px += wx * ageSec;
-           py += wy * ageSec;
+          final ageSec = now.difference(p.timestamp).inMilliseconds / 1000.0;
+          final windVx = (windDirDeg + 180) * math.pi / 180.0;
+          final wx = math.sin(windVx) * (windSpeedKmh / 3.6);
+          final wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
+          px += wx * ageSec;
+          py += wy * ageSec;
         }
-        
+
         weightedX += px * weight;
         weightedY += py * weight;
         totalWeight += weight;
@@ -619,8 +627,11 @@ class _ThermalMapPainter extends CustomPainter {
       }
     }
 
-      if (totalWeight > 0) {
-      final coreCenter = Offset(weightedX / totalWeight, weightedY / totalWeight);
+    if (totalWeight > 0) {
+      final coreCenter = Offset(
+        weightedX / totalWeight,
+        weightedY / totalWeight,
+      );
 
       // Draw dashed guidance line from glider to core
       _driftPaint.color = Colors.white.withAlpha(120);
@@ -628,21 +639,15 @@ class _ThermalMapPainter extends CustomPainter {
 
       // Pulsing concentric rings
       final pulseRadius = 24.0 + (pulseAnimation.value * 10.0);
-      _pulseRingPaint.color = const Color(0xFFFACC15).withAlpha((180 - pulseAnimation.value * 80).toInt().clamp(0, 255));
+      _pulseRingPaint.color = const Color(
+        0xFFFACC15,
+      ).withAlpha((180 - pulseAnimation.value * 80).toInt().clamp(0, 255));
 
       canvas.drawCircle(coreCenter, pulseRadius, _pulseRingPaint);
 
       _coreCenterPaint.color = const Color(0xFF00E676).withAlpha(160);
-      canvas.drawCircle(
-        coreCenter,
-        14.0,
-        _coreCenterPaint,
-      );
-      canvas.drawCircle(
-        coreCenter,
-        4.0,
-        _coreInnerDotPaint,
-      );
+      canvas.drawCircle(coreCenter, 14.0, _coreCenterPaint);
+      canvas.drawCircle(coreCenter, 4.0, _coreInnerDotPaint);
 
       // Draw wind overlay separately (often done via widget, but here if needed)
       // Wind drift vector arrow originating from core
@@ -667,7 +672,10 @@ class _ThermalMapPainter extends CustomPainter {
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(coreCenter.dx - tp.width / 2, coreCenter.dy + 18));
+      tp.paint(
+        canvas,
+        Offset(coreCenter.dx - tp.width / 2, coreCenter.dy + 18),
+      );
     }
   }
 
@@ -729,15 +737,13 @@ class _ThermalMapPainter extends CustomPainter {
       final alpha = _calculateAlpha(avgClimb, ageDecay);
 
       final isLift = avgClimb >= 0;
-      final baseColor = isLift ? const Color(0xFF00E676) : const Color(0xFFFF1744);
+      final baseColor = isLift
+          ? const Color(0xFF00E676)
+          : const Color(0xFFFF1744);
 
       _ribbonPaint.color = baseColor.withAlpha(alpha);
 
-      canvas.drawLine(
-        Offset(p1.dx, p1.dy),
-        Offset(p2.dx, p2.dy),
-        _ribbonPaint,
-      );
+      canvas.drawLine(Offset(p1.dx, p1.dy), Offset(p2.dx, p2.dy), _ribbonPaint);
     }
 
     // Draw milestone circles and peak markers
@@ -764,19 +770,14 @@ class _ThermalMapPainter extends CustomPainter {
       const Radius.circular(12),
     );
     _badgeBgPaint.color = Colors.black.withAlpha(200);
-    canvas.drawRRect(
-      badgeRect,
-      _badgeBgPaint,
-    );
+    canvas.drawRRect(badgeRect, _badgeBgPaint);
     _badgeOutlinePaint.color = const Color(0xFF00E676).withAlpha(120);
-    canvas.drawRRect(
-      badgeRect,
-      _badgeOutlinePaint,
-    );
+    canvas.drawRRect(badgeRect, _badgeOutlinePaint);
 
     final statsTp = TextPainter(
       text: TextSpan(
-        text: '360° AVG: ${avgLift >= 0 ? "+" : ""}${avgLift.toStringAsFixed(1)} m/s',
+        text:
+            '360° AVG: ${avgLift >= 0 ? "+" : ""}${avgLift.toStringAsFixed(1)} m/s',
         style: const TextStyle(
           color: Colors.white,
           fontSize: 10,
@@ -796,26 +797,17 @@ class _ThermalMapPainter extends CustomPainter {
     // Paraglider chevron wing
     final wingPath = Path()
       ..moveTo(0, -12) // Nose / Apex
-      ..lineTo(10, 6)  // Right wingtip
-      ..lineTo(4, 3)   // Trailing edge right
-      ..lineTo(0, 7)   // Tail
-      ..lineTo(-4, 3)  // Trailing edge left
+      ..lineTo(10, 6) // Right wingtip
+      ..lineTo(4, 3) // Trailing edge right
+      ..lineTo(0, 7) // Tail
+      ..lineTo(-4, 3) // Trailing edge left
       ..lineTo(-10, 6) // Left wingtip
       ..close();
 
-    canvas.drawPath(
-      wingPath,
-      _wingShadowPaint,
-    );
+    canvas.drawPath(wingPath, _wingShadowPaint);
     _wingFillPaint.color = const Color(0xFF00E676);
-    canvas.drawPath(
-      wingPath,
-      _wingFillPaint,
-    );
-    canvas.drawPath(
-      wingPath,
-      _wingOutlinePaint,
-    );
+    canvas.drawPath(wingPath, _wingFillPaint);
+    canvas.drawPath(wingPath, _wingOutlinePaint);
 
     // Heading projected velocity line
     _headingLinePaint.color = const Color(0xFF00E676);

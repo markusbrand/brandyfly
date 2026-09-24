@@ -18,3 +18,7 @@
 ## 2026-09-23 - Semantics on Non-Button Interactive Canvases
 **Learning:** In Flutter, using `GestureDetector` for non-standard interactive visual areas (like pan/zoom maps, draggable overlays, or global tap barriers) makes them completely invisible and un-actionable to screen readers.
 **Action:** Always wrap these `GestureDetector` instances in a `Semantics` widget, providing a descriptive `label` and setting `button: true` or `button: false` depending on the context, ensuring accessibility for screen reader users.
+
+## 2024-09-24 - Semantics on Interactive Text/Container Buttons
+**Learning:** In Flutter, interactive buttons created with `GestureDetector` and generic containers/text (like the Airmass/Ground toggle on the Thermal Map) are completely invisible to screen readers, as they lack semantic roles by default.
+**Action:** When implementing custom text or container buttons using `GestureDetector`, always wrap them in a `Semantics` widget with `button: true` and a descriptive `label` so screen readers identify and describe them correctly as actionable controls.
