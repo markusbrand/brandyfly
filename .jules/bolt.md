@@ -67,3 +67,7 @@
 ## 2026-09-24 - Thermal Map Loop DateTime Benchmark Findings
 **Learning:** In Dart/AOT, `DateTime.difference()` is implemented natively and optimized at the VM level. Pre-computing or caching integer timestamp fields (`millisecondsSinceEpoch`) or hoisting simple arithmetic outside loops can actually degrade performance due to additional field accesses, object overhead, or VM optimization disruption.
 **Action:** Always benchmark proposed micro-optimizations in Dart before applying them; do not assume integer timestamps or manual loop hoisting are faster than native Dart `DateTime` arithmetic.
+
+## 2024-09-25 - Avoid redundant coordinate transformations in drawing loops
+**Learning:** In Flutter `CustomPainter.paint` loops drawing paths or polylines, re-calculating the starting coordinate for each segment when it is identical to the end coordinate of the previous segment effectively doubles the number of expensive math operations (like geographic-to-screen coordinate transformations).
+**Action:** When drawing connected line segments, calculate the first point outside the loop, and then re-use `p2` as the new `p1` at the end of each iteration to half the number of projection calculations.
