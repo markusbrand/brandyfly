@@ -870,21 +870,25 @@ class _FlightOverlayPainter extends CustomPainter {
 
   void _paintFlightTrack(Canvas canvas, Size size) {
     final points = flightPoints;
-    if (points.isEmpty) return;
+    if (points.length < 2) return;
+
+    // ⚡ Bolt: Cache and reuse previous segment end coordinates to avoid redundant O(N) coordinate transformations
+    var prevPoint = _toScreen(
+      LatLng(points[0].latitude, points[0].longitude),
+      size,
+    );
 
     for (int i = 1; i < points.length; i++) {
-      final p1 = _toScreen(
-        LatLng(points[i - 1].latitude, points[i - 1].longitude),
-        size,
-      );
-      final p2 = _toScreen(
+      final currentPoint = _toScreen(
         LatLng(points[i].latitude, points[i].longitude),
         size,
       );
       final color = MapWidget.getVarioTrackColor(points[i].vario);
 
       _trackPaint.color = color;
-      canvas.drawLine(p1, p2, _trackPaint);
+      canvas.drawLine(prevPoint, currentPoint, _trackPaint);
+
+      prevPoint = currentPoint;
     }
   }
 
