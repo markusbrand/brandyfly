@@ -182,6 +182,7 @@ class WidgetEditFrameState extends State<WidgetEditFrame> {
                               // Configure Dialog Button
                               IconButton(
                                 key: Key('btn_config_$id'),
+                                tooltip: 'Configure Widget',
                                 onPressed: () => showWidgetConfigDialog(
                                   context,
                                   widget.model,
