@@ -22,6 +22,3 @@
 ## 2024-09-24 - Semantics on Interactive Text/Container Buttons
 **Learning:** In Flutter, interactive buttons created with `GestureDetector` and generic containers/text (like the Airmass/Ground toggle on the Thermal Map) are completely invisible to screen readers, as they lack semantic roles by default.
 **Action:** When implementing custom text or container buttons using `GestureDetector`, always wrap them in a `Semantics` widget with `button: true` and a descriptive `label` so screen readers identify and describe them correctly as actionable controls.
-## 2024-10-24 - Duplicate Tooltip in IconButton
-**Learning:** Found an instance where an `IconButton` in `widget_edit_frame.dart` had a `tooltip` property, but it was passed as a duplicate named argument causing a compilation error during testing. It's crucial to ensure properties aren't accidentally duplicated when adding them programmatically or manually.
-**Action:** When adding `tooltip` properties to improve accessibility on Flutter widgets like `IconButton`, always verify that the widget doesn't already have the property defined elsewhere in its constructor arguments to prevent build/test failures.
