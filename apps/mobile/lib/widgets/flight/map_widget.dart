@@ -854,13 +854,17 @@ class _FlightOverlayPainter extends CustomPainter {
   ];
 
   void _paintAirspace(Canvas canvas, Size size) {
-    final pts = defaultMockAirspacePolygon
-        .map((point) => _toScreen(point, size))
-        .toList();
+    if (defaultMockAirspacePolygon.isEmpty) return;
 
-    final path = Path()..moveTo(pts[0].dx, pts[0].dy);
-    for (int i = 1; i < pts.length; i++) {
-      path.lineTo(pts[i].dx, pts[i].dy);
+    // ⚡ Bolt: Avoid list allocation in hot path by computing points within loop
+    final path = Path();
+    for (int i = 0; i < defaultMockAirspacePolygon.length; i++) {
+      final pt = _toScreen(defaultMockAirspacePolygon[i], size);
+      if (i == 0) {
+        path.moveTo(pt.dx, pt.dy);
+      } else {
+        path.lineTo(pt.dx, pt.dy);
+      }
     }
     path.close();
 

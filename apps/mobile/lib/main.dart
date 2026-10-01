@@ -474,6 +474,7 @@ class _MockFlightView extends StatelessWidget {
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
+        tooltip: 'Show Map',
         onPressed: () {
           // print('DEBUG: FAB Tapped! Forcing screen to map_screen');
           screenManager.setActiveScreen('map_screen');

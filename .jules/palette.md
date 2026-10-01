@@ -22,3 +22,7 @@
 ## 2024-09-24 - Semantics on Interactive Text/Container Buttons
 **Learning:** In Flutter, interactive buttons created with `GestureDetector` and generic containers/text (like the Airmass/Ground toggle on the Thermal Map) are completely invisible to screen readers, as they lack semantic roles by default.
 **Action:** When implementing custom text or container buttons using `GestureDetector`, always wrap them in a `Semantics` widget with `button: true` and a descriptive `label` so screen readers identify and describe them correctly as actionable controls.
+
+## 2024-05-18 - Explicit tooltips on interactive elements
+**Learning:** Icon-only buttons and key interactive navigation controls (like FAB or popup menus) lack visible hover labels and can confuse users or be skipped/unclear on assistive technologies if they do not define a `tooltip` attribute.
+**Action:** Always provide descriptive `tooltip` parameters on `FloatingActionButton`, `IconButton`, and `PopupMenuButton` widgets.
