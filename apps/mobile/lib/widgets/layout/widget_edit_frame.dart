@@ -53,10 +53,13 @@ class WidgetEditFrameState extends State<WidgetEditFrame> {
 
     return Padding(
       padding: const EdgeInsets.all(2.0),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => widget.screenManager.selectWidget(id),
-        child: Container(
+      child: Semantics(
+        button: true,
+        label: 'Select widget',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => widget.screenManager.selectWidget(id),
+          child: Container(
           key: Key('widget_box_$id'),
           decoration: BoxDecoration(
             border: Border.all(
@@ -414,7 +417,8 @@ class WidgetEditFrameState extends State<WidgetEditFrame> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _miniButton({

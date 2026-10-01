@@ -303,6 +303,7 @@ class _FlightsScreenState extends State<FlightsScreen>
                 ),
                 _buildUploadStatusBadge(flight),
                 PopupMenuButton<String>(
+                  tooltip: 'Flight options',
                   icon: const Icon(Icons.more_vert, color: Colors.white70),
                   onSelected: (val) => _handleCardAction(context, flight, val),
                   itemBuilder: (ctx) => [
