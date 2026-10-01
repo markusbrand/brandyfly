@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.11.0...brandyfly-v0.12.0) (2026-10-01)
+
+
+### Features
+
+* **ui:** granular 16x32 grid, placeable map controls, layered UI architecture ([#237](https://github.com/markusbrand/brandyfly/issues/237)) ([99e960b](https://github.com/markusbrand/brandyfly/commit/99e960bc54ef9d92e49fc1d2e1e028b54276e42c))
+
 ## [0.11.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.10.0...brandyfly-v0.11.0) (2026-10-01)
 
 
