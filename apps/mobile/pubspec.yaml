@@ -16,12 +16,16 @@ dependencies:
   http: ^1.6.0
   path_provider: ^2.1.6
   crypto: ^3.0.7
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   maplibre_platform_interface: ^0.3.6
+  integration_test:
+    sdk: flutter
+  fake_async: ^1.3.3
 
 flutter:
   uses-material-design: true
@@ -29,3 +33,10 @@ flutter:
     - assets/sample_flights/Krippenstein-Aussee.IGC
     - assets/map_styles/alpine_relief.json
     - assets/map_data/global_overview.pmtiles
+  fonts:
+    - family: BarlowSemiCondensed
+      fonts:
+        - asset: assets/fonts/BarlowSemiCondensed-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/BarlowSemiCondensed-Bold.ttf
+          weight: 700

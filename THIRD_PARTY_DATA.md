@@ -30,6 +30,12 @@ No production dataset is bundled during the repository bootstrap.
 - **Attribution**: Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com.
 - **URL**: https://www.naturalearthdata.com/about/terms-of-use/
 
+### Barlow Semi Condensed (font)
+- **Source**: The Barlow Project Authors (https://github.com/jpt/barlow), retrieved from google/fonts `ofl/barlowsemicondensed` (2026-10)
+- **License**: SIL Open Font License 1.1 (full text bundled at `apps/mobile/assets/fonts/BarlowSemiCondensed-OFL.txt`)
+- **Usage**: Bundled (Medium, Bold) for offline cockpit instrument typography; unmodified
+- **Redistribution**: Permitted under OFL 1.1; the font may not be sold by itself
+
 ## Offline Map Region Pipeline Data Sources
 
 The automated pipeline in `tools/map-pipeline/` processes source datasets into regional PMTiles archives:

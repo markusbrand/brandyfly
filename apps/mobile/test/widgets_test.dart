@@ -226,9 +226,14 @@ void main() {
         final targetWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.altitude);
         final id = targetWidget.id;
 
+        // Select the widget by tapping its edit hit area.
+        await tester.tap(find.byKey(Key('widget_box_$id')));
+        await tester.pumpAndSettle();
+        expect(manager.selectedWidgetId, id);
+
         // Test position nudge right button
         final initialX = targetWidget.x;
-        await tester.tap(find.byKey(Key('btn_move_right_$id')));
+        await tester.tap(find.byKey(const Key('btn_inspector_move_right')));
         await tester.pumpAndSettle();
         expect(
           manager.activeScreen.widgets.firstWhere((w) => w.id == id).x,
@@ -237,7 +242,7 @@ void main() {
 
         // Test width increase button
         final currentW = manager.activeScreen.widgets.firstWhere((w) => w.id == id).w;
-        await tester.tap(find.byKey(Key('btn_inc_width_$id')));
+        await tester.tap(find.byKey(const Key('btn_inspector_inc_width')));
         await tester.pumpAndSettle();
         expect(
           manager.activeScreen.widgets.firstWhere((w) => w.id == id).w,
@@ -295,6 +300,7 @@ void main() {
 
       final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
       final id = mapWidget.id;
+      manager.selectWidget(id);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -796,8 +802,8 @@ void main() {
 
       final addedWidget = manager.activeScreen.widgets.first;
       expect(addedWidget.type, WidgetType.map);
-      expect(addedWidget.w, 8); // Full screen width
-      expect(addedWidget.h, 8); // Full screen height
+      expect(addedWidget.w, 16); // Full screen width
+      expect(addedWidget.h, 32); // Full screen height
     });
 
     testWidgets('ThermalMapWidget renders Option 1 (XCtrack), Option 2 (Burnair Core), and Option 3 (Navigator Ribbon)', (
@@ -897,8 +903,8 @@ void main() {
 
       final addedWidget = manager.activeScreen.widgets.first;
       expect(addedWidget.type, WidgetType.thermalMap);
-      expect(addedWidget.w, 8); // Full screen width by default
-      expect(addedWidget.h, 8); // Full screen height by default
+      expect(addedWidget.w, 16); // Full screen width by default
+      expect(addedWidget.h, 32); // Full screen height by default
       expect(addedWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
     });
 
@@ -909,8 +915,8 @@ void main() {
       final thermalingScreen = config.screens.firstWhere((s) => s.id == 'thermaling');
 
       final thermalWidget = thermalingScreen.widgets.firstWhere((w) => w.type == WidgetType.thermalMap);
-      expect(thermalWidget.w, 8);
-      expect(thermalWidget.h, 8);
+      expect(thermalWidget.w, 16);
+      expect(thermalWidget.h, 32);
       expect(thermalWidget.effectiveThermalMapStyle, ThermalMapStyle.xctrackBubbles);
     });
 
