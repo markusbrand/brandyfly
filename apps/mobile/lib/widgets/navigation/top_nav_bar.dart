@@ -59,21 +59,9 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
   Widget build(BuildContext context) {
     final style = widget.screenManager.config.navBarStyle;
 
-    return GestureDetector(
-      onVerticalDragUpdate: widget.screenManager.isNavBarVisible ||
-              widget.screenManager.isEditMode
-          ? null
-          : (details) {
-              // Detect swipe down from top edge (primary delta > 8)
-              if (details.primaryDelta != null &&
-                  details.primaryDelta! > 8 &&
-                  details.globalPosition.dy < 140) {
-                widget.screenManager.toggleNavBar(true);
-              }
-            },
-      child: Stack(
-        children: [
-          widget.child,
+    return Stack(
+      children: [
+        widget.child,
 
           // Drag & tap trigger handle at top of screen for swipe down
           if (!widget.screenManager.isNavBarVisible &&
@@ -154,8 +142,7 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildNavBarContent(BuildContext context, NavBarStyle style) {
