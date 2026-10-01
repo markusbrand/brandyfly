@@ -20,3 +20,8 @@
 **Vulnerability:** The embedded loopback HTTP server (`LocalTileServer`) set wildcard CORS headers (`Access-Control-Allow-Origin: *`) on vector tile, terrain, and health responses.
 **Learning:** CORS headers are unnecessary for local mobile/native clients (like MapLibre Native) accessing a loopback socket. If a browser running on the same device discovers the ephemeral port, wildcard CORS headers allow scripts in any web page to read response payloads from the local HTTP server.
 **Prevention:** Omit `Access-Control-Allow-Origin` headers or strictly restrict allowed origins on local embedded HTTP servers to prevent cross-origin reading by local browsers or webviews.
+
+## 2024-10-27 - Unvalidated URL Download Risk in Map Pipeline
+**Vulnerability:** The map pipeline script (`tools/map-pipeline/download_osm.py`) accepted any URL from the configuration and downloaded it to the local system, posing a Server-Side Request Forgery (SSRF) and potential path traversal risk if the configuration source were compromised or supplied externally.
+**Learning:** Functions that fetch external resources based on configuration files must validate the origin of the URL. Blindly downloading from any scheme or host allows attackers to probe internal networks or write unexpected files if the path derivation uses untrusted URL components.
+**Prevention:** Always strictly validate URLs against an allowlist of trusted domains and schemes (e.g., `url.startswith("https://download.geofabrik.de/")`) before initiating network requests in pipeline or download scripts.

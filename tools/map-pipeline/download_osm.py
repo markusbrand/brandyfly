@@ -21,6 +21,9 @@ def calculate_md5(filepath: str) -> str:
 
 
 def download_file(url: str, dest_path: str, verify_md5: bool = True) -> bool:
+    if not url.startswith("https://download.geofabrik.de/"):
+        raise ValueError(f"Security Error: Untrusted URL scheme or domain in {url}")
+
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
     
     # Check remote MD5 if available
