@@ -25,6 +25,15 @@ class MapLibreMapService extends ChangeNotifier {
 
   MapController? _controller;
   StyleController? _styleController;
+  bool _disposed = false;
+
+  /// Async work (style building, tile server startup) may complete after the
+  /// owning map widget was disposed; never notify a disposed notifier.
+  @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
+  }
   bool _isStyleLoaded = false;
   bool _isFallbackActive = true;
   String? _activeRegionId;
@@ -108,6 +117,16 @@ class MapLibreMapService extends ChangeNotifier {
     String? regionId,
     String? baseTemplateJson,
   }) async {
+    if (kIsWeb) {
+      // The loopback tile server and local PMTiles archives rely on dart:io,
+      // which is unavailable on the web: use the bundled style as-is.
+      _lastLoadedStyleJson = baseTemplateJson?.isNotEmpty == true
+          ? baseTemplateJson
+          : _defaultStyleTemplate();
+      _isFallbackActive = true;
+      notifyListeners();
+      return _lastLoadedStyleJson!;
+    }
     await _tileServer.start();
 
     String template = baseTemplateJson ?? '';
@@ -342,6 +361,7 @@ class MapLibreMapService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _tileServer.onlinePreviewNotifier.removeListener(notifyListeners);
     _controller = null;
     _styleController = null;

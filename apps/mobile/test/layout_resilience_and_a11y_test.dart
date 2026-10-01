@@ -80,11 +80,25 @@ void main() {
       // Verify edit action bar elements exist and are rendered safely
       expect(find.byKey(const Key('btn_add_widget')), findsOneWidget);
       expect(find.byKey(const Key('btn_done_editing')), findsOneWidget);
-      expect(find.byKey(const Key('btn_config_compact_1x1')), findsOneWidget);
-      expect(find.byKey(const Key('btn_config_compact_2x1')), findsOneWidget);
+      // Compact widgets host no controls; each is selectable through its hit
+      // area and gets configure/resize chrome outside its bounds.
+      for (final id in ['compact_1x1', 'compact_2x1']) {
+        expect(find.byKey(Key('widget_box_$id')), findsOneWidget);
+        await tester.tap(find.byKey(Key('widget_box_$id')));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(screenManager.selectedWidgetId, id);
+        expect(find.byKey(Key('btn_config_$id')), findsOneWidget);
+        expect(find.byKey(Key('resize_handle_$id')), findsOneWidget);
+        expect(find.byKey(Key('size_tag_$id')), findsOneWidget);
+        expect(find.byKey(const Key('widget_inspector_panel')), findsOneWidget);
+        // Deselect before picking the neighbour (selection chrome sits on top).
+        await tester.tap(find.byKey(const Key('btn_inspector_close')));
+        await tester.pumpAndSettle();
+      }
     });
 
-    testWidgets('All extreme widget sizes (1x1 to 8x16) render without overflow in edit mode',
+    testWidgets('All extreme widget sizes (1x1 to 16x32) render without overflow in edit mode',
         (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
@@ -129,8 +143,8 @@ void main() {
                   type: WidgetType.speed,
                   x: 0,
                   y: 8,
-                  w: 8,
-                  h: 8,
+                  w: 16,
+                  h: 24,
                 ),
               ],
             ),

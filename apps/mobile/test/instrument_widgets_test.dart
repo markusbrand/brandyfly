@@ -439,6 +439,25 @@ void main() {
         ),
       );
       expect(tester.takeException(), isNull);
+      // 60x38 is the tiny tier (shortest side < 40 dp): value only.
+      expect(find.text('ALT'), findsNothing);
+      expect(find.text('1850'), findsOneWidget);
+    });
+
+    testWidgets('numeric widget shows unit in compact tier and label in regular tier', (tester) async {
+      const widget = NumericTextWidget(
+        label: 'Alt',
+        value: '1850',
+        unit: 'm',
+        style: NumericWidgetStyle.minimalistText,
+      );
+      await tester.pumpWidget(wrapCompact(widget, width: 120, height: 60));
+      expect(tester.takeException(), isNull);
+      expect(find.text('ALT'), findsNothing);
+      expect(find.text('m'), findsOneWidget);
+
+      await tester.pumpWidget(wrapCompact(widget, width: 160, height: 100));
+      expect(tester.takeException(), isNull);
       expect(find.text('ALT'), findsOneWidget);
       expect(find.text('1850'), findsOneWidget);
     });

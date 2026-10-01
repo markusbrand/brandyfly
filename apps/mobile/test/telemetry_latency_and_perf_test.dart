@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:brandyfly/data/repositories/telemetry_repository.dart';
 import 'package:brandyfly/models/flight_model.dart';
+import 'package:brandyfly/services/flight_replay_service.dart';
 import 'package:brandyfly/models/flight_settings.dart';
 import 'package:brandyfly/services/flight_tracking_service.dart';
 import 'package:brandyfly/services/telemetry/telemetry_source.dart';
@@ -276,6 +278,39 @@ void main() {
       await sub.cancel();
       mockSource1.dispose();
       mockSource2.dispose();
+    });
+
+    test('UI telemetry repository adds <100 µs per snapshot (1,000 at 50 Hz)', () {
+      final replay = FlightReplayService();
+      final repo = TelemetryRepository(
+        replayService: replay,
+        trackingService: service,
+      );
+      var delivered = 0;
+      repo.telemetry.addListener(() => delivered++);
+      final baseTime = DateTime.utc(2026, 9, 1, 12, 0, 0);
+
+      final stopwatch = Stopwatch()..start();
+      for (int i = 0; i < 1000; i++) {
+        repo.onSnapshot(
+          TelemetrySnapshot(
+            timestamp: baseTime.add(Duration(milliseconds: i * 20)),
+            altitude: 1500.0 + i * 0.1,
+            vario: 1.2,
+            speed: 35.0,
+            heading: 90,
+            latitude: 46.5 + i * 0.00001,
+            longitude: 8.5,
+          ),
+        );
+      }
+      stopwatch.stop();
+
+      expect(delivered, 1000, reason: 'one UI notification per source tick');
+      expect(repo.telemetry.value.history.length, lessThanOrEqualTo(60));
+      expect(stopwatch.elapsedMilliseconds, lessThan(100));
+      repo.dispose();
+      replay.dispose();
     });
   });
 }

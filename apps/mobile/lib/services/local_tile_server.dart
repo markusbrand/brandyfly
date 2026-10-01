@@ -23,10 +23,7 @@ class LocalTileServer {
   }) : _configuredOnlineFallbackUrlTemplate = onlineFallbackUrlTemplate,
        _configuredOnlineTerrainFallbackUrlTemplate =
            onlineTerrainFallbackUrlTemplate,
-       _httpClient = httpClient ?? HttpClient() {
-    _httpClient.connectionTimeout = const Duration(seconds: 3);
-    _httpClient.autoUncompress = false;
-  }
+       _injectedHttpClient = httpClient;
 
   static const String defaultSnapshotTemplate =
       'https://tiles.openfreemap.org/planet/20260906_080001_pt/{z}/{x}/{y}.pbf';
@@ -39,7 +36,13 @@ class LocalTileServer {
   final String? _configuredOnlineFallbackUrlTemplate;
   final String? _configuredOnlineTerrainFallbackUrlTemplate;
   final String? cacheDirectoryPath;
-  final HttpClient _httpClient;
+  final HttpClient? _injectedHttpClient;
+
+  /// Created lazily: `dart:io` networking is unavailable on the web, where
+  /// constructing an [HttpClient] eagerly crashed app startup.
+  late final HttpClient _httpClient = (_injectedHttpClient ?? HttpClient())
+    ..connectionTimeout = const Duration(seconds: 3)
+    ..autoUncompress = false;
 
   String _activeOnlineFallbackUrlTemplate = defaultSnapshotTemplate;
   String? _resolvedCacheDirectoryPath;

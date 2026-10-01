@@ -181,7 +181,7 @@ void main() {
     );
 
     testWidgets(
-      'TC-MAP-006: Verifies adding Map via WidgetPickerSheet sets full-screen initial dimensions (w:8, h:8)',
+      'TC-MAP-006: Verifies adding Map via WidgetPickerSheet sets full-screen initial dimensions (w:16, h:32)',
       (tester) async {
         tester.view.physicalSize = const Size(800, 1400);
         tester.view.devicePixelRatio = 1.0;
@@ -215,8 +215,8 @@ void main() {
         expect(mapWidgetModel.type, WidgetType.map);
         expect(mapWidgetModel.x, 0);
         expect(mapWidgetModel.y, 0);
-        expect(mapWidgetModel.w, 8); // Spans full grid width
-        expect(mapWidgetModel.h, 8); // Spans full initial height
+        expect(mapWidgetModel.w, 16); // Spans full grid width
+        expect(mapWidgetModel.h, 32); // Spans full grid height
       },
     );
 
@@ -248,11 +248,11 @@ void main() {
         final mapModel = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
         final mapId = mapModel.id;
 
-        // Decrease width from 8 to 7
+        // Decrease width from 16 to 15
         manager.resizeWidget(mapId, -1, 0);
         await tester.pumpAndSettle();
         var updatedMap = manager.activeScreen.widgets.firstWhere((w) => w.id == mapId);
-        expect(updatedMap.w, 7);
+        expect(updatedMap.w, 15);
 
         // Move right by 1
         manager.moveWidget(mapId, 1, 0);
@@ -260,11 +260,11 @@ void main() {
         updatedMap = manager.activeScreen.widgets.firstWhere((w) => w.id == mapId);
         expect(updatedMap.x, 1);
 
-        // Decrease height from 8 to 7
+        // Decrease height from 32 to 31
         manager.resizeWidget(mapId, 0, -1);
         await tester.pumpAndSettle();
         updatedMap = manager.activeScreen.widgets.firstWhere((w) => w.id == mapId);
-        expect(updatedMap.h, 7);
+        expect(updatedMap.h, 31);
       },
     );
 
@@ -282,6 +282,7 @@ void main() {
 
         final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
         final id = mapWidget.id;
+        manager.selectWidget(id);
 
         await tester.pumpWidget(
           MaterialApp(
@@ -341,6 +342,7 @@ void main() {
 
         final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
         final id = mapWidget.id;
+        manager.selectWidget(id);
 
         await tester.pumpWidget(
           MaterialApp(
@@ -650,6 +652,7 @@ void main() {
 
         final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
         final id = mapWidget.id;
+        manager.selectWidget(id);
 
         await tester.pumpWidget(
           MaterialApp(

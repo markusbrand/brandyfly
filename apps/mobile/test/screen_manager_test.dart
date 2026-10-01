@@ -77,8 +77,8 @@ void main() {
       expect(added.type, WidgetType.map);
       expect(added.x, 0);
       expect(added.y, 0);
-      expect(added.w, 8);
-      expect(added.h, 8);
+      expect(added.w, 16);
+      expect(added.h, 32);
       expect(added.effectiveMapStyle, MapWidgetStyle.topoContours);
     });
 
@@ -167,13 +167,14 @@ void main() {
       expect(w.w, 3);
       expect(w.h, 4);
 
-      // Clamping checks: width cannot exceed grid columns (8), x clamped so x+w <= 8
-      manager.updateWidgetPlacement(w.copyWith(x: 7, w: 4, y: -5, h: 20));
+      // Clamping checks on the 16x32 grid: x clamped so x+w <= 16,
+      // y clamped to >= 0 and h clamped to the 32 grid rows.
+      manager.updateWidgetPlacement(w.copyWith(x: 15, w: 4, y: -5, h: 40));
       w = manager.activeScreen.widgets.firstWhere((item) => item.id == widgetId);
       expect(w.w, 4);
-      expect(w.x, 4); // clamped to 8 - 4 = 4
+      expect(w.x, 12); // clamped to 16 - 4 = 12
       expect(w.y, 0); // clamped to min 0
-      expect(w.h, 16); // clamped to max 16
+      expect(w.h, 32); // clamped to max 32 rows
     });
 
     test('serializes and deserializes UIConfig correctly', () {

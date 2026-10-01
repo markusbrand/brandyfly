@@ -1,61 +1,71 @@
-import 'package:flutter/material.dart';
-import '../models/ui_config.dart';
-import 'ui_persistence_service.dart';
+import 'package:flutter/foundation.dart';
 
+import '../data/repositories/layout_repository.dart';
+import '../data/services/ui_persistence_service.dart';
+import '../domain/models/ui_config.dart';
+import '../domain/models/widget_catalog.dart';
+import '../ui/features/layout_editor/view_models/edit_mode_view_model.dart';
+
+/// App-shell facade over the layout repository and edit mode view model.
+///
+/// Keeps the historical public API used by the navigation bar, settings and
+/// tests, while layout rules live in the domain layer, persistence in
+/// [LayoutRepository] and edit state in [EditModeViewModel]. Also owns shell
+/// overlay flags (nav bar, settings, flights screen, replay).
 class ScreenManagerService extends ChangeNotifier {
   ScreenManagerService({
     UIConfig? initialConfig,
     UIPersistenceService? persistenceService,
-  }) : _config = initialConfig ?? UIConfig.defaultConfig(),
-       _persistence = persistenceService;
+    LayoutRepository? repository,
+  }) : _repository =
+           repository ??
+           LayoutRepository(
+             initialConfig: initialConfig,
+             persistence: persistenceService,
+           ),
+       _ownsRepository = repository == null {
+    _editMode = EditModeViewModel(_repository);
+    _editMode.addListener(notifyListeners);
+  }
 
-  UIConfig _config;
-  final UIPersistenceService? _persistence;
-  bool _isEditMode = false;
+  final LayoutRepository _repository;
+  final bool _ownsRepository;
+  late final EditModeViewModel _editMode;
+
   bool _isNavBarVisible = false;
   bool _isSettingsVisible = false;
   bool _isFlightsScreenVisible = false;
   bool _isReplayActive = false;
-  String? _selectedWidgetId;
 
-  UIConfig get config => _config;
-  bool get isEditMode => _isEditMode;
+  LayoutRepository get layoutRepository => _repository;
+  EditModeViewModel get editMode => _editMode;
+
+  UIConfig get config => _repository.config;
+  bool get isEditMode => _editMode.isEditMode;
   bool get isNavBarVisible => _isNavBarVisible;
   bool get isSettingsVisible => _isSettingsVisible;
   bool get isFlightsScreenVisible => _isFlightsScreenVisible;
   bool get isReplayActive => _isReplayActive;
-  String? get selectedWidgetId => _selectedWidgetId;
+  String? get selectedWidgetId => _editMode.selectedWidgetId;
 
-  FlightScreenModel get activeScreen {
-    final found = _config.screens.firstWhere(
-      (s) => s.id == _config.activeScreenId,
-      orElse: () => _config.screens.isNotEmpty
-          ? _config.screens.first
-          : UIConfig.defaultConfig().screens.first,
-    );
-    return found;
-  }
+  FlightScreenModel get activeScreen => _repository.config.activeScreen;
 
-  void selectWidget(String? id) {
-    if (_selectedWidgetId == id) return;
-    _selectedWidgetId = id;
-    notifyListeners();
-  }
+  void selectWidget(String? id) => _editMode.select(id);
 
   void toggleNavBar([bool? visible]) {
     _isNavBarVisible = visible ?? !_isNavBarVisible;
-    // print('DEBUG: toggleNavBar called, new state is $_isNavBarVisible');
     notifyListeners();
   }
 
   void toggleEditMode([bool? enabled]) {
-    _isEditMode = enabled ?? !_isEditMode;
-    if (_isEditMode) {
-      _isNavBarVisible = false;
-    } else {
-      _selectedWidgetId = null;
+    final next = enabled ?? !_editMode.isEditMode;
+    final navChanged = next && _isNavBarVisible;
+    if (navChanged) _isNavBarVisible = false;
+    if (_editMode.isEditMode != next) {
+      _editMode.setEditMode(next); // notifies through the edit view model
+    } else if (navChanged) {
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   void toggleSettingsPanel([bool? visible]) {
@@ -85,38 +95,29 @@ class ScreenManagerService extends ChangeNotifier {
   }
 
   void setActiveScreen(String screenId) {
-    // print('DEBUG: setActiveScreen called with $screenId, current is ${_config.activeScreenId}');
-    if (_config.activeScreenId == screenId) {
-      // print('DEBUG: Already active, returning');
-      return;
-    }
-    _selectedWidgetId = null;
-    _config = _config.copyWith(activeScreenId: screenId);
-    // print('DEBUG: Set activeScreenId to ${_config.activeScreenId}');
-    _saveAndNotify();
+    if (config.activeScreenId == screenId) return;
+    _editMode.batch(() {
+      _editMode.clearSelectionSilently();
+      _repository.replace(config.copyWith(activeScreenId: screenId));
+    });
   }
 
-  void setNavBarStyle(NavBarStyle style) {
-    _config = _config.copyWith(navBarStyle: style);
-    _saveAndNotify();
-  }
+  void setNavBarStyle(NavBarStyle style) =>
+      _repository.replace(config.copyWith(navBarStyle: style));
 
-  void setThermalingStyle(ThermalingStyle style) {
-    _config = _config.copyWith(thermalingStyle: style);
-    _saveAndNotify();
-  }
+  void setThermalingStyle(ThermalingStyle style) =>
+      _repository.replace(config.copyWith(thermalingStyle: style));
 
-  void setSettingsStyle(SettingsStyle style) {
-    _config = _config.copyWith(settingsStyle: style);
-    _saveAndNotify();
-  }
+  void setSettingsStyle(SettingsStyle style) =>
+      _repository.replace(config.copyWith(settingsStyle: style));
 
   void addScreen(
     String name, {
     LayoutStrategyStyle layoutStrategy = LayoutStrategyStyle.sidebarDashboard,
-    ScreenAutoSwitchTrigger autoSwitchTrigger = ScreenAutoSwitchTrigger.manualOnly,
+    ScreenAutoSwitchTrigger autoSwitchTrigger =
+        ScreenAutoSwitchTrigger.manualOnly,
   }) {
-    final newId = 'screen_${DateTime.now().millisecondsSinceEpoch}';
+    final newId = 'screen_${DateTime.now().microsecondsSinceEpoch}';
     final newScreen = FlightScreenModel(
       id: newId,
       name: name,
@@ -124,226 +125,104 @@ class ScreenManagerService extends ChangeNotifier {
       autoSwitchTrigger: autoSwitchTrigger,
       widgets: const [],
     );
-    final updatedScreens = [..._config.screens, newScreen];
-    _selectedWidgetId = null;
-    _config = _config.copyWith(screens: updatedScreens, activeScreenId: newId);
-    _saveAndNotify();
+    _editMode.batch(() {
+      _editMode.clearSelectionSilently();
+      _repository.replace(
+        config.copyWith(
+          screens: [...config.screens, newScreen],
+          activeScreenId: newId,
+        ),
+      );
+    });
   }
 
   void removeScreen(String screenId) {
-    if (_config.screens.length <= 1) return; // Keep at least one screen
-    final screenExists = _config.screens.any((s) => s.id == screenId);
-    if (!screenExists) return;
+    if (config.screens.length <= 1) return; // Keep at least one screen
+    if (!config.screens.any((s) => s.id == screenId)) return;
 
-    final updatedScreens = _config.screens
+    final updatedScreens = config.screens
         .where((s) => s.id != screenId)
         .toList();
+    var nextActive = config.activeScreenId;
+    final removingActive = config.activeScreenId == screenId;
+    if (removingActive) nextActive = updatedScreens.first.id;
 
-    String nextActive = _config.activeScreenId;
-    if (_config.activeScreenId == screenId) {
-      _selectedWidgetId = null;
-      nextActive = updatedScreens.first.id;
-    }
-
-    _config = _config.copyWith(
-      screens: updatedScreens,
-      activeScreenId: nextActive,
-    );
-    _saveAndNotify();
+    _editMode.batch(() {
+      if (removingActive) _editMode.clearSelectionSilently();
+      _repository.replace(
+        config.copyWith(screens: updatedScreens, activeScreenId: nextActive),
+      );
+    });
   }
 
-  void renameScreen(String screenId, String newName) {
-    final updatedScreens = _config.screens.map((s) {
-      return s.id == screenId ? s.copyWith(name: newName) : s;
-    }).toList();
-    _config = _config.copyWith(screens: updatedScreens);
-    _saveAndNotify();
-  }
+  void renameScreen(String screenId, String newName) =>
+      _repository.updateScreen(screenId, (s) => s.copyWith(name: newName));
 
-  void setScreenLayoutStrategy(String screenId, LayoutStrategyStyle strategy) {
-    final updatedScreens = _config.screens.map((s) {
-      return s.id == screenId ? s.copyWith(layoutStrategy: strategy) : s;
-    }).toList();
-    _config = _config.copyWith(screens: updatedScreens);
-    _saveAndNotify();
-  }
+  void setScreenLayoutStrategy(String screenId, LayoutStrategyStyle strategy) =>
+      _repository.updateScreen(
+        screenId,
+        (s) => s.copyWith(layoutStrategy: strategy),
+      );
 
-  void setScreenAutoSwitchTrigger(String screenId, ScreenAutoSwitchTrigger trigger) {
-    final updatedScreens = _config.screens.map((s) {
-      return s.id == screenId ? s.copyWith(autoSwitchTrigger: trigger) : s;
-    }).toList();
-    _config = _config.copyWith(screens: updatedScreens);
-    _saveAndNotify();
-  }
+  void setScreenAutoSwitchTrigger(
+    String screenId,
+    ScreenAutoSwitchTrigger trigger,
+  ) => _repository.updateScreen(
+    screenId,
+    (s) => s.copyWith(autoSwitchTrigger: trigger),
+  );
 
-  void updateScreen(FlightScreenModel updated) {
-    final updatedScreens = _config.screens.map((s) {
-      return s.id == updated.id ? updated : s;
-    }).toList();
-    _config = _config.copyWith(screens: updatedScreens);
-    _saveAndNotify();
-  }
+  void updateScreen(FlightScreenModel updated) =>
+      _repository.updateScreen(updated.id, (_) => updated);
 
-  void updateWidgetPlacement(WidgetPlacementModel placement) {
-    final currentActive = activeScreen;
-    final clampedW = placement.w.clamp(1, 8);
-    final clampedH = placement.h.clamp(1, 16);
-    final clampedX = placement.x.clamp(0, (8 - clampedW).clamp(0, 7));
-    final clampedY = placement.y.clamp(0, 20);
+  // Widget operations act on the edited variant of the active screen.
 
-    final sanitized = placement.copyWith(
-      x: clampedX,
-      y: clampedY,
-      w: clampedW,
-      h: clampedH,
-    );
-
-    final updatedWidgets = currentActive.widgets.map((w) {
-      return w.id == sanitized.id ? sanitized : w;
-    }).toList();
-
-    _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
-  }
+  void updateWidgetPlacement(WidgetPlacementModel placement) =>
+      _editMode.updatePlacement(placement);
 
   void updateWidgetPosition(String widgetId, int x, int y) {
-    final currentActive = activeScreen;
-    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
-    if (index == -1) return;
-    final current = currentActive.widgets[index];
-    updateWidgetPlacement(current.copyWith(x: x, y: y));
+    final current = _find(widgetId);
+    if (current == null) return;
+    _editMode.updatePlacement(current.copyWith(x: x, y: y));
   }
 
   void updateWidgetSize(String widgetId, int w, int h) {
-    final currentActive = activeScreen;
-    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
-    if (index == -1) return;
-    final current = currentActive.widgets[index];
-    updateWidgetPlacement(current.copyWith(w: w, h: h));
+    final current = _find(widgetId);
+    if (current == null) return;
+    _editMode.updatePlacement(current.copyWith(w: w, h: h));
   }
 
-  void moveWidget(String widgetId, int dx, int dy) {
-    final currentActive = activeScreen;
-    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
-    if (index == -1) return;
-    final current = currentActive.widgets[index];
-    updateWidgetPlacement(
-      current.copyWith(
-        x: current.x + dx,
-        y: current.y + dy,
-      ),
-    );
-  }
+  void moveWidget(String widgetId, int dx, int dy) =>
+      _editMode.move(widgetId, dx, dy);
 
-  void resizeWidget(String widgetId, int dw, int dh) {
-    final currentActive = activeScreen;
-    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
-    if (index == -1) return;
-    final current = currentActive.widgets[index];
-    updateWidgetPlacement(
-      current.copyWith(
-        w: current.w + dw,
-        h: current.h + dh,
-      ),
-    );
-  }
+  void resizeWidget(String widgetId, int dw, int dh) =>
+      _editMode.resize(widgetId, dw, dh);
 
-  void bringToFront(String widgetId) {
-    final currentActive = activeScreen;
-    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
-    if (index == -1 || index == currentActive.widgets.length - 1) return;
-    final updated = List<WidgetPlacementModel>.from(currentActive.widgets);
-    final item = updated.removeAt(index);
-    updated.add(item);
-    _updateActiveScreen(currentActive.copyWith(widgets: updated));
-  }
+  void applySizePreset(String widgetId, SizePreset preset) =>
+      _editMode.applyPreset(widgetId, preset);
 
-  void bringForward(String widgetId) {
-    final currentActive = activeScreen;
-    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
-    if (index == -1 || index == currentActive.widgets.length - 1) return;
-    final updated = List<WidgetPlacementModel>.from(currentActive.widgets);
-    final item = updated.removeAt(index);
-    updated.insert(index + 1, item);
-    _updateActiveScreen(currentActive.copyWith(widgets: updated));
-  }
+  void bringToFront(String widgetId) => _editMode.bringToFront(widgetId);
+  void bringForward(String widgetId) => _editMode.bringForward(widgetId);
+  void sendBackward(String widgetId) => _editMode.sendBackward(widgetId);
+  void sendToBack(String widgetId) => _editMode.sendToBack(widgetId);
 
-  void sendBackward(String widgetId) {
-    final currentActive = activeScreen;
-    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
-    if (index <= 0) return;
-    final updated = List<WidgetPlacementModel>.from(currentActive.widgets);
-    final item = updated.removeAt(index);
-    updated.insert(index - 1, item);
-    _updateActiveScreen(currentActive.copyWith(widgets: updated));
-  }
+  /// Adds a widget to the edited variant of the active screen; returns its id.
+  String addWidget(WidgetType type) => _editMode.addWidget(type);
 
-  void sendToBack(String widgetId) {
-    final currentActive = activeScreen;
-    final index = currentActive.widgets.indexWhere((w) => w.id == widgetId);
-    if (index <= 0) return;
-    final updated = List<WidgetPlacementModel>.from(currentActive.widgets);
-    final item = updated.removeAt(index);
-    updated.insert(0, item);
-    _updateActiveScreen(currentActive.copyWith(widgets: updated));
-  }
+  void removeWidget(String widgetId) => _editMode.removeWidget(widgetId);
 
-  void addWidget(WidgetType type) {
-    final currentActive = activeScreen;
-    final newId = 'w_${DateTime.now().millisecondsSinceEpoch}';
-    final isMapLike = type == WidgetType.map || type == WidgetType.thermalMap;
-    final newPlacement = WidgetPlacementModel(
-      id: newId,
-      type: type,
-      x: 0,
-      y: 0,
-      w: isMapLike ? 8 : 4,
-      h: isMapLike ? 8 : 2,
-      numericStyle: NumericWidgetStyle.minimalistText,
-      windStyle: WindWidgetStyle.relativeArrow,
-      varioStyle: LiftSinkBarStyle.verticalEdgeBar,
-      altitudeChartStyle: AltitudeChartStyle.minimalSparkline,
-      mapStyle: MapWidgetStyle.topoContours,
-      mapOrientation: MapOrientation.trackUp,
-      mapShowAirspace: true,
-      mapShowThermals: true,
-      mapShowTrack: true,
-      mapShowContours: true,
-      thermalMapStyle: ThermalMapStyle.xctrackBubbles,
-      thermalMapShowCore: true,
-      thermalMapHistorySeconds: 90,
-      mapTrackHistoryMinutes: 10,
-      mapTrackShowOlderTail: true,
-    );
-    final List<WidgetPlacementModel> updatedWidgets;
-    if (isMapLike) {
-      updatedWidgets = [newPlacement, ...currentActive.widgets];
-    } else {
-      updatedWidgets = [...currentActive.widgets, newPlacement];
+  WidgetPlacementModel? _find(String id) {
+    for (final w in _editMode.editedWidgets) {
+      if (w.id == id) return w;
     }
-    _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
+    return null;
   }
 
-  void removeWidget(String widgetId) {
-    if (_selectedWidgetId == widgetId) {
-      _selectedWidgetId = null;
-    }
-    final currentActive = activeScreen;
-    final updatedWidgets = currentActive.widgets
-        .where((w) => w.id != widgetId)
-        .toList();
-    _updateActiveScreen(currentActive.copyWith(widgets: updatedWidgets));
-  }
-
-  void _updateActiveScreen(FlightScreenModel updated) {
-    final updatedScreens = _config.screens.map((s) {
-      return s.id == updated.id ? updated : s;
-    }).toList();
-    _config = _config.copyWith(screens: updatedScreens);
-    _saveAndNotify();
-  }
-
-  void _saveAndNotify() {
-    _persistence?.saveConfig(_config);
-    notifyListeners();
+  @override
+  void dispose() {
+    _editMode.removeListener(notifyListeners);
+    _editMode.dispose();
+    if (_ownsRepository) _repository.dispose();
+    super.dispose();
   }
 }

@@ -5,7 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import 'data/repositories/layout_repository.dart';
+import 'data/repositories/telemetry_repository.dart';
+import 'domain/models/cockpit_telemetry.dart';
 import 'models/flight_model.dart';
 import 'services/flight_replay_service.dart';
 import 'services/flight_storage_service.dart';
@@ -63,6 +67,21 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   MockFlightReplay? _mockReplay;
   SyntheticTelemetrySource? _syntheticTelemetry;
   Timer? _timer;
+
+  /// Bumped when the mock scenario frame advances; only the simulation
+  /// overlay listens, so the flight canvas is not rebuilt every 2 s.
+  final ValueNotifier<int> _mockFrameTick = ValueNotifier<int>(0);
+
+  static const CockpitTelemetry _liveIdleTelemetry = CockpitTelemetry(
+    altitude: 1250.0,
+    speed: 38.0,
+    glide: 7.5,
+    hag: 280.0,
+    climb: 1.2,
+    windDir: 180.0,
+    windSpeed: 12.0,
+    history: [1200.0, 1220.0, 1235.0, 1250.0],
+  );
   String? _platformVersion;
   String? _startupError;
   bool _loading = true;
@@ -73,6 +92,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   late FlightReplayService _replayService;
   late XContestUploadService _uploadService;
   late MapLibreMapService _mapService;
+  late TelemetryRepository _telemetryRepository;
+  LayoutRepository? _ownedLayoutRepository;
 
   StreamSubscription<FlightModel>? _flightCompletedSub;
 
@@ -83,18 +104,45 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     _trackingService = widget.trackingService ?? FlightTrackingService();
     _replayService = widget.replayService ?? FlightReplayService();
     _mapService = widget.mapService ?? MapLibreMapService();
+    _telemetryRepository = TelemetryRepository(
+      replayService: _replayService,
+      trackingService: _trackingService,
+      idleTelemetry: widget.config.enabled
+          ? const CockpitTelemetry()
+          : _liveIdleTelemetry,
+    );
+    _screenManager.addListener(_syncReplayTelemetry);
     _bootstrap();
+  }
+
+  void _syncReplayTelemetry() {
+    _telemetryRepository.setReplayActive(_screenManager.isReplayActive);
+  }
+
+  void _advanceMockFrame() {
+    final replay = _mockReplay;
+    if (!mounted || replay == null) return;
+    replay.advance();
+    _mockFrameTick.value++;
+  }
+
+  void _resetMockFrame() {
+    final replay = _mockReplay;
+    if (!mounted || replay == null) return;
+    replay.reset();
+    _mockFrameTick.value++;
   }
 
   Future<void> _bootstrap() async {
     try {
       if (widget.screenManager == null) {
         final persistence = await UIPersistenceService.init();
-        final loadedConfig = persistence.loadConfig();
-        _screenManager = ScreenManagerService(
-          initialConfig: loadedConfig,
-          persistenceService: persistence,
-        );
+        final repository = LayoutRepository.load(persistence);
+        _ownedLayoutRepository = repository;
+        _screenManager.removeListener(_syncReplayTelemetry);
+        _screenManager.dispose();
+        _screenManager = ScreenManagerService(repository: repository);
+        _screenManager.addListener(_syncReplayTelemetry);
       }
 
       _storageService = widget.storageService ?? FlightStorageService();
@@ -102,13 +150,16 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
         _storageService.initializeSampleFlight().catchError((_) {});
       }
 
-      _uploadService = widget.uploadService ??
+      _uploadService =
+          widget.uploadService ??
           XContestUploadService(
             storageService: _storageService,
             settings: _trackingService.settings,
           );
 
-      _flightCompletedSub = _trackingService.flightCompletedStream.listen((flight) {
+      _flightCompletedSub = _trackingService.flightCompletedStream.listen((
+        flight,
+      ) {
         _onFlightCompleted(flight);
       });
 
@@ -119,7 +170,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
             await widget.native.configureLocalMockFlightMode(widget.config);
           } else {
             _platformVersion =
-                await widget.native.getPlatformVersion() ?? 'Unknown platform version';
+                await widget.native.getPlatformVersion() ??
+                'Unknown platform version';
           }
         } on MissingPluginException {
           _platformVersion = 'Platform Fallback';
@@ -135,16 +187,13 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
         );
         await _syntheticTelemetry!.initialize();
         _trackingService.attachTelemetrySource(_syntheticTelemetry!);
+        _telemetryRepository.attachSource(_syntheticTelemetry!);
         _syntheticTelemetry!.start();
 
-        _timer = Timer.periodic(const Duration(seconds: 2), (_) {
-          if (!mounted || _mockReplay == null) {
-            return;
-          }
-          setState(() {
-            _mockReplay!.advance();
-          });
-        });
+        _timer = Timer.periodic(
+          const Duration(seconds: 2),
+          (_) => _advanceMockFrame(),
+        );
       }
     } on PlatformException catch (error) {
       _startupError = error.message ?? error.code;
@@ -182,7 +231,11 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     _timer?.cancel();
     _syntheticTelemetry?.dispose();
     _flightCompletedSub?.cancel();
+    _screenManager.removeListener(_syncReplayTelemetry);
     _screenManager.dispose();
+    _ownedLayoutRepository?.dispose();
+    _telemetryRepository.dispose();
+    _mockFrameTick.dispose();
     _trackingService.dispose();
     _replayService.dispose();
     if (widget.mapService == null) {
@@ -193,6 +246,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
 
   void _startReplay(FlightModel flight) {
     _replayService.loadFlight(flight);
+    _telemetryRepository.setReplayActive(true);
     _replayService.play();
     _screenManager.toggleFlightsScreen(false);
     _screenManager.toggleReplayMode(true);
@@ -205,6 +259,25 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
 
   @override
   Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ScreenManagerService>.value(
+          value: _screenManager,
+        ),
+        Provider<TelemetryRepository>.value(value: _telemetryRepository),
+        ChangeNotifierProvider<FlightReplayService>.value(
+          value: _replayService,
+        ),
+        ChangeNotifierProvider<FlightTrackingService>.value(
+          value: _trackingService,
+        ),
+        ChangeNotifierProvider<MapLibreMapService>.value(value: _mapService),
+      ],
+      child: _buildApp(context),
+    );
+  }
+
+  Widget _buildApp(BuildContext context) {
     return MaterialApp(
       title: 'BrandyFly',
       debugShowCheckedModeBanner: false,
@@ -239,35 +312,22 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
             children: [
               TopNavBarOverlay(
                 screenManager: _screenManager,
-                child: AnimatedBuilder(
-                  animation: _replayService,
-                  builder: (context, _) => _screenManager.isSettingsVisible
-                      ? UISettingsPanel(
-                          screenManager: _screenManager,
-                          trackingService: _trackingService,
-                          uploadService: _uploadService,
-                        )
-                      : widget.config.enabled
-                      ? _MockFlightView(
-                          config: widget.config,
-                          replay: _mockReplay!,
-                          screenManager: _screenManager,
-                          replayService: _replayService,
-                          trackingService: _trackingService,
-                          onNext: () => setState(() {
-                            _mockReplay!.advance();
-                          }),
-                          onReset: () => setState(() {
-                            _mockReplay!.reset();
-                          }),
-                        )
-                      : _LiveFlightView(
-                          platformVersion: _platformVersion ?? 'Unknown',
-                          screenManager: _screenManager,
-                          replayService: _replayService,
-                          trackingService: _trackingService,
-                        ),
-                ),
+                child: _screenManager.isSettingsVisible
+                    ? UISettingsPanel(
+                        screenManager: _screenManager,
+                        trackingService: _trackingService,
+                        uploadService: _uploadService,
+                      )
+                    : widget.config.enabled
+                    ? _MockFlightView(
+                        screenManager: _screenManager,
+                        telemetry: _telemetryRepository.telemetry,
+                      )
+                    : _LiveFlightView(
+                        platformVersion: _platformVersion ?? 'Unknown',
+                        screenManager: _screenManager,
+                        telemetry: _telemetryRepository.telemetry,
+                      ),
               ),
 
               // Floating Bottom Replay HUD when Replay Mode is active
@@ -283,20 +343,27 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                 ),
 
               // Floating Mock Flight Session & Mode Controller Overlay
-              if (widget.config.enabled &&
-                  !_screenManager.isSettingsVisible &&
-                  !_screenManager.isNavBarVisible)
-                _SimulationControlOverlay(
-                  config: widget.config,
-                  replay: _mockReplay!,
-                  screenManager: _screenManager,
-                  replayService: _replayService,
-                  onNext: () => setState(() {
-                    _mockReplay!.advance();
-                  }),
-                  onReset: () => setState(() {
-                    _mockReplay!.reset();
-                  }),
+              // Kept mounted (so its minimized state and dragged position
+              // survive) but hidden while the nav bar, settings or edit mode
+              // are shown, so it never covers the edit dock.
+              if (widget.config.enabled)
+                Visibility(
+                  visible:
+                      !_screenManager.isSettingsVisible &&
+                      !_screenManager.isNavBarVisible &&
+                      !_screenManager.isEditMode,
+                  maintainState: true,
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: _mockFrameTick,
+                    builder: (context, _, _) => _SimulationControlOverlay(
+                      config: widget.config,
+                      replay: _mockReplay!,
+                      screenManager: _screenManager,
+                      replayService: _replayService,
+                      onNext: _advanceMockFrame,
+                      onReset: _resetMockFrame,
+                    ),
+                  ),
                 ),
             ],
           );
@@ -338,31 +405,16 @@ class _LiveFlightView extends StatelessWidget {
   const _LiveFlightView({
     required this.platformVersion,
     required this.screenManager,
-    required this.replayService,
-    required this.trackingService,
+    required this.telemetry,
   });
 
   final String platformVersion;
   final ScreenManagerService screenManager;
-  final FlightReplayService replayService;
-  final FlightTrackingService trackingService;
+  final ValueListenable<CockpitTelemetry> telemetry;
 
   @override
   Widget build(BuildContext context) {
     final isReplaying = screenManager.isReplayActive;
-    final telemetry = isReplaying
-        ? replayService.currentTelemetry
-        : <String, dynamic>{
-            'altitude': 1250.0,
-            'speed': 38.0,
-            'glide': 7.5,
-            'hag': 280.0,
-            'climb': 1.2,
-            'windDir': 180.0,
-            'windSpeed': 12.0,
-            'history': [1200.0, 1220.0, 1235.0, 1250.0],
-            'flightPoints': trackingService.activeFlightPoints,
-          };
 
     return Scaffold(
       body: Stack(
@@ -371,7 +423,7 @@ class _LiveFlightView extends StatelessWidget {
           Positioned.fill(
             child: LayoutStrategyContainer(
               screenManager: screenManager,
-              telemetryData: telemetry,
+              telemetry: telemetry,
             ),
           ),
 
@@ -437,53 +489,24 @@ class _LiveFlightView extends StatelessWidget {
 }
 
 class _MockFlightView extends StatelessWidget {
-  const _MockFlightView({
-    required this.config,
-    required this.replay,
-    required this.screenManager,
-    required this.replayService,
-    required this.trackingService,
-    required this.onNext,
-    required this.onReset,
-  });
+  const _MockFlightView({required this.screenManager, required this.telemetry});
 
-  final MockFlightModeConfig config;
-  final MockFlightReplay replay;
   final ScreenManagerService screenManager;
-  final FlightReplayService replayService;
-  final FlightTrackingService trackingService;
-  final VoidCallback onNext;
-  final VoidCallback onReset;
+  final ValueListenable<CockpitTelemetry> telemetry;
 
   @override
   Widget build(BuildContext context) {
-    final isReplaying = screenManager.isReplayActive;
-    final telemetry = isReplaying
-        ? replayService.currentTelemetry
-        : <String, dynamic>{
-            'altitude': 1450.0,
-            'speed': 42.5,
-            'glide': 8.4,
-            'hag': 320.0,
-            'climb': 1.8,
-            'windDir': 220.0,
-            'windSpeed': 14.0,
-            'history': [1400.0, 1410.0, 1430.0, 1425.0, 1450.0],
-            'flightPoints': trackingService.activeFlightPoints,
-          };
-
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Show Map',
-        onPressed: () {
-          // print('DEBUG: FAB Tapped! Forcing screen to map_screen');
-          screenManager.setActiveScreen('map_screen');
-        },
-        child: const Icon(Icons.map),
-      ),
+      floatingActionButton: screenManager.isEditMode
+          ? null
+          : FloatingActionButton(
+              tooltip: 'Show Map',
+              onPressed: () => screenManager.setActiveScreen('map_screen'),
+              child: const Icon(Icons.map),
+            ),
       body: LayoutStrategyContainer(
         screenManager: screenManager,
-        telemetryData: telemetry,
+        telemetry: telemetry,
       ),
     );
   }
@@ -536,11 +559,13 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
               _overlayKey.currentContext?.findRenderObject() as RenderBox?;
           final cardSize = box?.size ?? const Size(280, 50);
           final minX = safePadding.left + 4;
-          final maxX = (constraints.maxWidth - cardSize.width - safePadding.right - 4)
-              .clamp(minX, double.infinity);
+          final maxX =
+              (constraints.maxWidth - cardSize.width - safePadding.right - 4)
+                  .clamp(minX, double.infinity);
           final minY = safePadding.top + 4;
-          final maxY = (constraints.maxHeight - cardSize.height - safePadding.bottom - 4)
-              .clamp(minY, double.infinity);
+          final maxY =
+              (constraints.maxHeight - cardSize.height - safePadding.bottom - 4)
+                  .clamp(minY, double.infinity);
 
           clampedPos = Offset(
             _overlayPosition!.dx.clamp(minX, maxX),
@@ -557,198 +582,218 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
             onPanStart: (details) {
               if (_overlayPosition == null) {
                 final RenderBox? box =
-                  _overlayKey.currentContext?.findRenderObject() as RenderBox?;
-              final RenderBox? rootBox =
-                  context.findRenderObject() as RenderBox?;
-              if (box != null && box.hasSize && rootBox != null && rootBox.hasSize) {
-                _overlayPosition = rootBox.globalToLocal(box.localToGlobal(Offset.zero));
+                    _overlayKey.currentContext?.findRenderObject()
+                        as RenderBox?;
+                final RenderBox? rootBox =
+                    context.findRenderObject() as RenderBox?;
+                if (box != null &&
+                    box.hasSize &&
+                    rootBox != null &&
+                    rootBox.hasSize) {
+                  _overlayPosition = rootBox.globalToLocal(
+                    box.localToGlobal(Offset.zero),
+                  );
+                }
               }
-            }
-          },
-          onPanUpdate: (details) {
-            final RenderBox? box =
-                _overlayKey.currentContext?.findRenderObject() as RenderBox?;
-            final cardSize = box?.size ?? const Size(280, 50);
+            },
+            onPanUpdate: (details) {
+              final RenderBox? box =
+                  _overlayKey.currentContext?.findRenderObject() as RenderBox?;
+              final cardSize = box?.size ?? const Size(280, 50);
 
-            final minX = safePadding.left + 4;
-            final maxX = (constraints.maxWidth - cardSize.width - safePadding.right - 4)
-                .clamp(minX, double.infinity);
-            final minY = safePadding.top + 4;
-            final maxY = (constraints.maxHeight - cardSize.height - safePadding.bottom - 4)
-                .clamp(minY, double.infinity);
+              final minX = safePadding.left + 4;
+              final maxX =
+                  (constraints.maxWidth -
+                          cardSize.width -
+                          safePadding.right -
+                          4)
+                      .clamp(minX, double.infinity);
+              final minY = safePadding.top + 4;
+              final maxY =
+                  (constraints.maxHeight -
+                          cardSize.height -
+                          safePadding.bottom -
+                          4)
+                      .clamp(minY, double.infinity);
 
-            final currentPos = _overlayPosition ??
-                Offset(
-                  (constraints.maxWidth - cardSize.width - safePadding.right - 8)
-                      .clamp(minX, maxX),
-                  safePadding.top + 56,
-                );
+              final currentPos =
+                  _overlayPosition ??
+                  Offset(
+                    (constraints.maxWidth -
+                            cardSize.width -
+                            safePadding.right -
+                            8)
+                        .clamp(minX, maxX),
+                    safePadding.top + 56,
+                  );
 
-            final newX = (currentPos.dx + details.delta.dx).clamp(minX, maxX);
-            final newY = (currentPos.dy + details.delta.dy).clamp(minY, maxY);
+              final newX = (currentPos.dx + details.delta.dx).clamp(minX, maxX);
+              final newY = (currentPos.dy + details.delta.dy).clamp(minY, maxY);
 
-            setState(() {
-              _overlayPosition = Offset(newX, newY);
-            });
-          },
-          child: Container(
-            key: _overlayKey,
-            constraints: const BoxConstraints(maxWidth: 360),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.blueGrey.shade900.withAlpha(220),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isReplaying
-                    ? Colors.cyanAccent.withAlpha(140)
-                    : Colors.orangeAccent.withAlpha(140),
-                width: 1.2,
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black54,
-                  blurRadius: 10,
-                  offset: Offset(0, 3),
+              setState(() {
+                _overlayPosition = Offset(newX, newY);
+              });
+            },
+            child: Container(
+              key: _overlayKey,
+              constraints: const BoxConstraints(maxWidth: 360),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade900.withAlpha(220),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isReplaying
+                      ? Colors.cyanAccent.withAlpha(140)
+                      : Colors.orangeAccent.withAlpha(140),
+                  width: 1.2,
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'BrandyFly',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      _ModeChip(
-                        label: isReplaying ? 'REPLAY' : 'SIMULATED',
-                        color: isReplaying ? Colors.cyanAccent : Colors.orange,
-                      ),
-                      if (!isReplaying) ...[
-                        IconButton(
-                          icon: const Icon(
-                            Icons.skip_next,
-                            size: 16,
-                            color: Colors.orangeAccent,
-                          ),
-                          padding: const EdgeInsets.all(2),
-                          constraints: const BoxConstraints(),
-                          tooltip: 'Advance scenario',
-                          onPressed: widget.onNext,
-                        ),
-                        const SizedBox(width: 2),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.restart_alt,
-                            size: 16,
-                            color: Colors.white70,
-                          ),
-                          padding: const EdgeInsets.all(2),
-                          constraints: const BoxConstraints(),
-                          tooltip: 'Reset replay',
-                          onPressed: widget.onReset,
-                        ),
-                        const SizedBox(width: 2),
-                        IconButton(
-                          key: Key(
-                            _isSessionMinimized
-                                ? 'btn_expand_mock_session'
-                                : 'btn_minimize_mock_session',
-                          ),
-                          icon: Icon(
-                            _isSessionMinimized
-                                ? Icons.expand_more
-                                : Icons.expand_less,
-                            size: 18,
-                            color: Colors.white70,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          tooltip: _isSessionMinimized
-                              ? 'Expand mock flight session'
-                              : 'Minimize mock flight session',
-                          onPressed: () => setState(
-                            () => _isSessionMinimized = !_isSessionMinimized,
-                          ),
-                        ),
-                      ],
-                    ],
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black54,
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
                   ),
-                ),
-                if (!isReplaying && !_isSessionMinimized) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Mock flight session (${widget.config.sessionLabel})',
-                          style: const TextStyle(
-                            color: Colors.orangeAccent,
+                        const Text(
+                          'BrandyFly',
+                          style: TextStyle(
+                            color: Colors.white70,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Fixture: ${widget.config.fixtureVersion}',
-                          style: _detailTextStyle,
+                        const SizedBox(width: 4),
+                        _ModeChip(
+                          label: isReplaying ? 'REPLAY' : 'SIMULATED',
+                          color: isReplaying
+                              ? Colors.cyanAccent
+                              : Colors.orange,
                         ),
-                        Text(
-                          'Seed: ${widget.config.seed}',
-                          style: _detailTextStyle,
-                        ),
-                        Text(
-                          'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
-                          style: _detailTextStyle,
-                        ),
-                        Text(
-                          'Provenance: ${widget.config.provenance}',
-                          style: _detailTextStyle,
-                        ),
-                        Text(
-                          'Session label: ${widget.config.sessionLabel}',
-                          style: _detailTextStyle,
-                        ),
-                        Text(
-                          'Replay hash: ${widget.replay.canonicalReplayHash}',
-                          style: _detailTextStyle,
-                        ),
-                        Text(
-                          'Marker: ${frame.sessionMarker}',
-                          style: _detailTextStyle,
-                        ),
-                        Text(
-                          frame.title,
-                          style: const TextStyle(
-                            fontSize: 8.5,
-                            color: Colors.cyanAccent,
-                            fontWeight: FontWeight.bold,
+                        if (!isReplaying) ...[
+                          IconButton(
+                            icon: const Icon(
+                              Icons.skip_next,
+                              size: 16,
+                              color: Colors.orangeAccent,
+                            ),
+                            padding: const EdgeInsets.all(2),
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Advance scenario',
+                            onPressed: widget.onNext,
                           ),
-                        ),
+                          const SizedBox(width: 2),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.restart_alt,
+                              size: 16,
+                              color: Colors.white70,
+                            ),
+                            padding: const EdgeInsets.all(2),
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Reset replay',
+                            onPressed: widget.onReset,
+                          ),
+                          const SizedBox(width: 2),
+                          IconButton(
+                            key: Key(
+                              _isSessionMinimized
+                                  ? 'btn_expand_mock_session'
+                                  : 'btn_minimize_mock_session',
+                            ),
+                            icon: Icon(
+                              _isSessionMinimized
+                                  ? Icons.expand_more
+                                  : Icons.expand_less,
+                              size: 18,
+                              color: Colors.white70,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            tooltip: _isSessionMinimized
+                                ? 'Expand mock flight session'
+                                : 'Minimize mock flight session',
+                            onPressed: () => setState(
+                              () => _isSessionMinimized = !_isSessionMinimized,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                  if (!isReplaying && !_isSessionMinimized) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Mock flight session (${widget.config.sessionLabel})',
+                            style: const TextStyle(
+                              color: Colors.orangeAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Fixture: ${widget.config.fixtureVersion}',
+                            style: _detailTextStyle,
+                          ),
+                          Text(
+                            'Seed: ${widget.config.seed}',
+                            style: _detailTextStyle,
+                          ),
+                          Text(
+                            'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
+                            style: _detailTextStyle,
+                          ),
+                          Text(
+                            'Provenance: ${widget.config.provenance}',
+                            style: _detailTextStyle,
+                          ),
+                          Text(
+                            'Session label: ${widget.config.sessionLabel}',
+                            style: _detailTextStyle,
+                          ),
+                          Text(
+                            'Replay hash: ${widget.replay.canonicalReplayHash}',
+                            style: _detailTextStyle,
+                          ),
+                          Text(
+                            'Marker: ${frame.sessionMarker}',
+                            style: _detailTextStyle,
+                          ),
+                          Text(
+                            frame.title,
+                            style: const TextStyle(
+                              fontSize: 8.5,
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
           ),
         );
 
@@ -793,4 +838,3 @@ class _ModeChip extends StatelessWidget {
     );
   }
 }
-

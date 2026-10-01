@@ -278,13 +278,13 @@ void main() {
         expect(restored.id, 'legacy_screen');
         expect(restored.layoutStrategy, LayoutStrategyStyle.sidebarDashboard);
         expect(restored.autoSwitchTrigger, ScreenAutoSwitchTrigger.manualOnly);
-        expect(restored.gridResolution, 8);
+        expect(restored.gridResolution, 16);
         expect(restored.widgets, isEmpty);
       },
     );
 
     test(
-      'fromJson migrates legacy 4-column coordinates (gridResolution < 8) by scaling 2x',
+      'fromJson migrates legacy 4-column coordinates via 8 columns to the 16x32 grid',
       () {
         final json = <String, dynamic>{
           'id': 'legacy_4col_screen',
@@ -295,17 +295,18 @@ void main() {
         };
 
         final restored = FlightScreenModel.fromJson(json);
-        expect(restored.gridResolution, 8);
+        expect(restored.gridResolution, 16);
         expect(restored.widgets.length, 1);
-        expect(restored.widgets.first.x, 2);
-        expect(restored.widgets.first.y, 4);
-        expect(restored.widgets.first.w, 4);
-        expect(restored.widgets.first.h, 2);
+        // 4-col (1,2,2,1) -> 8-col (2,4,4,2) -> 16x32 with R=8 (4,16,8,8)
+        expect(restored.widgets.first.x, 4);
+        expect(restored.widgets.first.y, 16);
+        expect(restored.widgets.first.w, 8);
+        expect(restored.widgets.first.h, 8);
       },
     );
 
     test(
-      'fromJson does not rescale widgets when gridResolution is already 8',
+      'fromJson migrates 8-column coordinates proportionally to the 16x32 grid',
       () {
         final json = <String, dynamic>{
           'id': 'res8_screen',
@@ -317,12 +318,13 @@ void main() {
         };
 
         final restored = FlightScreenModel.fromJson(json);
-        expect(restored.gridResolution, 8);
+        expect(restored.gridResolution, 16);
         expect(restored.widgets.length, 1);
-        expect(restored.widgets.first.x, 1);
-        expect(restored.widgets.first.y, 2);
-        expect(restored.widgets.first.w, 2);
-        expect(restored.widgets.first.h, 1);
+        // 8-col (1,2,2,1) with R=8 -> (2,8,4,4)
+        expect(restored.widgets.first.x, 2);
+        expect(restored.widgets.first.y, 8);
+        expect(restored.widgets.first.w, 4);
+        expect(restored.widgets.first.h, 4);
       },
     );
   });
@@ -389,132 +391,33 @@ void main() {
         expect(restored.screens.first.widgets.first.x, 0);
         expect(
           restored.screens.first.widgets.first.w,
-          4,
-        ); // Scaled from 2 to 4 on 8-col grid
+          8,
+        ); // 2 (4-col) -> 4 (8-col) -> 8 (16-col)
         expect(
           restored.screens.first.widgets.first.h,
-          2,
-        ); // Scaled from 1 to 2 on 8-col grid
+          8,
+        ); // 1 (4-col) -> 2 (8-col, R=8) -> 8 (32 rows)
       },
     );
   });
 
-  group('FlightScreenModel maxBottomGrid Caching & Performance Benchmark', () {
-    test('calculates and caches maxBottomGrid correctly', () {
-      final emptyScreen = FlightScreenModel(
-        id: 'empty',
-        name: 'Empty Screen',
-        widgets: [],
-      );
-      expect(emptyScreen.maxBottomGrid, 8);
-
-      final customScreen = FlightScreenModel(
-        id: 'custom',
-        name: 'Custom Screen',
-        widgets: const [
-          WidgetPlacementModel(
-            id: 'w1',
-            type: WidgetType.altitude,
-            x: 0,
-            y: 0,
-            w: 2,
-            h: 2,
-          ),
-          WidgetPlacementModel(
-            id: 'w2',
-            type: WidgetType.speed,
-            x: 0,
-            y: 6,
-            w: 2,
-            h: 6,
-          ),
-        ],
-      );
-      expect(customScreen.maxBottomGrid, 12);
-    });
-
-    test(
-      'copyWith preserves cached maxBottomGrid when widgets list is unchanged',
-      () {
-        final screen = FlightScreenModel(
-          id: 's1',
-          name: 'Original',
-          widgets: const [
-            WidgetPlacementModel(
-              id: 'w1',
-              type: WidgetType.altitude,
-              x: 0,
-              y: 5,
-              w: 2,
-              h: 5,
-            ),
-          ],
-        );
-        expect(screen.maxBottomGrid, 10);
-
-        final renamed = screen.copyWith(name: 'Renamed');
-        expect(renamed.maxBottomGrid, 10);
-
-        final updatedWidgets = screen.copyWith(
-          widgets: const [
-            WidgetPlacementModel(
-              id: 'w1',
-              type: WidgetType.altitude,
-              x: 0,
-              y: 0,
-              w: 2,
-              h: 2,
-            ),
-          ],
-        );
-        expect(updatedWidgets.maxBottomGrid, 8);
-      },
-    );
-
-    test('benchmarks maxBottomGrid access performance vs iterative loop', () {
-      final widgets = List.generate(
-        100,
-        (i) => WidgetPlacementModel(
-          id: 'w_$i',
-          type: WidgetType.speed,
-          x: (i % 8),
-          y: i,
-          w: 1,
-          h: 2,
+  group('FlightScreenModel layout variants', () {
+    test('wide variant falls back to tall layout when absent', () {
+      const tall = [
+        WidgetPlacementModel(
+          id: 'w1',
+          type: WidgetType.altitude,
+          x: 0,
+          y: 0,
+          w: 4,
+          h: 4,
         ),
-      );
-      final screen = FlightScreenModel(
-        id: 'perf_screen',
-        name: 'Perf Screen',
-        widgets: widgets,
-      );
-
-      final stopwatchCached = Stopwatch()..start();
-      int cachedMax = 0;
-      for (int i = 0; i < 100000; i++) {
-        cachedMax += screen.maxBottomGrid;
-      }
-      stopwatchCached.stop();
-
-      final stopwatchUncached = Stopwatch()..start();
-      int uncachedMax = 0;
-      for (int i = 0; i < 100000; i++) {
-        int maxBottom = 8;
-        for (final w in screen.widgets) {
-          final bottom = w.y + w.h;
-          if (bottom > maxBottom) {
-            maxBottom = bottom;
-          }
-        }
-        uncachedMax += maxBottom;
-      }
-      stopwatchUncached.stop();
-
-      expect(cachedMax, equals(uncachedMax));
-      expect(
-        stopwatchCached.elapsedMicroseconds,
-        lessThan(stopwatchUncached.elapsedMicroseconds),
-      );
+      ];
+      const screen = FlightScreenModel(id: 's', name: 'S', widgets: tall);
+      expect(screen.widgetsFor(LayoutVariant.wide), same(tall));
+      final withWide = screen.withVariantWidgets(LayoutVariant.wide, const []);
+      expect(withWide.widgetsFor(LayoutVariant.wide), isEmpty);
+      expect(withWide.widgetsFor(LayoutVariant.tall), same(tall));
     });
   });
 }
