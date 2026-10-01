@@ -874,13 +874,16 @@ class _FlightOverlayPainter extends CustomPainter {
 
   void _paintFlightTrack(Canvas canvas, Size size) {
     final points = flightPoints;
-    if (points.isEmpty) return;
+    if (points.length < 2) return;
+
+    // ⚡ Bolt: Calculate the first point outside the loop and reuse p2 as p1 in the next iteration
+    // to avoid redundant coordinate transformations on the 60Hz rendering hot-path.
+    var p1 = _toScreen(
+      LatLng(points[0].latitude, points[0].longitude),
+      size,
+    );
 
     for (int i = 1; i < points.length; i++) {
-      final p1 = _toScreen(
-        LatLng(points[i - 1].latitude, points[i - 1].longitude),
-        size,
-      );
       final p2 = _toScreen(
         LatLng(points[i].latitude, points[i].longitude),
         size,
@@ -889,6 +892,8 @@ class _FlightOverlayPainter extends CustomPainter {
 
       _trackPaint.color = color;
       canvas.drawLine(p1, p2, _trackPaint);
+
+      p1 = p2;
     }
   }
 
