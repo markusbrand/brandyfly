@@ -86,6 +86,7 @@ def generate_region_vector_tiles(region: dict, osm_pbf_path: str, output_pmtiles
         f"--bounds={bounds_arg}",
         "--minzoom=0",
         "--maxzoom=14",
+        "--download",
         "--noderefs=sparse",
         "--storage=ram",
     ]

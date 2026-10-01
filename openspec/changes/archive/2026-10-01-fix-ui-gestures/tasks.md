@@ -1,0 +1,4 @@
+- [x] Fix `TopNavBarOverlay` gesture interception by removing the global `GestureDetector`.
+- [x] Fix the resulting syntax parsing issue in `TopNavBarOverlay`.
+- [x] Fix `generate_vector_tiles.py` to pass the `--download` flag.
+- [x] Update `requirements.txt` to correct the `rio-rgbify` version constraint.
