@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.10.0...brandyfly-v0.11.0) (2026-10-01)
+
+
+### Features
+
+* **ux:** add tooltips and semantics to interactive elements (revert mass formatting churn) ([#231](https://github.com/markusbrand/brandyfly/issues/231)) ([a18d59a](https://github.com/markusbrand/brandyfly/commit/a18d59a4c909a9d745e58361635d31329311364b))
+
+
+### Performance Improvements
+
+* Avoid list allocation in map airspace drawing ([#232](https://github.com/markusbrand/brandyfly/issues/232)) ([d2e56bb](https://github.com/markusbrand/brandyfly/commit/d2e56bbddb0e69fffee31238248ecddabe778585))
+* **flight:** optimize redundant coordinate transformations in map track loop ([#229](https://github.com/markusbrand/brandyfly/issues/229)) ([13f91e5](https://github.com/markusbrand/brandyfly/commit/13f91e5fd36a3e9183aaf790f5dd1a5b20c2c654))
+
 ## [0.10.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.9.0...brandyfly-v0.10.0) (2026-09-24)
 
 
