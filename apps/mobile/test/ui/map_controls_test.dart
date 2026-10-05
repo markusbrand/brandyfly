@@ -1,3 +1,4 @@
+import 'package:brandyfly/domain/thermal/thermal_layer_spec.dart';
 import 'package:brandyfly/domain/models/cockpit_telemetry.dart';
 import 'package:brandyfly/domain/models/ui_config.dart';
 import 'package:brandyfly/models/lat_lng.dart';
@@ -23,6 +24,7 @@ class _FakeMapService extends MapLibreMapService {
   Future<String> buildStyleJson({
     String? regionId,
     String? baseTemplateJson,
+    ThermalLayerSpec? thermal,
   }) async => '{"version": 8, "sources": {}, "layers": []}';
 
   @override
@@ -77,8 +79,14 @@ ScreenManagerService _manager(List<WidgetPlacementModel> widgets) =>
       ),
     );
 
-MapCameraViewModel? _cameraFor(WidgetTester tester, String controlKey, String mapId) {
-  final registry = MapCameraScope.maybeOf(tester.element(find.byKey(Key(controlKey))));
+MapCameraViewModel? _cameraFor(
+  WidgetTester tester,
+  String controlKey,
+  String mapId,
+) {
+  final registry = MapCameraScope.maybeOf(
+    tester.element(find.byKey(Key(controlKey))),
+  );
   return registry?.lookup(mapId);
 }
 
@@ -244,10 +252,16 @@ void main() {
 
     testWidgets('external zoom matches built-in zoom behavior', (tester) async {
       final service = await pumpHarness(tester);
-      final camera = _cameraFor(tester, 'map_control_zoom_in_c_mapZoomIn', 'm1')!;
+      final camera = _cameraFor(
+        tester,
+        'map_control_zoom_in_c_mapZoomIn',
+        'm1',
+      )!;
       final start = camera.zoom;
 
-      await tester.tap(find.byKey(const Key('map_control_zoom_in_c_mapZoomIn')));
+      await tester.tap(
+        find.byKey(const Key('map_control_zoom_in_c_mapZoomIn')),
+      );
       await tester.pump();
       expect(camera.zoom, start + 0.5);
       expect(service.lastZoom, start + 0.5);
@@ -260,7 +274,9 @@ void main() {
       await tester.tap(find.byKey(const Key('map_control_rocker_out_rocker')));
       await tester.pump();
       expect(camera.zoom, start + 0.5);
-      await tester.tap(find.byKey(const Key('map_control_zoom_out_c_mapZoomOut')));
+      await tester.tap(
+        find.byKey(const Key('map_control_zoom_out_c_mapZoomOut')),
+      );
       await tester.pump();
       expect(camera.zoom, start);
     });
@@ -269,7 +285,11 @@ void main() {
       tester,
     ) async {
       final service = await pumpHarness(tester);
-      final camera = _cameraFor(tester, 'map_control_recenter_c_mapRecenter', 'm1')!;
+      final camera = _cameraFor(
+        tester,
+        'map_control_recenter_c_mapRecenter',
+        'm1',
+      )!;
 
       await tester.drag(
         find.byKey(const Key('map_gesture_detector')),
@@ -283,7 +303,9 @@ void main() {
       expect(recenter().lit, isFalse);
 
       final animateBefore = service.animateCalls;
-      await tester.tap(find.byKey(const Key('map_control_recenter_c_mapRecenter')));
+      await tester.tap(
+        find.byKey(const Key('map_control_recenter_c_mapRecenter')),
+      );
       await tester.pump();
       expect(camera.centerLocked, isTrue);
       expect(camera.recenterPending, isFalse);
@@ -297,24 +319,40 @@ void main() {
       tester,
     ) async {
       await pumpHarness(tester);
-      final camera = _cameraFor(tester, 'map_control_recenter_c_mapRecenter', 'm1')!;
+      final camera = _cameraFor(
+        tester,
+        'map_control_recenter_c_mapRecenter',
+        'm1',
+      )!;
       camera.beginManualPan();
       await tester.pump();
       expect(
-        tester.widget<BezelButton>(find.byKey(const Key('map_control_recenter_c_mapRecenter'))).lit,
+        tester
+            .widget<BezelButton>(
+              find.byKey(const Key('map_control_recenter_c_mapRecenter')),
+            )
+            .lit,
         isFalse,
       );
       await tester.pump(const Duration(seconds: 7));
       expect(camera.centerLocked, isTrue);
       expect(
-        tester.widget<BezelButton>(find.byKey(const Key('map_control_recenter_c_mapRecenter'))).lit,
+        tester
+            .widget<BezelButton>(
+              find.byKey(const Key('map_control_recenter_c_mapRecenter')),
+            )
+            .lit,
         isTrue,
       );
     });
 
     testWidgets('zoom-in control disables at maximum zoom', (tester) async {
       await pumpHarness(tester);
-      final camera = _cameraFor(tester, 'map_control_zoom_in_c_mapZoomIn', 'm1')!;
+      final camera = _cameraFor(
+        tester,
+        'map_control_zoom_in_c_mapZoomIn',
+        'm1',
+      )!;
       camera.zoomBy(100);
       await tester.pump();
       final zoomIn = tester.widget<BezelButton>(
@@ -325,11 +363,15 @@ void main() {
         find.byKey(const Key('map_control_rocker_in_rocker')),
       );
       expect(rockerIn.onPressed, isNull);
-      await tester.tap(find.byKey(const Key('map_control_zoom_in_c_mapZoomIn')));
+      await tester.tap(
+        find.byKey(const Key('map_control_zoom_in_c_mapZoomIn')),
+      );
       expect(camera.zoom, camera.maxZoom);
     });
 
-    testWidgets('controls without a target are dimmed and inert', (tester) async {
+    testWidgets('controls without a target are dimmed and inert', (
+      tester,
+    ) async {
       await pumpHarness(tester, target: null);
       for (final key in [
         'map_control_zoom_in_c_mapZoomIn',
@@ -338,7 +380,11 @@ void main() {
         'map_control_rocker_in_rocker',
         'map_control_rocker_out_rocker',
       ]) {
-        expect(tester.widget<BezelButton>(find.byKey(Key(key))).onPressed, isNull, reason: key);
+        expect(
+          tester.widget<BezelButton>(find.byKey(Key(key))).onPressed,
+          isNull,
+          reason: key,
+        );
         await tester.tap(find.byKey(Key(key)), warnIfMissed: false);
       }
       expect(tester.takeException(), isNull);
@@ -349,12 +395,18 @@ void main() {
     ) async {
       await pumpHarness(tester);
       expect(
-        tester.widget<BezelButton>(find.byKey(const Key('map_control_zoom_in_c_mapZoomIn'))).onPressed,
+        tester
+            .widget<BezelButton>(
+              find.byKey(const Key('map_control_zoom_in_c_mapZoomIn')),
+            )
+            .onPressed,
         isNotNull,
       );
       // Rebuild without the map: camera unregisters on dispose.
       final registry = MapCameraScope.maybeOf(
-        tester.element(find.byKey(const Key('map_control_zoom_in_c_mapZoomIn'))),
+        tester.element(
+          find.byKey(const Key('map_control_zoom_in_c_mapZoomIn')),
+        ),
       )!;
       final scope = tester.widget<MapCameraScope>(find.byType(MapCameraScope));
       await tester.pumpWidget(
@@ -378,42 +430,66 @@ void main() {
       await tester.pumpAndSettle();
       expect(registry.lookup('m1'), isNull);
       expect(
-        tester.widget<BezelButton>(find.byKey(const Key('map_control_zoom_in_c_mapZoomIn'))).onPressed,
+        tester
+            .widget<BezelButton>(
+              find.byKey(const Key('map_control_zoom_in_c_mapZoomIn')),
+            )
+            .onPressed,
         isNull,
       );
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('rocker orientation follows its shape and shows zoom read-out', (
-      tester,
-    ) async {
-      await pumpHarness(tester);
-      final inTop = tester.getCenter(find.byKey(const Key('map_control_rocker_in_rocker')));
-      final outBottom = tester.getCenter(find.byKey(const Key('map_control_rocker_out_rocker')));
-      expect(inTop.dy, lessThan(outBottom.dy), reason: 'tall rocker: zoom-in on top');
-      expect(find.byKey(const Key('map_control_rocker_zoom_rocker')), findsOneWidget);
+    testWidgets(
+      'rocker orientation follows its shape and shows zoom read-out',
+      (tester) async {
+        await pumpHarness(tester);
+        final inTop = tester.getCenter(
+          find.byKey(const Key('map_control_rocker_in_rocker')),
+        );
+        final outBottom = tester.getCenter(
+          find.byKey(const Key('map_control_rocker_out_rocker')),
+        );
+        expect(
+          inTop.dy,
+          lessThan(outBottom.dy),
+          reason: 'tall rocker: zoom-in on top',
+        );
+        expect(
+          find.byKey(const Key('map_control_rocker_zoom_rocker')),
+          findsOneWidget,
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 160,
-                height: 60,
-                child: MapControlWidget(
-                  placementId: 'wide',
-                  type: WidgetType.mapZoomRocker,
-                  targetMapId: null,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 160,
+                  height: 60,
+                  child: MapControlWidget(
+                    placementId: 'wide',
+                    type: WidgetType.mapZoomRocker,
+                    targetMapId: null,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      final outLeft = tester.getCenter(find.byKey(const Key('map_control_rocker_out_wide')));
-      final inRight = tester.getCenter(find.byKey(const Key('map_control_rocker_in_wide')));
-      expect(outLeft.dx, lessThan(inRight.dx), reason: 'wide rocker: zoom-out left');
-    });
+        );
+        final outLeft = tester.getCenter(
+          find.byKey(const Key('map_control_rocker_out_wide')),
+        );
+        final inRight = tester.getCenter(
+          find.byKey(const Key('map_control_rocker_in_wide')),
+        );
+        expect(
+          outLeft.dx,
+          lessThan(inRight.dx),
+          reason: 'wide rocker: zoom-out left',
+        );
+      },
+    );
   });
 
   group('Map controls on the flight canvas', () {
@@ -470,26 +546,37 @@ void main() {
       expect(cam.centerLocked, isTrue);
     });
 
-    testWidgets('built-in buttons hide on Auto and return when control removed', (
+    testWidgets(
+      'built-in buttons hide on Auto and return when control removed',
+      (tester) async {
+        final manager = _manager([
+          _p('m1', WidgetType.map, 0, 0, 16, 32),
+          _p('c', WidgetType.mapRecenter, 12, 26, 3, 3),
+        ]);
+        await pumpCanvas(tester, manager);
+        expect(find.byKey(const Key('btn_map_recenter')), findsNothing);
+        expect(find.byKey(const Key('btn_map_zoom_in')), findsNothing);
+
+        manager.removeWidget('c');
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('btn_map_recenter')), findsOneWidget);
+        expect(find.byKey(const Key('btn_map_zoom_in')), findsOneWidget);
+      },
+    );
+
+    testWidgets('Always and Never override built-in visibility', (
       tester,
     ) async {
       final manager = _manager([
-        _p('m1', WidgetType.map, 0, 0, 16, 32),
-        _p('c', WidgetType.mapRecenter, 12, 26, 3, 3),
-      ]);
-      await pumpCanvas(tester, manager);
-      expect(find.byKey(const Key('btn_map_recenter')), findsNothing);
-      expect(find.byKey(const Key('btn_map_zoom_in')), findsNothing);
-
-      manager.removeWidget('c');
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('btn_map_recenter')), findsOneWidget);
-      expect(find.byKey(const Key('btn_map_zoom_in')), findsOneWidget);
-    });
-
-    testWidgets('Always and Never override built-in visibility', (tester) async {
-      final manager = _manager([
-        _p('m1', WidgetType.map, 0, 0, 16, 32, builtIn: MapBuiltInControls.always),
+        _p(
+          'm1',
+          WidgetType.map,
+          0,
+          0,
+          16,
+          32,
+          builtIn: MapBuiltInControls.always,
+        ),
         _p('c', WidgetType.mapRecenter, 12, 26, 3, 3),
       ]);
       await pumpCanvas(tester, manager);
@@ -547,7 +634,9 @@ void main() {
       await pumpCanvas(tester, manager);
 
       expect(
-        tester.widget<BezelButton>(find.byKey(const Key('map_control_zoom_in_c'))).onPressed,
+        tester
+            .widget<BezelButton>(find.byKey(const Key('map_control_zoom_in_c')))
+            .onPressed,
         isNull,
       );
       await tester.tap(find.byKey(const Key('btn_inspector_config')));
@@ -565,12 +654,16 @@ void main() {
       manager.toggleEditMode(false);
       await tester.pumpAndSettle();
       expect(
-        tester.widget<BezelButton>(find.byKey(const Key('map_control_zoom_in_c'))).onPressed,
+        tester
+            .widget<BezelButton>(find.byKey(const Key('map_control_zoom_in_c')))
+            .onPressed,
         isNotNull,
       );
     });
 
-    testWidgets('map built-in controls setting is configurable', (tester) async {
+    testWidgets('map built-in controls setting is configurable', (
+      tester,
+    ) async {
       final manager = _manager([_p('m1', WidgetType.map, 0, 0, 16, 32)]);
       manager.toggleEditMode(true);
       manager.selectWidget('m1');
@@ -578,7 +671,11 @@ void main() {
       await tester.tap(find.byKey(const Key('btn_inspector_config')));
       await tester.pumpAndSettle();
       final chip = find.byKey(const Key('chip_builtin_never'));
-      await tester.scrollUntilVisible(chip, 100, scrollable: find.byType(Scrollable).last);
+      await tester.scrollUntilVisible(
+        chip,
+        100,
+        scrollable: find.byType(Scrollable).last,
+      );
       await tester.tap(chip);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Apply'));

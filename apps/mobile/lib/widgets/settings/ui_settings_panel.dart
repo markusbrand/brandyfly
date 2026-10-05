@@ -3,7 +3,9 @@ import '../../models/flight_settings.dart';
 import '../../models/ui_config.dart';
 import '../../services/flight_tracking_service.dart';
 import '../../services/screen_manager_service.dart';
+import '../../services/thermal_prefetch_service.dart';
 import '../../services/xcontest_upload_service.dart';
+import 'thermal_map_data_panel.dart';
 
 class UISettingsPanel extends StatefulWidget {
   const UISettingsPanel({
@@ -11,9 +13,13 @@ class UISettingsPanel extends StatefulWidget {
     required this.screenManager,
     this.trackingService,
     this.uploadService,
+    this.thermalPrefetchService,
   });
 
   final ScreenManagerService screenManager;
+
+  /// KK7 thermal prefetch for downloaded regions (null on the web).
+  final ThermalPrefetchService? thermalPrefetchService;
   final FlightTrackingService? trackingService;
   final XContestUploadService? uploadService;
 
@@ -154,12 +160,18 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Active Screen:', style: TextStyle(color: Colors.white70)),
+                  const Text(
+                    'Active Screen:',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                   DropdownButton<String>(
                     value: activeScreen.id,
                     dropdownColor: Colors.blueGrey.shade900,
                     underline: const SizedBox(),
-                    style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.cyanAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
                     items: cfg.screens.map((s) {
                       return DropdownMenuItem<String>(
                         value: s.id,
@@ -183,7 +195,8 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
                 labels: {
                   LayoutStrategyStyle.freeformHud: 'Option 1: Freeform HUD',
                   LayoutStrategyStyle.snapToGrid: 'Option 2: Snap-to-Grid',
-                  LayoutStrategyStyle.sidebarDashboard: 'Option 3: Sidebar Dashboard',
+                  LayoutStrategyStyle.sidebarDashboard:
+                      'Option 3: Sidebar Dashboard',
                 },
                 onChanged: (val) {
                   screenManager.setScreenLayoutStrategy(activeScreen.id, val);
@@ -197,11 +210,16 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
                 values: ScreenAutoSwitchTrigger.values,
                 labels: {
                   ScreenAutoSwitchTrigger.manualOnly: 'Manual Switch Only',
-                  ScreenAutoSwitchTrigger.onThermalCircling: 'Auto: When Circling in Thermal',
-                  ScreenAutoSwitchTrigger.onGlideStraight: 'Auto: When Gliding Straight',
+                  ScreenAutoSwitchTrigger.onThermalCircling:
+                      'Auto: When Circling in Thermal',
+                  ScreenAutoSwitchTrigger.onGlideStraight:
+                      'Auto: When Gliding Straight',
                 },
                 onChanged: (val) {
-                  screenManager.setScreenAutoSwitchTrigger(activeScreen.id, val);
+                  screenManager.setScreenAutoSwitchTrigger(
+                    activeScreen.id,
+                    val,
+                  );
                   setState(() {});
                 },
               ),
@@ -214,10 +232,9 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
 
   List<Widget> _buildMapDisplaySection(UIConfig cfg) {
     final activeScreen = screenManager.activeScreen;
-    final mapWidget = activeScreen.widgets.cast<WidgetPlacementModel?>().firstWhere(
-      (w) => w?.type == WidgetType.map,
-      orElse: () => null,
-    );
+    final mapWidget = activeScreen.widgets
+        .cast<WidgetPlacementModel?>()
+        .firstWhere((w) => w?.type == WidgetType.map, orElse: () => null);
 
     return [
       _buildCategoryHeader('Map Display'),
@@ -267,9 +284,7 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
                       onChanged: (val) {
                         if (val != null && mapWidget != null) {
                           screenManager.updateWidgetPlacement(
-                            mapWidget.copyWith(
-                              mapTrackHistoryMinutes: val,
-                            ),
+                            mapWidget.copyWith(mapTrackHistoryMinutes: val),
                           );
                           setState(() {});
                         }
@@ -303,6 +318,10 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
             ],
           ),
         ),
+      ),
+      ThermalMapDataPanel(
+        screenManager: screenManager,
+        service: widget.thermalPrefetchService,
       ),
     ];
   }
@@ -544,14 +563,18 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
             children: [
               const Text(
                 'Takeoff Speed Threshold (km/h)',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Slider(
                 value: settings.takeoffSpeedThresholdKmh,
                 min: 5.0,
                 max: 25.0,
                 divisions: 20,
-                label: '${settings.takeoffSpeedThresholdKmh.toStringAsFixed(1)} km/h',
+                label:
+                    '${settings.takeoffSpeedThresholdKmh.toStringAsFixed(1)} km/h',
                 onChanged: (val) {
                   widget.trackingService?.updateSettings(
                     settings.copyWith(takeoffSpeedThresholdKmh: val),
@@ -562,14 +585,18 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
               const SizedBox(height: 8),
               const Text(
                 'Takeoff Vario Trigger (|m/s|)',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Slider(
                 value: settings.takeoffVarioThresholdMs,
                 min: 0.2,
                 max: 2.0,
                 divisions: 18,
-                label: '${settings.takeoffVarioThresholdMs.toStringAsFixed(1)} m/s',
+                label:
+                    '${settings.takeoffVarioThresholdMs.toStringAsFixed(1)} m/s',
                 onChanged: (val) {
                   widget.trackingService?.updateSettings(
                     settings.copyWith(takeoffVarioThresholdMs: val),
@@ -580,7 +607,10 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
               const SizedBox(height: 8),
               const Text(
                 'Landing Settling Duration (seconds)',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Slider(
                 value: settings.landingSettlingDurationSeconds.toDouble(),
@@ -590,7 +620,9 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
                 label: '${settings.landingSettlingDurationSeconds}s',
                 onChanged: (val) {
                   widget.trackingService?.updateSettings(
-                    settings.copyWith(landingSettlingDurationSeconds: val.round()),
+                    settings.copyWith(
+                      landingSettlingDurationSeconds: val.round(),
+                    ),
                   );
                   setState(() {});
                 },
@@ -616,7 +648,10 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
               SwitchListTile(
                 title: const Text(
                   'Auto-upload on landing',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 subtitle: const Text(
                   'Automatically upload finalized flights to XContest.org upon landing detection',
@@ -625,7 +660,9 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
                 value: settings.autoUploadToXContest,
                 activeThumbColor: Colors.cyanAccent,
                 onChanged: (val) {
-                  final newSettings = settings.copyWith(autoUploadToXContest: val);
+                  final newSettings = settings.copyWith(
+                    autoUploadToXContest: val,
+                  );
                   widget.trackingService?.updateSettings(newSettings);
                   widget.uploadService?.updateSettings(newSettings);
                   setState(() {});
@@ -652,7 +689,8 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
                 controller: _passController,
                 obscureText: true,
                 textInputAction: TextInputAction.done,
-                onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                onSubmitted: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'XContest Password / API Key',

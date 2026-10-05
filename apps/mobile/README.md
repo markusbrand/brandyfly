@@ -14,9 +14,14 @@ From this directory:
 
 ```sh
 flutter pub get
-flutter emulators --launch brandyfly_test_device
+~/Android/Sdk/emulator/emulator -avd brandyfly_test_device -gpu host -no-snapshot
 flutter run -d android
 ```
+
+Use host GPU rendering and a cold boot: with `-gpu swiftshader_indirect` the map
+labels render in pink/green/red or not at all, and restoring the quick-boot
+snapshot with host GPU crashes the emulator. Details in
+[`docs/development.md`](../../docs/development.md#emulator-gpu-and-snapshot-pitfalls).
 
 ## Local mock flight mode
 

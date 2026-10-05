@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import '../thermal/thermal_variant.dart';
 import '../use_cases/layout_migrator.dart';
 import 'grid_spec.dart';
 import 'widget_type.dart';
 
+export '../thermal/thermal_variant.dart' show ThermalSeason, ThermalTimeOfDay;
 export 'grid_spec.dart';
 export 'widget_type.dart';
 
@@ -119,7 +121,13 @@ class WidgetPlacementModel {
     this.mapTrackShowOlderTail,
     this.mapControlTarget,
     this.mapBuiltInControls,
+    this.mapThermalSeason,
+    this.mapThermalTimeOfDay,
+    this.mapThermalOpacity,
   });
+
+  /// Default KK7 thermal heatmap opacity (60 %).
+  static const double defaultThermalOpacity = 0.6;
 
   final String id;
   final WidgetType type;
@@ -152,6 +160,15 @@ class WidgetPlacementModel {
   /// For map widgets: built-in control visibility policy.
   final MapBuiltInControls? mapBuiltInControls;
 
+  /// For map widgets: KK7 thermal heatmap season (null = auto).
+  final ThermalSeason? mapThermalSeason;
+
+  /// For map widgets: KK7 thermal heatmap time of day (null = auto).
+  final ThermalTimeOfDay? mapThermalTimeOfDay;
+
+  /// For map widgets: KK7 thermal heatmap opacity 0.1-1.0 (null = 0.6).
+  final double? mapThermalOpacity;
+
   // Fallback defaults
   NumericWidgetStyle get effectiveNumericStyle =>
       numericStyle ?? NumericWidgetStyle.minimalistText;
@@ -180,6 +197,12 @@ class WidgetPlacementModel {
   String get effectiveMapControlTarget => mapControlTarget ?? kAutoMapTarget;
   MapBuiltInControls get effectiveMapBuiltInControls =>
       mapBuiltInControls ?? MapBuiltInControls.auto;
+  ThermalSeason get effectiveMapThermalSeason =>
+      mapThermalSeason ?? ThermalSeason.auto;
+  ThermalTimeOfDay get effectiveMapThermalTimeOfDay =>
+      mapThermalTimeOfDay ?? ThermalTimeOfDay.auto;
+  double get effectiveMapThermalOpacity =>
+      (mapThermalOpacity ?? defaultThermalOpacity).clamp(0.1, 1.0);
 
   WidgetPlacementModel copyWith({
     String? id,
@@ -206,6 +229,9 @@ class WidgetPlacementModel {
     bool? mapTrackShowOlderTail,
     String? mapControlTarget,
     MapBuiltInControls? mapBuiltInControls,
+    ThermalSeason? mapThermalSeason,
+    ThermalTimeOfDay? mapThermalTimeOfDay,
+    double? mapThermalOpacity,
   }) {
     return WidgetPlacementModel(
       id: id ?? this.id,
@@ -235,6 +261,9 @@ class WidgetPlacementModel {
           mapTrackShowOlderTail ?? this.mapTrackShowOlderTail,
       mapControlTarget: mapControlTarget ?? this.mapControlTarget,
       mapBuiltInControls: mapBuiltInControls ?? this.mapBuiltInControls,
+      mapThermalSeason: mapThermalSeason ?? this.mapThermalSeason,
+      mapThermalTimeOfDay: mapThermalTimeOfDay ?? this.mapThermalTimeOfDay,
+      mapThermalOpacity: mapThermalOpacity ?? this.mapThermalOpacity,
     );
   }
 
@@ -268,6 +297,10 @@ class WidgetPlacementModel {
     if (mapControlTarget != null) 'mapControlTarget': mapControlTarget,
     if (mapBuiltInControls != null)
       'mapBuiltInControls': mapBuiltInControls!.name,
+    if (mapThermalSeason != null) 'mapThermalSeason': mapThermalSeason!.name,
+    if (mapThermalTimeOfDay != null)
+      'mapThermalTimeOfDay': mapThermalTimeOfDay!.name,
+    if (mapThermalOpacity != null) 'mapThermalOpacity': mapThermalOpacity,
   };
 
   @override
@@ -297,7 +330,10 @@ class WidgetPlacementModel {
         other.mapTrackHistoryMinutes == mapTrackHistoryMinutes &&
         other.mapTrackShowOlderTail == mapTrackShowOlderTail &&
         other.mapControlTarget == mapControlTarget &&
-        other.mapBuiltInControls == mapBuiltInControls;
+        other.mapBuiltInControls == mapBuiltInControls &&
+        other.mapThermalSeason == mapThermalSeason &&
+        other.mapThermalTimeOfDay == mapThermalTimeOfDay &&
+        other.mapThermalOpacity == mapThermalOpacity;
   }
 
   @override
@@ -326,6 +362,9 @@ class WidgetPlacementModel {
     mapTrackShowOlderTail,
     mapControlTarget,
     mapBuiltInControls,
+    mapThermalSeason,
+    mapThermalTimeOfDay,
+    mapThermalOpacity,
   ]);
 
   @override
@@ -398,6 +437,24 @@ class WidgetPlacementModel {
       } catch (_) {}
     }
 
+    ThermalSeason? thermalSeason;
+    if (json['mapThermalSeason'] is String) {
+      try {
+        thermalSeason = ThermalSeason.values.byName(
+          json['mapThermalSeason'] as String,
+        );
+      } catch (_) {}
+    }
+
+    ThermalTimeOfDay? thermalTime;
+    if (json['mapThermalTimeOfDay'] is String) {
+      try {
+        thermalTime = ThermalTimeOfDay.values.byName(
+          json['mapThermalTimeOfDay'] as String,
+        );
+      } catch (_) {}
+    }
+
     final type = widgetTypeFromName(json['type']);
     if (type == null) {
       throw FormatException('Unknown widget type: ${json['type']}');
@@ -428,6 +485,9 @@ class WidgetPlacementModel {
       mapTrackShowOlderTail: json['mapTrackShowOlderTail'] as bool?,
       mapControlTarget: json['mapControlTarget'] as String?,
       mapBuiltInControls: builtIn,
+      mapThermalSeason: thermalSeason,
+      mapThermalTimeOfDay: thermalTime,
+      mapThermalOpacity: (json['mapThermalOpacity'] as num?)?.toDouble(),
     );
   }
 }
@@ -571,7 +631,12 @@ class UIConfig {
     this.screens = const [],
     this.activeScreenId = 'normal_flight',
     this.schemaVersion = GridSpec.schemaVersion,
+    this.thermalAutoPrefetch = true,
   });
+
+  /// Whether KK7 thermal tiles are prefetched automatically for downloaded
+  /// map regions (manual per-region prefetch stays available when false).
+  final bool thermalAutoPrefetch;
 
   /// Persisted schema version (see [GridSpec.schemaVersion]).
   final int schemaVersion;
@@ -771,6 +836,7 @@ class UIConfig {
     SettingsStyle? settingsStyle,
     List<FlightScreenModel>? screens,
     String? activeScreenId,
+    bool? thermalAutoPrefetch,
   }) {
     return UIConfig(
       navBarStyle: navBarStyle ?? this.navBarStyle,
@@ -778,6 +844,7 @@ class UIConfig {
       settingsStyle: settingsStyle ?? this.settingsStyle,
       screens: screens ?? this.screens,
       activeScreenId: activeScreenId ?? this.activeScreenId,
+      thermalAutoPrefetch: thermalAutoPrefetch ?? this.thermalAutoPrefetch,
     );
   }
 
@@ -787,6 +854,7 @@ class UIConfig {
     'thermalingStyle': thermalingStyle.name,
     'settingsStyle': settingsStyle.name,
     'activeScreenId': activeScreenId,
+    'thermalAutoPrefetch': thermalAutoPrefetch,
     'screens': screens.map((s) => s.toJson()).toList(),
   };
 
@@ -819,6 +887,7 @@ class UIConfig {
       thermalingStyle: therm,
       settingsStyle: sett,
       activeScreenId: json['activeScreenId'] as String? ?? 'normal_flight',
+      thermalAutoPrefetch: json['thermalAutoPrefetch'] as bool? ?? true,
       screens: json['screens'] != null
           ? (json['screens'] as List<dynamic>)
                 .map(

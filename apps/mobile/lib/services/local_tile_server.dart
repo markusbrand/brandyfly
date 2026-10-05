@@ -6,6 +6,10 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../data/thermal/thermal_tile_store.dart';
+import '../data/thermal/transparent_tile.dart';
+import '../domain/thermal/kk7_provider.dart';
+import '../domain/thermal/thermal_variant.dart';
 import 'pmtiles_reader.dart';
 
 /// Embedded loopback HTTP tile server running on `127.0.0.1` on an ephemeral port.
@@ -13,6 +17,11 @@ import 'pmtiles_reader.dart';
 /// Serves standard OpenMapTiles vector tiles (`/tiles/{z}/{x}/{y}.pbf`) and
 /// raster DEM terrain tiles (`/terrain/{z}/{x}/{y}.png`) from local PMTiles
 /// archives, persistent disk cache, or online providers directly to MapLibre Native.
+///
+/// KK7 thermal heatmap tiles are served from
+/// `/thermals/<season>_<time>/{z}/{x}/{y}.png` (XYZ rows), resolved from
+/// region prefetch storage, the persistent thermal browse cache, then
+/// thermal.kk7.ch, and finally a transparent tile.
 class LocalTileServer {
   LocalTileServer({
     this.onlineFallbackEnabled = true,
@@ -20,10 +29,27 @@ class LocalTileServer {
     String? onlineTerrainFallbackUrlTemplate,
     this.cacheDirectoryPath,
     HttpClient? httpClient,
+    ThermalTileStore? thermalStore,
+    this.thermalBaseUrl = Kk7Provider.defaultBaseUrl,
+    this.thermalOnlineEnabled = true,
+    this.thermalTimeout = const Duration(seconds: 5),
   }) : _configuredOnlineFallbackUrlTemplate = onlineFallbackUrlTemplate,
        _configuredOnlineTerrainFallbackUrlTemplate =
            onlineTerrainFallbackUrlTemplate,
-       _injectedHttpClient = httpClient;
+       _injectedHttpClient = httpClient,
+       thermalStore = thermalStore ?? ThermalTileStore();
+
+  /// Persistent storage for KK7 thermal tiles (region prefetch + cache).
+  final ThermalTileStore thermalStore;
+
+  /// Base URL of the KK7 tile host (overridable for tests).
+  final String thermalBaseUrl;
+
+  /// Whether missing thermal tiles may be fetched from KK7 on demand.
+  final bool thermalOnlineEnabled;
+
+  /// Upper bound for one on-demand KK7 tile fetch.
+  final Duration thermalTimeout;
 
   static const String defaultSnapshotTemplate =
       'https://tiles.openfreemap.org/planet/20260906_080001_pt/{z}/{x}/{y}.pbf';
@@ -65,6 +91,10 @@ class LocalTileServer {
   String get baseUrl => 'http://127.0.0.1:$port';
   String get tilesUrlTemplate => '$baseUrl/tiles/{z}/{x}/{y}.pbf';
   String get terrainUrlTemplate => '$baseUrl/terrain/{z}/{x}/{y}.png';
+
+  /// Loopback URL template for the thermal heatmap [variant].
+  String thermalUrlTemplate(ThermalVariant variant) =>
+      '$baseUrl/thermals/${variant.key}/{z}/{x}/{y}.png';
   String get onlineFallbackUrlTemplate =>
       _configuredOnlineFallbackUrlTemplate ?? _activeOnlineFallbackUrlTemplate;
   String get onlineTerrainFallbackUrlTemplate =>
@@ -399,6 +429,20 @@ class LocalTileServer {
         return;
       }
 
+      final thermalMatch = RegExp(
+        r'^/thermals/([a-z]+_[0-9a-z]+)/(\d+)/(\d+)/(\d+)\.png$',
+      ).firstMatch(path);
+      if (thermalMatch != null) {
+        final variant = ThermalVariant.tryParseKey(thermalMatch.group(1)!);
+        if (variant != null) {
+          final z = int.parse(thermalMatch.group(2)!);
+          final x = int.parse(thermalMatch.group(3)!);
+          final y = int.parse(thermalMatch.group(4)!);
+          await _handleThermalTileRequest(request, variant, z, x, y);
+          return;
+        }
+      }
+
       request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
     } catch (e) {
@@ -529,6 +573,89 @@ class LocalTileServer {
     // 4. Return 204 No Content for missing terrain tiles
     request.response.statusCode = HttpStatus.noContent;
     await request.response.close();
+  }
+
+  /// Serves a KK7 thermal tile: region prefetch store -> browse cache ->
+  /// KK7 online -> transparent tile. Never fails with an error status.
+  Future<void> _handleThermalTileRequest(
+    HttpRequest request,
+    ThermalVariant variant,
+    int z,
+    int x,
+    int y,
+  ) async {
+    final valid =
+        z >= 0 &&
+        z <= Kk7Provider.maxNativeZoom &&
+        x < (1 << z) &&
+        y < (1 << z);
+    Uint8List? bytes;
+    if (valid) {
+      bytes =
+          await thermalStore.readFromRegions(variant, z, x, y) ??
+          await thermalStore.readFromCache(variant, z, x, y);
+      if (bytes == null && thermalOnlineEnabled) {
+        bytes = await _fetchThermalTile(variant, z, x, y);
+      }
+    }
+    await _serveRasterBytes(
+      request,
+      bytes == null || bytes.isEmpty ? transparentTilePng : bytes,
+    );
+  }
+
+  /// Fetches a thermal tile from KK7 and stores it in the browse cache.
+  /// Returns null on network failure (not cached), an empty list when the
+  /// provider has no data for the tile (cached as marker).
+  Future<Uint8List?> _fetchThermalTile(
+    ThermalVariant variant,
+    int z,
+    int x,
+    int y,
+  ) async {
+    final uri = Kk7Provider.tileUri(variant, z, x, y, baseUrl: thermalBaseUrl);
+    try {
+      final result = await fetchKk7Tile(
+        _httpClient,
+        uri,
+      ).timeout(thermalTimeout);
+      if (result != null) {
+        unawaited(thermalStore.writeToCache(variant, z, x, y, result));
+      }
+      return result;
+    } catch (e) {
+      debugPrint('[LocalTileServer] Thermal tile fetch failed ($z/$x/$y): $e');
+      return null;
+    }
+  }
+
+  /// Performs one anonymous KK7 tile GET. Returns the PNG bytes, an empty
+  /// list for "no data" (404/204), or null for other failures. Throws
+  /// [Kk7HttpException] for throttling / server errors so callers can back
+  /// off. No position, identity or device identifiers are sent.
+  static Future<Uint8List?> fetchKk7Tile(HttpClient client, Uri uri) async {
+    final req = await client.getUrl(uri);
+    req.followRedirects = true;
+    req.headers.set(HttpHeaders.userAgentHeader, 'BrandyFly');
+    req.headers.removeAll(HttpHeaders.cookieHeader);
+    final resp = await req.close();
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in resp) {
+      builder.add(chunk);
+    }
+    final body = builder.takeBytes();
+    final status = resp.statusCode;
+    if (status == HttpStatus.ok) {
+      if (body.isEmpty) return Uint8List(0);
+      return _isGzip(body) ? Uint8List.fromList(gzip.decode(body)) : body;
+    }
+    if (status == HttpStatus.notFound || status == HttpStatus.noContent) {
+      return Uint8List(0);
+    }
+    if (status == HttpStatus.tooManyRequests || status >= 500) {
+      throw Kk7HttpException(status);
+    }
+    return null;
   }
 
   /// Serves compressed vector tile payload directly to MapLibre.
@@ -664,4 +791,13 @@ class LocalTileServer {
     response.write(jsonEncode(data));
     response.close();
   }
+}
+
+/// Throttling (429) or server error (5xx) returned by thermal.kk7.ch.
+class Kk7HttpException implements Exception {
+  const Kk7HttpException(this.statusCode);
+  final int statusCode;
+
+  @override
+  String toString() => 'Kk7HttpException($statusCode)';
 }

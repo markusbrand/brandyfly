@@ -111,6 +111,9 @@ class ScreenManagerService extends ChangeNotifier {
   void setSettingsStyle(SettingsStyle style) =>
       _repository.replace(config.copyWith(settingsStyle: style));
 
+  void setThermalAutoPrefetch(bool enabled) =>
+      _repository.replace(config.copyWith(thermalAutoPrefetch: enabled));
+
   void addScreen(
     String name, {
     LayoutStrategyStyle layoutStrategy = LayoutStrategyStyle.sidebarDashboard,

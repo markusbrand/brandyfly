@@ -6,13 +6,17 @@ import 'package:maplibre/maplibre.dart' hide Marker;
 import '../../../../models/flight_model.dart';
 import '../../../../models/lat_lng.dart';
 import '../../../../domain/models/ui_config.dart';
+import '../../../../domain/thermal/kk7_provider.dart';
+import '../../../../domain/thermal/thermal_layer_spec.dart';
+import '../../../../domain/thermal/thermal_variant_resolver.dart';
 import '../../../../services/maplibre_map_service.dart';
 import '../platform/map_renderer_availability.dart';
 import '../view_models/map_camera_view_model.dart';
 
 /// Paragliding Map Widget with MapLibre GL offline vector tile rendering,
 /// Copernicus DEM hillshade terrain relief, local PMTiles fallback detection,
-/// airspace polygons, thermal overlays, breadcrumb tracks, and pilot position.
+/// KK7 thermal probability heatmap, airspace polygons, breadcrumb tracks, and
+/// pilot position.
 class MapWidget extends StatefulWidget {
   const MapWidget({
     super.key,
@@ -41,6 +45,11 @@ class MapWidget extends StatefulWidget {
     this.cameraViewModel,
     this.cameraId,
     this.showBuiltInControls = true,
+    this.thermalSeason = ThermalSeason.auto,
+    this.thermalTimeOfDay = ThermalTimeOfDay.auto,
+    this.thermalOpacity = WidgetPlacementModel.defaultThermalOpacity,
+    this.clock,
+    this.thermalReevaluateInterval = const Duration(seconds: 60),
   });
 
   final MapWidgetStyle style;
@@ -76,6 +85,24 @@ class MapWidget extends StatefulWidget {
 
   /// Whether the built-in zoom / recenter HUD buttons are rendered.
   final bool showBuiltInControls;
+
+  /// KK7 thermal heatmap season setting (only used when [showThermals]).
+  final ThermalSeason thermalSeason;
+
+  /// KK7 thermal heatmap time-of-day setting.
+  final ThermalTimeOfDay thermalTimeOfDay;
+
+  /// KK7 thermal heatmap layer opacity (0.1-1.0).
+  final double thermalOpacity;
+
+  /// Wall clock used for automatic variant selection (tests inject one).
+  final DateTime Function()? clock;
+
+  /// How often automatic season / time-of-day selection is re-evaluated.
+  final Duration thermalReevaluateInterval;
+
+  /// Pilot displacement that forces an immediate variant re-evaluation.
+  static const double thermalReevaluateDistanceKm = 50.0;
 
   /// Continuous piecewise color interpolation for the vario gradient flight
   /// track. Maps vertical speed (m/s) to a lift/sink colour stop.
@@ -121,6 +148,12 @@ class _MapWidgetState extends State<MapWidget> {
   bool _isProgrammaticMove = false;
   Timer? _programmaticMoveTimer;
 
+  // KK7 thermal heatmap state
+  ThermalLayerSpec? _thermalSpec;
+  Timer? _thermalTimer;
+  LatLng? _lastKnownPilot;
+  LatLng? _thermalEvalPosition;
+
   // Default Alpine launch reference coordinates (Dachstein / Krippenstein)
   static const LatLng _defaultPilotPosition = LatLng(47.525, 13.685);
 
@@ -156,7 +189,68 @@ class _MapWidgetState extends State<MapWidget> {
     _mapService.addListener(_onMapServiceChanged);
     _attachCamera(widget.cameraViewModel);
     _cameraCenter = _effectivePilotPosition;
+    _lastKnownPilot = widget.pilotPosition;
+    _thermalSpec = _computeThermalSpec();
+    _syncThermalTimer();
     _initMapStyle();
+  }
+
+  DateTime _now() => (widget.clock ?? DateTime.now)();
+
+  /// Resolves the desired heatmap layer, or null when thermals are hidden.
+  ThermalLayerSpec? _computeThermalSpec() {
+    if (!widget.showThermals) return null;
+    _thermalEvalPosition = widget.pilotPosition ?? _lastKnownPilot;
+    final variant = ThermalVariantResolver.resolve(
+      season: widget.thermalSeason,
+      timeOfDay: widget.thermalTimeOfDay,
+      now: _now(),
+      gpsFix: widget.pilotPosition,
+      lastKnownPosition: _lastKnownPilot,
+      mapCenter: _cameraCenter,
+    );
+    return ThermalLayerSpec(
+      variant: variant,
+      opacity: widget.thermalOpacity.clamp(0.1, 1.0),
+    );
+  }
+
+  /// Re-resolves the heatmap variant and swaps the layer if it changed.
+  void _refreshThermal() {
+    if (!mounted) return;
+    final spec = _computeThermalSpec();
+    if (spec == _thermalSpec) return;
+    setState(() => _thermalSpec = spec);
+    _mapService.setThermalLayer(spec);
+  }
+
+  bool get _thermalNeedsTimer =>
+      widget.showThermals &&
+      (widget.thermalSeason == ThermalSeason.auto ||
+          widget.thermalTimeOfDay == ThermalTimeOfDay.auto);
+
+  void _syncThermalTimer() {
+    if (_thermalNeedsTimer) {
+      _thermalTimer ??= Timer.periodic(
+        widget.thermalReevaluateInterval,
+        (_) => _refreshThermal(),
+      );
+    } else {
+      _thermalTimer?.cancel();
+      _thermalTimer = null;
+    }
+  }
+
+  static double _distanceKm(LatLng a, LatLng b) {
+    const r = 6371.0;
+    final dLat = (b.latitude - a.latitude) * math.pi / 180.0;
+    final dLon = (b.longitude - a.longitude) * math.pi / 180.0;
+    final h =
+        math.pow(math.sin(dLat / 2), 2) +
+        math.cos(a.latitude * math.pi / 180.0) *
+            math.cos(b.latitude * math.pi / 180.0) *
+            math.pow(math.sin(dLon / 2), 2);
+    return 2 * r * math.asin(math.sqrt(h.toDouble()));
   }
 
   void _attachCamera(MapCameraViewModel? external) {
@@ -249,7 +343,10 @@ class _MapWidgetState extends State<MapWidget> {
   bool _syncingGestureZoom = false;
 
   Future<void> _initMapStyle() async {
-    final style = await _mapService.buildStyleJson(regionId: widget.regionId);
+    final style = await _mapService.buildStyleJson(
+      regionId: widget.regionId,
+      thermal: _thermalSpec,
+    );
     if (mounted) {
       setState(() {
         _styleJson = style;
@@ -260,6 +357,7 @@ class _MapWidgetState extends State<MapWidget> {
   @override
   void dispose() {
     _programmaticMoveTimer?.cancel();
+    _thermalTimer?.cancel();
     _mapService.removeListener(_onMapServiceChanged);
     _detachCamera();
     if (widget.mapService == null) {
@@ -295,6 +393,34 @@ class _MapWidgetState extends State<MapWidget> {
       _camera.resetZoom(widget.initialZoom);
       _currentZoom = _camera.zoom;
       _updateCamera();
+    }
+
+    if (widget.pilotPosition != null) _lastKnownPilot = widget.pilotPosition;
+    final thermalSettingsChanged =
+        widget.showThermals != oldWidget.showThermals ||
+        widget.thermalSeason != oldWidget.thermalSeason ||
+        widget.thermalTimeOfDay != oldWidget.thermalTimeOfDay ||
+        widget.thermalOpacity != oldWidget.thermalOpacity;
+    if (thermalSettingsChanged ||
+        widget.thermalReevaluateInterval !=
+            oldWidget.thermalReevaluateInterval) {
+      _thermalTimer?.cancel();
+      _thermalTimer = null;
+      _syncThermalTimer();
+    }
+    final evalPos = _thermalEvalPosition;
+    final jumped =
+        widget.pilotPosition != null &&
+        (evalPos == null ||
+            _distanceKm(evalPos, widget.pilotPosition!) >
+                MapWidget.thermalReevaluateDistanceKm);
+    if (thermalSettingsChanged || (widget.showThermals && jumped)) {
+      // A rebuild follows didUpdateWidget, so plain assignment is enough.
+      final spec = _computeThermalSpec();
+      if (spec != _thermalSpec) {
+        _thermalSpec = spec;
+        _mapService.setThermalLayer(spec);
+      }
     }
 
     final oldPilot = oldWidget.pilotPosition ?? _defaultPilotPosition;
@@ -449,7 +575,8 @@ class _MapWidgetState extends State<MapWidget> {
             ),
           ),
 
-          // 2. Flight Overlays (Airspace, Flight Track, Thermals, Pilot Marker)
+          // 2. Flight Overlays (Airspace, Flight Track, Pilot Marker). The
+          //    KK7 thermal heatmap is a MapLibre raster layer below these.
           Positioned.fill(
             child: IgnorePointer(
               child: RepaintBoundary(
@@ -463,7 +590,6 @@ class _MapWidgetState extends State<MapWidget> {
                     zoom: _currentZoom,
                     showAirspace: widget.showAirspace,
                     showTrack: widget.showTrack,
-                    showThermals: widget.showThermals,
                     flightPoints: _effectiveFlightPoints,
                     trackPoints: _effectiveTrackPoints,
                     climbRateMs: widget.climbRateMs,
@@ -599,6 +725,36 @@ class _MapWidgetState extends State<MapWidget> {
 
           // 7. Dynamic Scale Bar & Altitude / Speed HUD
           Positioned(bottom: 8, left: 52, child: _buildScaleAndLegend()),
+
+          // 8. KK7 thermal heatmap attribution (CC BY-NC-SA 4.0)
+          if (_thermalSpec != null)
+            Positioned(
+              bottom: 46,
+              left: 52,
+              right: 44,
+              child: IgnorePointer(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Container(
+                    key: const Key('thermal_attribution'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(150),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: const Text(
+                      Kk7Provider.attributionText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.white70, fontSize: 8),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -786,8 +942,8 @@ class _MapWidgetState extends State<MapWidget> {
   }
 }
 
-/// Flight overlay painter that renders airspace polygons, vario flight track,
-/// thermal markers, and pilot position marker.
+/// Flight overlay painter that renders airspace polygons, vario flight track
+/// and pilot position marker.
 class _FlightOverlayPainter extends CustomPainter {
   const _FlightOverlayPainter({
     this.mapController,
@@ -798,7 +954,6 @@ class _FlightOverlayPainter extends CustomPainter {
     required this.zoom,
     required this.showAirspace,
     required this.showTrack,
-    required this.showThermals,
     required this.flightPoints,
     required this.trackPoints,
     required this.climbRateMs,
@@ -814,7 +969,6 @@ class _FlightOverlayPainter extends CustomPainter {
   final double zoom;
   final bool showAirspace;
   final bool showTrack;
-  final bool showThermals;
   final List<FlightPoint> flightPoints;
   final List<LatLng> trackPoints;
   final double climbRateMs;
@@ -834,14 +988,6 @@ class _FlightOverlayPainter extends CustomPainter {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 3.5
     ..strokeCap = StrokeCap.round;
-
-  static final Paint _thermalCirclePaint = Paint()
-    ..color = const Color(0xFFF97316).withAlpha(200)
-    ..style = PaintingStyle.fill;
-  static final Paint _thermalRingPaint = Paint()
-    ..color = const Color(0xFFFACC15)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.5;
 
   static final Paint _pilotHaloPaint = Paint()
     ..color = Colors.cyanAccent.withAlpha(45)
@@ -913,12 +1059,7 @@ class _FlightOverlayPainter extends CustomPainter {
       _paintFlightTrack(canvas, size);
     }
 
-    // 3. Thermals
-    if (showThermals) {
-      _paintThermals(canvas, size);
-    }
-
-    // 4. Pilot Position Marker
+    // 3. Pilot Position Marker
     _paintPilotMarker(canvas, size);
   }
 
@@ -929,14 +1070,6 @@ class _FlightOverlayPainter extends CustomPainter {
     LatLng(47.560, 13.710),
     LatLng(47.535, 13.725),
     LatLng(47.510, 13.675),
-  ];
-
-  /// Static geographic coordinates for mock thermal updraft hotspots
-  /// located on sun-facing slopes in the Dachstein / Krippenstein flight area.
-  static const List<(LatLng, String)> defaultMockThermalHotspots = [
-    (LatLng(47.533, 13.697), '+2.8'),
-    (LatLng(47.519, 13.703), '+3.4'),
-    (LatLng(47.513, 13.676), '+1.9'),
   ];
 
   void _paintAirspace(Canvas canvas, Size size) {
@@ -980,14 +1113,6 @@ class _FlightOverlayPainter extends CustomPainter {
     }
   }
 
-  void _paintThermals(Canvas canvas, Size size) {
-    for (final th in defaultMockThermalHotspots) {
-      final pos = _toScreen(th.$1, size);
-      canvas.drawCircle(pos, 8, _thermalCirclePaint);
-      canvas.drawCircle(pos, 8, _thermalRingPaint);
-    }
-  }
-
   void _paintPilotMarker(Canvas canvas, Size size) {
     final pos = _toScreen(pilotPosition, size);
     final rotate = orientation == MapOrientation.trackUp
@@ -1016,7 +1141,6 @@ class _FlightOverlayPainter extends CustomPainter {
         old.zoom != zoom ||
         old.showAirspace != showAirspace ||
         old.showTrack != showTrack ||
-        old.showThermals != showThermals ||
         old.flightPoints != flightPoints ||
         old.trackPoints != trackPoints ||
         old.climbRateMs != climbRateMs ||

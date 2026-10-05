@@ -5,16 +5,22 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:maplibre/maplibre.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../data/thermal/thermal_tile_store.dart';
+import '../domain/thermal/kk7_provider.dart';
+import '../domain/thermal/thermal_layer_spec.dart';
+import '../domain/thermal/thermal_variant.dart';
 import '../models/lat_lng.dart';
 import 'local_tile_server.dart';
 
 /// Service managing MapLibre GL controller lifecycle, style JSON compilation,
 /// PMTiles local source configuration, camera operations, and offline fallback detection.
 class MapLibreMapService extends ChangeNotifier {
-  MapLibreMapService({
-    this.customAppSupportDir,
-    LocalTileServer? tileServer,
-  }) : _tileServer = tileServer ?? LocalTileServer() {
+  MapLibreMapService({this.customAppSupportDir, LocalTileServer? tileServer})
+    : _tileServer =
+          tileServer ??
+          LocalTileServer(
+            thermalStore: ThermalTileStore(appSupportDir: customAppSupportDir),
+          ) {
     _tileServer.onlinePreviewNotifier.addListener(notifyListeners);
   }
 
@@ -34,6 +40,7 @@ class MapLibreMapService extends ChangeNotifier {
     if (_disposed) return;
     super.notifyListeners();
   }
+
   bool _isStyleLoaded = false;
   bool _isFallbackActive = true;
   String? _activeRegionId;
@@ -57,7 +64,133 @@ class MapLibreMapService extends ChangeNotifier {
   void onStyleLoaded(StyleController style) {
     _styleController = style;
     _isStyleLoaded = true;
+    // The freshly loaded style contains the thermal layer it was built with.
+    _appliedThermal = _styleThermal;
     notifyListeners();
+    _scheduleThermalSync();
+  }
+
+  // --- KK7 thermal heatmap layer -------------------------------------------
+
+  static const String thermalSourceId = 'kk7-thermals';
+  static const String thermalLayerId = 'kk7-thermals';
+
+  /// Thermal layer embedded in the last built style JSON.
+  ThermalLayerSpec? _styleThermal;
+
+  /// Thermal layer currently present in the native style.
+  ThermalLayerSpec? _appliedThermal;
+
+  /// Thermal layer the map should show (null = hidden).
+  ThermalLayerSpec? _desiredThermal;
+
+  /// Layer the thermal raster is inserted below (first label/point layer).
+  String? _thermalBelowLayerId;
+
+  Future<void> _thermalSync = Future.value();
+
+  ThermalLayerSpec? get thermalLayer => _desiredThermal;
+  String? get thermalBelowLayerId => _thermalBelowLayerId;
+
+  /// Tile URL template for [variant]: the loopback server on mobile (offline
+  /// capable), KK7 directly on the web.
+  String thermalTilesUrl(ThermalVariant variant) => kIsWeb
+      ? Kk7Provider.directTemplate(variant)
+      : _tileServer.thermalUrlTemplate(variant);
+
+  /// Shows, swaps or hides the thermal heatmap without reloading the style
+  /// (camera, overlays and other layers stay untouched).
+  Future<void> setThermalLayer(ThermalLayerSpec? spec) {
+    _desiredThermal = spec;
+    return _scheduleThermalSync();
+  }
+
+  Future<void> _scheduleThermalSync() {
+    _thermalSync = _thermalSync.then((_) => _applyThermal());
+    return _thermalSync;
+  }
+
+  Future<void> _applyThermal() async {
+    final style = _styleController;
+    if (style == null || _disposed) return;
+    final desired = _desiredThermal;
+    final applied = _appliedThermal;
+    if (desired == applied) return;
+    try {
+      if (applied != null) {
+        await style.removeLayer(thermalLayerId);
+        await style.removeSource(thermalSourceId);
+      }
+      _appliedThermal = null;
+      if (desired != null) {
+        await style.addSource(
+          RasterSource(
+            id: thermalSourceId,
+            tiles: [thermalTilesUrl(desired.variant)],
+            tileSize: Kk7Provider.tileSize,
+            maxZoom: Kk7Provider.maxNativeZoom.toDouble(),
+            scheme: kIsWeb ? TileScheme.tms : TileScheme.xyz,
+            attribution: Kk7Provider.attributionText,
+          ),
+        );
+        await style.addLayer(
+          RasterStyleLayer(
+            id: thermalLayerId,
+            sourceId: thermalSourceId,
+            paint: {
+              'raster-opacity': desired.opacity,
+              'raster-fade-duration': 0,
+            },
+          ),
+          belowLayerId: _thermalBelowLayerId,
+        );
+        _appliedThermal = desired;
+      }
+    } catch (e) {
+      debugPrint('[MapLibreMapService] thermal layer update failed: $e');
+    }
+  }
+
+  /// Inserts the thermal raster source/layer for [spec] into [styleMap],
+  /// below the first label or point layer.
+  void _injectThermal(Map<String, dynamic> styleMap, ThermalLayerSpec? spec) {
+    final layers = ((styleMap['layers'] as List?) ?? const [])
+        .cast<dynamic>()
+        .toList();
+    final insertAt = layers.indexWhere((l) {
+      final type = l is Map ? l['type'] : null;
+      return type == 'symbol' || type == 'circle';
+    });
+    _thermalBelowLayerId = insertAt >= 0
+        ? (layers[insertAt] as Map)['id'] as String?
+        : null;
+    _styleThermal = spec;
+    if (spec == null) {
+      styleMap['layers'] = layers;
+      return;
+    }
+    final sources = (styleMap['sources'] as Map<String, dynamic>?) ?? {};
+    sources[thermalSourceId] = {
+      'type': 'raster',
+      'tiles': [thermalTilesUrl(spec.variant)],
+      'tileSize': Kk7Provider.tileSize,
+      'maxzoom': Kk7Provider.maxNativeZoom,
+      if (kIsWeb) 'scheme': 'tms',
+      'attribution': Kk7Provider.attributionText,
+    };
+    styleMap['sources'] = sources;
+    final layer = {
+      'id': thermalLayerId,
+      'type': 'raster',
+      'source': thermalSourceId,
+      'paint': {'raster-opacity': spec.opacity, 'raster-fade-duration': 0},
+    };
+    if (insertAt >= 0) {
+      layers.insert(insertAt, layer);
+    } else {
+      layers.add(layer);
+    }
+    styleMap['layers'] = layers;
   }
 
   /// Resolves the base path for regional offline storage.
@@ -98,7 +231,9 @@ class MapLibreMapService extends ChangeNotifier {
       if (cachedFile.existsSync() && cachedFile.lengthSync() > 0) {
         return cachedFile.path;
       }
-      final data = await rootBundle.load('assets/map_data/global_overview.pmtiles');
+      final data = await rootBundle.load(
+        'assets/map_data/global_overview.pmtiles',
+      );
       await cachedFile.parent.create(recursive: true);
       await cachedFile.writeAsBytes(
         data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
@@ -116,13 +251,19 @@ class MapLibreMapService extends ChangeNotifier {
   Future<String> buildStyleJson({
     String? regionId,
     String? baseTemplateJson,
+    ThermalLayerSpec? thermal,
   }) async {
+    _desiredThermal = thermal;
     if (kIsWeb) {
       // The loopback tile server and local PMTiles archives rely on dart:io,
-      // which is unavailable on the web: use the bundled style as-is.
-      _lastLoadedStyleJson = baseTemplateJson?.isNotEmpty == true
-          ? baseTemplateJson
+      // which is unavailable on the web: use the bundled style as-is and
+      // point the thermal layer directly at KK7.
+      final template = baseTemplateJson?.isNotEmpty == true
+          ? baseTemplateJson!
           : _defaultStyleTemplate();
+      final webStyle = jsonDecode(template) as Map<String, dynamic>;
+      _injectThermal(webStyle, thermal);
+      _lastLoadedStyleJson = jsonEncode(webStyle);
       _isFallbackActive = true;
       notifyListeners();
       return _lastLoadedStyleJson!;
@@ -187,7 +328,9 @@ class MapLibreMapService extends ChangeNotifier {
       await _tileServer.setFallbackArchive(overviewPath);
     }
 
-    debugPrint('[MapLibreMapService] basePath: $basePath, effectiveRegionId: $effectiveRegionId, useRegion: $useRegion, tileServer: ${_tileServer.baseUrl}');
+    debugPrint(
+      '[MapLibreMapService] basePath: $basePath, effectiveRegionId: $effectiveRegionId, useRegion: $useRegion, tileServer: ${_tileServer.baseUrl}',
+    );
     _isFallbackActive = !useRegion;
     _activeRegionId = useRegion ? effectiveRegionId : null;
 
@@ -231,12 +374,10 @@ class MapLibreMapService extends ChangeNotifier {
         'encoding': 'terrarium',
       };
     }
-    styleMap['terrain'] = {
-      'source': 'terrain',
-      'exaggeration': 1.0,
-    };
+    styleMap['terrain'] = {'source': 'terrain', 'exaggeration': 1.0};
 
     styleMap['sources'] = sources;
+    _injectThermal(styleMap, thermal);
     _lastLoadedStyleJson = jsonEncode(styleMap);
     notifyListeners();
     return _lastLoadedStyleJson!;
