@@ -29,7 +29,9 @@ class VarioLiftSinkBar extends StatelessWidget {
   }
 
   Widget _buildStyledBar(BuildContext context) {
-    if (tier == SizeTier.tiny) return _buildTiny();
+    if (tier == SizeTier.tiny && style != LiftSinkBarStyle.verticalEdgeBar) {
+      return _buildTiny();
+    }
     switch (style) {
       case LiftSinkBarStyle.verticalEdgeBar:
         return _buildVerticalEdgeBar(context);
