@@ -377,6 +377,9 @@ class ThermalPrefetchService extends ChangeNotifier {
           abortReason = 'Storage error: ${e.message}';
         } catch (e) {
           // SocketException, TimeoutException, HandshakeException, ...
+          debugPrint(
+            '[ThermalPrefetch] ${region.id}: network failure, pausing: $e',
+          );
           abortReason = 'offline';
         }
       }
