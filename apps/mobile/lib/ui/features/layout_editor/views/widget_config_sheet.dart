@@ -23,6 +23,9 @@ void showWidgetConfigDialog(
   MapOrientation curMapOrientation = model.effectiveMapOrientation;
   bool curMapAirspace = model.effectiveMapShowAirspace;
   bool curMapThermals = model.effectiveMapShowThermals;
+  ThermalSeason curThermalSeason = model.effectiveMapThermalSeason;
+  ThermalTimeOfDay curThermalTime = model.effectiveMapThermalTimeOfDay;
+  double curThermalOpacity = model.effectiveMapThermalOpacity;
   bool curMapTrack = model.effectiveMapShowTrack;
   bool curMapContours = model.effectiveMapShowContours;
   double curMapZoomLevel = model.effectiveMapZoomLevel;
@@ -728,11 +731,30 @@ void showWidgetConfigDialog(
                                   fontSize: 13,
                                 ),
                               ),
+                              subtitle: const Text(
+                                'KK7 thermal probability heatmap',
+                                style: TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 11,
+                                ),
+                              ),
                               value: curMapThermals,
                               activeThumbColor: Colors.cyanAccent,
                               onChanged: (val) =>
                                   setDialogState(() => curMapThermals = val),
                             ),
+                            if (curMapThermals)
+                              _ThermalHeatmapOptions(
+                                season: curThermalSeason,
+                                timeOfDay: curThermalTime,
+                                opacity: curThermalOpacity,
+                                onSeason: (v) =>
+                                    setDialogState(() => curThermalSeason = v),
+                                onTimeOfDay: (v) =>
+                                    setDialogState(() => curThermalTime = v),
+                                onOpacity: (v) =>
+                                    setDialogState(() => curThermalOpacity = v),
+                              ),
                             SwitchListTile(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -1028,6 +1050,15 @@ void showWidgetConfigDialog(
                     mapBuiltInControls: model.type == WidgetType.map
                         ? curBuiltInControls
                         : null,
+                    mapThermalSeason: model.type == WidgetType.map
+                        ? curThermalSeason
+                        : null,
+                    mapThermalTimeOfDay: model.type == WidgetType.map
+                        ? curThermalTime
+                        : null,
+                    mapThermalOpacity: model.type == WidgetType.map
+                        ? curThermalOpacity
+                        : null,
                     mapControlTarget: model.type.isMapControl
                         ? curMapControlTarget
                         : null,
@@ -1115,4 +1146,102 @@ Widget durationChip(
       }
     },
   );
+}
+
+/// Season, time-of-day and opacity controls for the KK7 thermal heatmap.
+class _ThermalHeatmapOptions extends StatelessWidget {
+  const _ThermalHeatmapOptions({
+    required this.season,
+    required this.timeOfDay,
+    required this.opacity,
+    required this.onSeason,
+    required this.onTimeOfDay,
+    required this.onOpacity,
+  });
+
+  final ThermalSeason season;
+  final ThermalTimeOfDay timeOfDay;
+  final double opacity;
+  final ValueChanged<ThermalSeason> onSeason;
+  final ValueChanged<ThermalTimeOfDay> onTimeOfDay;
+  final ValueChanged<double> onOpacity;
+
+  static const _seasonLabels = {
+    ThermalSeason.auto: 'Auto',
+    ThermalSeason.all: 'All year',
+    ThermalSeason.jan: 'Dec-Feb',
+    ThermalSeason.apr: 'Mar-May',
+    ThermalSeason.jul: 'Jun-Aug',
+    ThermalSeason.oct: 'Sep-Nov',
+  };
+
+  static const _timeLabels = {
+    ThermalTimeOfDay.auto: 'Auto',
+    ThermalTimeOfDay.all: 'All day',
+    ThermalTimeOfDay.morning: 'Morning',
+    ThermalTimeOfDay.midday: 'Midday',
+    ThermalTimeOfDay.evening: 'Evening',
+  };
+
+  static const _labelStyle = TextStyle(color: Colors.white70, fontSize: 12);
+
+  @override
+  Widget build(BuildContext context) {
+    // Snap to 10 % steps between 10 % and 100 %.
+    final percent = (opacity * 10).round().clamp(1, 10) * 10;
+    return Padding(
+      key: const Key('thermal_heatmap_options'),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Season', style: _labelStyle),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final e in _seasonLabels.entries)
+                styleChip<ThermalSeason>(
+                  key: Key('thermal_season_${e.key.name}'),
+                  label: e.value,
+                  value: e.key,
+                  selectedValue: season,
+                  onSelected: onSeason,
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text('Time of day', style: _labelStyle),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final e in _timeLabels.entries)
+                styleChip<ThermalTimeOfDay>(
+                  key: Key('thermal_time_${e.key.name}'),
+                  label: e.value,
+                  value: e.key,
+                  selectedValue: timeOfDay,
+                  onSelected: onTimeOfDay,
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('Heatmap opacity: $percent %', style: _labelStyle),
+          Slider(
+            key: const Key('thermal_opacity_slider'),
+            value: percent / 100.0,
+            min: 0.1,
+            max: 1.0,
+            divisions: 9,
+            label: '$percent %',
+            activeColor: Colors.cyanAccent,
+            onChanged: (v) => onOpacity((v * 10).round() / 10.0),
+          ),
+        ],
+      ),
+    );
+  }
 }

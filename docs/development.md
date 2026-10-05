@@ -84,17 +84,48 @@ because MapLibre map rendering is not supported on the Linux desktop target. To 
 emulator session (headless mode is used in CI/automation, windowed for interactive work):
 
 ```sh
-flutter emulators --launch brandyfly_test_device
+~/Android/Sdk/emulator/emulator -avd brandyfly_test_device -gpu host -no-snapshot
 ```
 
-or directly:
+then, from `apps/mobile`:
 
 ```sh
-~/Android/Sdk/emulator/emulator -avd brandyfly_test_device
+flutter run -d emulator-5554
 ```
 
 OpenSpec changes require genuine MapLibre GL rendering to verify map behavior, so the Android
 emulator (or a physical device) is the required environment for those checks.
+
+### Emulator GPU and snapshot pitfalls
+
+- **Always use host GPU rendering (`-gpu host`).** With the software renderer
+  (`-gpu swiftshader_indirect`) MapLibre map labels (peaks, places) render in
+  pink/green/red or not at all. This is an emulator rendering problem, not an
+  app bug; see the archived change `fix-map-labels-and-navigation`.
+- **Cold boot (`-no-snapshot`).** Restoring the saved quick-boot snapshot
+  (`default_boot`) with host GPU crashes the emulator (gfxstream
+  `Failed to find ColorBuffer`). A cold boot avoids this. Plain
+  `flutter emulators --launch brandyfly_test_device` uses the snapshot and may
+  hit the crash.
+- **Sessions started with `-no-snapshot-save` from a snapshot discard their
+  disk changes on shutdown** (installed debug APK, cached map/thermal tiles,
+  settings). Reinstall with `flutter run` after such a session.
+- **Starting from scripts or agents:** launch the emulator detached
+  (`setsid nohup ~/Android/Sdk/emulator/emulator ... > /tmp/emu.log 2>&1 < /dev/null &`),
+  otherwise it is killed when the launching shell exits. Wait for
+  `adb shell getprop sys.boot_completed` to return `1`.
+
+### Checking the KK7 thermal heatmap
+
+The heatmap is shown when the map widget's "Thermal Updraft Hotspots" setting
+is on (default) and the attribution `Thermal map © thermal.kk7.ch, CC BY-NC-SA 4.0`
+appears at the bottom of the map. KK7 hotspots are small blobs; at the default
+zoom (about 4 km across) the area around the simulated pilot may contain none,
+especially for the evening variant. Zoom out a few steps to see them, or set
+season/time of day to "All year" / "All day" in the map widget configuration.
+Cached tiles live on the device under
+`/data/data/rocks.brandstaetter.brandyfly/files/thermal_cache/` (inspect with
+`adb shell run-as rocks.brandstaetter.brandyfly ls files/thermal_cache`).
 
 ## Local mock flight mode
 

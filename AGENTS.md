@@ -4,6 +4,7 @@
 BrandyFly is an open-source, local-first paragliding vario and flight computer application.
 - **Tech Stack**: Flutter/Dart UI (`apps/mobile`), Rust flight core (`crates/`), Kotlin/Swift native platform adapters, MapLibre/PMTiles, Go backend (`services/`).
 - **Core Principles**: Safety-critical flight telemetry, offline-first reliability, low latency, deterministic replay support.
+- **Android emulator**: Start `brandyfly_test_device` with `~/Android/Sdk/emulator/emulator -avd brandyfly_test_device -gpu host -no-snapshot` (detached). Never use `-gpu swiftshader_indirect`: MapLibre map labels then render pink/green/red or not at all. Restoring the quick-boot snapshot with host GPU crashes the emulator. Details: `docs/development.md` → "Emulator GPU and snapshot pitfalls".
 
 ---
 

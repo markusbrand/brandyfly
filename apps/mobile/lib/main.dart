@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:brandyfly_native/brandyfly_native.dart';
 import 'package:flutter/foundation.dart';
@@ -18,7 +19,10 @@ import 'services/maplibre_map_service.dart';
 import 'services/screen_manager_service.dart';
 import 'services/telemetry/synthetic_telemetry_source.dart';
 import 'services/ui_persistence_service.dart';
+import 'services/thermal_prefetch_service.dart';
 import 'services/xcontest_upload_service.dart';
+import 'data/thermal/region_bounds_provider.dart';
+import 'data/thermal/thermal_tile_store.dart';
 import 'widgets/flight/flight_summary_sheet.dart';
 import 'widgets/flight/flights_screen.dart';
 import 'widgets/flight/replay_control_overlay.dart';
@@ -48,6 +52,7 @@ class BrandyFlyApp extends StatefulWidget {
     this.replayService,
     this.uploadService,
     this.mapService,
+    this.thermalPrefetchService,
   });
 
   final MockFlightModeConfig config;
@@ -58,6 +63,10 @@ class BrandyFlyApp extends StatefulWidget {
   final FlightReplayService? replayService;
   final XContestUploadService? uploadService;
   final MapLibreMapService? mapService;
+
+  /// KK7 thermal prefetch; created automatically on mobile/desktop when null
+  /// (not in `flutter test` and not on the web).
+  final ThermalPrefetchService? thermalPrefetchService;
 
   @override
   State<BrandyFlyApp> createState() => _BrandyFlyAppState();
@@ -94,6 +103,9 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   late MapLibreMapService _mapService;
   late TelemetryRepository _telemetryRepository;
   LayoutRepository? _ownedLayoutRepository;
+  ThermalPrefetchService? _thermalPrefetch;
+  bool _ownsThermalPrefetch = false;
+  AppLifecycleListener? _lifecycleListener;
 
   StreamSubscription<FlightModel>? _flightCompletedSub;
 
@@ -157,6 +169,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
             settings: _trackingService.settings,
           );
 
+      _startThermalPrefetch();
+
       _flightCompletedSub = _trackingService.flightCompletedStream.listen((
         flight,
       ) {
@@ -208,6 +222,33 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     });
   }
 
+  /// Starts on-device KK7 thermal prefetch for downloaded map regions and
+  /// re-checks on app resume (new regions, season window changes).
+  void _startThermalPrefetch() {
+    var service = widget.thermalPrefetchService;
+    if (service == null) {
+      final isTest =
+          !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+      if (kIsWeb || isTest) return;
+      final store = ThermalTileStore();
+      service = ThermalPrefetchService(
+        store: store,
+        regions: RegionBoundsProvider(regionsBasePath: store.regionsBasePath),
+        autoPrefetchEnabled: () => _screenManager.config.thermalAutoPrefetch,
+      );
+      _ownsThermalPrefetch = true;
+    }
+    _thermalPrefetch = service;
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () => _thermalPrefetch?.notifyRegionsChanged(),
+    );
+    unawaited(
+      service.start().catchError((Object e) {
+        debugPrint('[BrandyFlyApp] thermal prefetch start failed: $e');
+      }),
+    );
+  }
+
   void _onFlightCompleted(FlightModel flight) async {
     await _storageService.saveFlight(flight);
     if (_trackingService.settings.autoUploadToXContest) {
@@ -229,6 +270,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   @override
   void dispose() {
     _timer?.cancel();
+    _lifecycleListener?.dispose();
+    if (_ownsThermalPrefetch) _thermalPrefetch?.dispose();
     _syntheticTelemetry?.dispose();
     _flightCompletedSub?.cancel();
     _screenManager.removeListener(_syncReplayTelemetry);
@@ -317,6 +360,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                         screenManager: _screenManager,
                         trackingService: _trackingService,
                         uploadService: _uploadService,
+                        thermalPrefetchService: _thermalPrefetch,
                       )
                     : widget.config.enabled
                     ? _MockFlightView(

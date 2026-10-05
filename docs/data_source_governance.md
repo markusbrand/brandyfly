@@ -56,7 +56,7 @@ To ensure that offline bundles and public releases comply with license terms, pr
 ### 2.6 Thermal-Derived Data
 | Candidate / Provider | Dataset Identifier | License / Terms | Decision | Review Expiry | Attribution & Redistribution Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Thermal.kk7.ch** | `thermal-kk7-hotspots` | [KK7 Terms](http://thermal.kk7.ch/) | **Approved** | 2027-08-07 | Attribution: `Thermal map © thermal.kk7.ch`. Non-commercial paragliding use and offline layer packaging permitted. Data consists of statistical climb aggregations (contains no individual pilot tracklogs). |
+| **Thermal.kk7.ch** | `thermal-kk7-hotspots` | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) ([KK7 Developers](https://thermal.kk7.ch/)) | **Approved** | 2027-10-05 | Attribution: `Thermal map © thermal.kk7.ch, CC BY-NC-SA 4.0` shown while the layer is visible. Non-commercial use only. Each device fetches unmodified tiles directly from thermal.kk7.ch (browse cache + per-region prefetch); **no redistribution** via BrandyFly servers, CDN or region packages. Every request appends `src=brandyfly`; max 4 req/s, 2 concurrent. Requests carry no position/identity, but tile coordinates reveal viewed areas (same as base map tiles). Author (M. von Känel) informed about expected prefetch load via email to info@kk7.ch on 2026-10-05; awaiting reply. Data consists of statistical climb aggregations (contains no individual pilot tracklogs). |
 | **Raw Crowdsourced IGC Tracklog Mining** | `raw-crowdsourced-igc-mining` | Unverified Portal Data | **Blocked** | 2027-08-07 | Blocked pending explicit consent model, anonymization pipeline, and data ingestion agreements. |
 
 ---

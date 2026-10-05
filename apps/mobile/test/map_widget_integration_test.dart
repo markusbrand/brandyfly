@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:brandyfly/domain/thermal/thermal_layer_spec.dart';
 import 'package:brandyfly/models/flight_model.dart';
 import 'package:brandyfly/models/lat_lng.dart';
 import 'package:brandyfly/models/ui_config.dart';
@@ -127,7 +128,10 @@ void main() {
         await tester.pumpAndSettle();
 
         // Perform pan drag on the map surface
-        await tester.drag(find.byType(CustomPaint).first, const Offset(60, -40));
+        await tester.drag(
+          find.byType(CustomPaint).first,
+          const Offset(60, -40),
+        );
         await tester.pumpAndSettle();
 
         // Zoom In multiple times
@@ -192,9 +196,7 @@ void main() {
 
         await tester.pumpWidget(
           MaterialApp(
-            home: Scaffold(
-              body: WidgetPickerSheet(screenManager: manager),
-            ),
+            home: Scaffold(body: WidgetPickerSheet(screenManager: manager)),
           ),
         );
         await tester.pumpAndSettle();
@@ -229,7 +231,10 @@ void main() {
 
         final manager = ScreenManagerService();
         // Use freeform HUD layout so all handles are clean
-        manager.setScreenLayoutStrategy('normal_flight', LayoutStrategyStyle.freeformHud);
+        manager.setScreenLayoutStrategy(
+          'normal_flight',
+          LayoutStrategyStyle.freeformHud,
+        );
         manager.addWidget(WidgetType.map);
         manager.toggleEditMode(true);
 
@@ -245,25 +250,33 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final mapModel = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+        final mapModel = manager.activeScreen.widgets.firstWhere(
+          (w) => w.type == WidgetType.map,
+        );
         final mapId = mapModel.id;
 
         // Decrease width from 16 to 15
         manager.resizeWidget(mapId, -1, 0);
         await tester.pumpAndSettle();
-        var updatedMap = manager.activeScreen.widgets.firstWhere((w) => w.id == mapId);
+        var updatedMap = manager.activeScreen.widgets.firstWhere(
+          (w) => w.id == mapId,
+        );
         expect(updatedMap.w, 15);
 
         // Move right by 1
         manager.moveWidget(mapId, 1, 0);
         await tester.pumpAndSettle();
-        updatedMap = manager.activeScreen.widgets.firstWhere((w) => w.id == mapId);
+        updatedMap = manager.activeScreen.widgets.firstWhere(
+          (w) => w.id == mapId,
+        );
         expect(updatedMap.x, 1);
 
         // Decrease height from 32 to 31
         manager.resizeWidget(mapId, 0, -1);
         await tester.pumpAndSettle();
-        updatedMap = manager.activeScreen.widgets.firstWhere((w) => w.id == mapId);
+        updatedMap = manager.activeScreen.widgets.firstWhere(
+          (w) => w.id == mapId,
+        );
         expect(updatedMap.h, 31);
       },
     );
@@ -280,7 +293,9 @@ void main() {
         manager.addWidget(WidgetType.map);
         manager.toggleEditMode(true);
 
-        final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+        final mapWidget = manager.activeScreen.widgets.firstWhere(
+          (w) => w.type == WidgetType.map,
+        );
         final id = mapWidget.id;
         manager.selectWidget(id);
 
@@ -321,7 +336,9 @@ void main() {
         await tester.tap(find.text('Apply'));
         await tester.pumpAndSettle();
 
-        final updated = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
+        final updated = manager.activeScreen.widgets.firstWhere(
+          (w) => w.id == id,
+        );
         expect(updated.mapStyle, MapWidgetStyle.satelliteTerrain);
         expect(updated.mapOrientation, MapOrientation.headingUp);
         expect(updated.mapShowAirspace, false);
@@ -340,7 +357,9 @@ void main() {
         manager.addWidget(WidgetType.map);
         manager.toggleEditMode(true);
 
-        final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+        final mapWidget = manager.activeScreen.widgets.firstWhere(
+          (w) => w.type == WidgetType.map,
+        );
         final id = mapWidget.id;
         manager.selectWidget(id);
 
@@ -379,7 +398,9 @@ void main() {
         await tester.tap(find.text('Apply'));
         await tester.pumpAndSettle();
 
-        final updated = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
+        final updated = manager.activeScreen.widgets.firstWhere(
+          (w) => w.id == id,
+        );
         expect(updated.mapZoomLevel, 11.0);
         expect(updated.effectiveMapZoomLevel, 11.0);
       },
@@ -453,9 +474,7 @@ void main() {
               body: SizedBox(
                 width: 400,
                 height: 400,
-                child: MapWidget(
-                  style: MapWidgetStyle.alpineRelief,
-                ),
+                child: MapWidget(style: MapWidgetStyle.alpineRelief),
               ),
             ),
           ),
@@ -463,7 +482,10 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.textContaining('No offline data'), findsOneWidget);
-        expect(find.text('No offline data (Overview fallback)'), findsOneWidget);
+        expect(
+          find.text('No offline data (Overview fallback)'),
+          findsOneWidget,
+        );
       },
     );
 
@@ -571,8 +593,8 @@ void main() {
               vario: (i % 3 == 0)
                   ? 2.6
                   : (i % 3 == 1)
-                      ? 0.1
-                      : -1.8,
+                  ? 0.1
+                  : -1.8,
             ),
           );
         }
@@ -650,7 +672,9 @@ void main() {
         manager.addWidget(WidgetType.map);
         manager.toggleEditMode(true);
 
-        final mapWidget = manager.activeScreen.widgets.firstWhere((w) => w.type == WidgetType.map);
+        final mapWidget = manager.activeScreen.widgets.firstWhere(
+          (w) => w.type == WidgetType.map,
+        );
         final id = mapWidget.id;
         manager.selectWidget(id);
 
@@ -673,17 +697,21 @@ void main() {
         expect(find.text('Show Older Tail'), findsOneWidget);
 
         // Select a 5-minute history window.
+        await tester.ensureVisible(find.text('5m'));
         await tester.tap(find.text('5m'));
         await tester.pumpAndSettle();
 
         // Toggle older tail off.
+        await tester.ensureVisible(find.text('Show Older Tail'));
         await tester.tap(find.text('Show Older Tail'));
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Apply'));
         await tester.pumpAndSettle();
 
-        final updated = manager.activeScreen.widgets.firstWhere((w) => w.id == id);
+        final updated = manager.activeScreen.widgets.firstWhere(
+          (w) => w.id == id,
+        );
         expect(updated.mapTrackHistoryMinutes, 5);
         expect(updated.mapTrackShowOlderTail, false);
       },
@@ -695,11 +723,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                width: 400,
-                height: 400,
-                child: MapWidget(),
-              ),
+              body: SizedBox(width: 400, height: 400, child: MapWidget()),
             ),
           ),
         );
@@ -709,7 +733,10 @@ void main() {
         expect(recenterBtn, findsOneWidget);
 
         // Pan to disengage center-lock and start 6s timer
-        await tester.drag(find.byType(CustomPaint).first, const Offset(100, 50));
+        await tester.drag(
+          find.byType(CustomPaint).first,
+          const Offset(100, 50),
+        );
         await tester.pumpAndSettle();
 
         // Advance time past the 6-second auto-recenter timeout
@@ -777,18 +804,17 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                width: 400,
-                height: 400,
-                child: MapWidget(),
-              ),
+              body: SizedBox(width: 400, height: 400, child: MapWidget()),
             ),
           ),
         );
         await tester.pumpAndSettle();
 
         // Pan to uncenter
-        await tester.drag(find.byType(CustomPaint).first, const Offset(100, 50));
+        await tester.drag(
+          find.byType(CustomPaint).first,
+          const Offset(100, 50),
+        );
         await tester.pumpAndSettle();
 
         // Tap recenter button
@@ -826,19 +852,28 @@ void main() {
 
         dynamic painter = tester
             .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .firstWhere(
+              (cp) =>
+                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
+            )
             .painter;
 
         expect(painter.cameraCenter, equals(pilot));
         expect(painter.pilotPosition, equals(pilot));
 
         // Drag 100 pixels right (+X) and 50 pixels up (-Y) on map_gesture_detector
-        await tester.drag(find.byKey(const Key('map_gesture_detector')), const Offset(100, -50));
+        await tester.drag(
+          find.byKey(const Key('map_gesture_detector')),
+          const Offset(100, -50),
+        );
         await tester.pumpAndSettle();
 
         painter = tester
             .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .firstWhere(
+              (cp) =>
+                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
+            )
             .painter;
 
         // Camera center has translated in geographic space
@@ -860,7 +895,10 @@ void main() {
 
         painter = tester
             .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .firstWhere(
+              (cp) =>
+                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
+            )
             .painter;
 
         // Camera center is restored to pilot position
@@ -921,7 +959,10 @@ void main() {
 
         dynamic painter = tester
             .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .firstWhere(
+              (cp) =>
+                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
+            )
             .painter;
 
         expect(painter.cameraCenter.latitude, closeTo(newLat, 1e-5));
@@ -933,7 +974,10 @@ void main() {
 
         painter = tester
             .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .firstWhere(
+              (cp) =>
+                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
+            )
             .painter;
 
         expect(painter.cameraCenter, equals(pilot));
@@ -941,7 +985,7 @@ void main() {
     );
 
     testWidgets(
-      'TC-MAP-018: Verifies mock airspace and thermal hotspots remain anchored to static geographic coordinates as pilot flies',
+      'TC-MAP-018: Verifies mock airspace stays anchored and no mock thermal markers are painted as pilot flies',
       (tester) async {
         final mockService = _TrackingMapLibreMapService();
         const initialPilot = LatLng(47.525, 13.685);
@@ -968,7 +1012,10 @@ void main() {
 
         dynamic painter1 = tester
             .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .firstWhere(
+              (cp) =>
+                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
+            )
             .painter;
 
         expect(painter1.pilotPosition, equals(initialPilot));
@@ -994,15 +1041,22 @@ void main() {
 
         dynamic painter2 = tester
             .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere((cp) => cp.painter.runtimeType.toString() == '_FlightOverlayPainter')
+            .firstWhere(
+              (cp) =>
+                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
+            )
             .painter;
 
         expect(painter2.pilotPosition, equals(movedPilot));
 
-        // Verify that the static mock coordinates in painter definition do not shift with the pilot
-        // (defaultMockAirspacePolygon and defaultMockThermalHotspots are fixed constants)
+        // Verify that the static mock airspace coordinates in the painter
+        // definition do not shift with the pilot.
         final fixedAirspace = painter2.runtimeType.toString();
         expect(fixedAirspace, equals('_FlightOverlayPainter'));
+
+        // Thermal information now comes from the KK7 raster layer; the
+        // overlay painter no longer knows about (mock) thermals at all.
+        expect(() => painter2.showThermals, throwsNoSuchMethodError);
       },
     );
   });
@@ -1017,7 +1071,11 @@ class _TrackingMapLibreMapService extends MapLibreMapService {
   int animateCameraCallCount = 0;
 
   @override
-  Future<String> buildStyleJson({String? regionId, String? baseTemplateJson}) async {
+  Future<String> buildStyleJson({
+    String? regionId,
+    String? baseTemplateJson,
+    ThermalLayerSpec? thermal,
+  }) async {
     return '{"version": 8, "sources": {}, "layers": []}';
   }
 
