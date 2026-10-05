@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_contracts-v0.3.0...brandyfly_contracts-v0.4.0) (2026-10-05)
+
+
+### Features
+
+* **map:** KK7 thermal probability heatmap with offline region prefetch ([#241](https://github.com/markusbrand/brandyfly/issues/241)) ([4ccb751](https://github.com/markusbrand/brandyfly/commit/4ccb751f06005ea3b90627117f55140180e86f37))
+
 ## [0.3.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_contracts-v0.2.0...brandyfly_contracts-v0.3.0) (2026-09-23)
 
 
