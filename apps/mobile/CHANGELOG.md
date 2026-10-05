@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.11.0...brandyfly-v0.12.0) (2026-10-05)
+
+
+### Features
+
+* **map:** KK7 thermal probability heatmap with offline region prefetch ([#241](https://github.com/markusbrand/brandyfly/issues/241)) ([4ccb751](https://github.com/markusbrand/brandyfly/commit/4ccb751f06005ea3b90627117f55140180e86f37))
+* **ui:** granular 16x32 grid, placeable map controls, layered UI architecture ([#237](https://github.com/markusbrand/brandyfly/issues/237)) ([99e960b](https://github.com/markusbrand/brandyfly/commit/99e960bc54ef9d92e49fc1d2e1e028b54276e42c))
+
+
+### Bug Fixes
+
+* **ui:** do not hide vertical vario bar in tiny widget slots ([#239](https://github.com/markusbrand/brandyfly/issues/239)) ([1824317](https://github.com/markusbrand/brandyfly/commit/1824317ffa8d55a451a3d3befeaad2b49abae2ee))
+
 ## [0.11.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.10.0...brandyfly-v0.11.0) (2026-10-01)
 
 
