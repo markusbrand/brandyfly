@@ -41,5 +41,20 @@
 
 - [x] 7.1 Run `flutter analyze` and `flutter test` in `apps/mobile` and verify both pass with no new warnings
 - [x] 7.2 Run a performance check: with the heatmap visible the existing telemetry/UI performance tests (`test/perf`, `telemetry_latency_and_perf_test.dart`) stay within their thresholds, and `test/perf/thermal_prefetch_load_test.dart` shows a 50 Hz telemetry timer stays on time (p95 < 16 ms) while prefetch runs at 250x the production rate
-- [ ] 7.3 Manual device check (Android): download or place a region, let prefetch complete, enable airplane mode, and verify the heatmap renders offline for all four time variants of the current season. Record evidence in the PR
+- [x] 7.3 Manual device check (Android): download or place a region, let prefetch complete, enable airplane mode, and verify the heatmap renders offline for all four time variants of the current season. Record evidence in the PR
 - [x] 7.4 Run `npx openspec validate --all --strict` and verify it passes
+- [x] 7.5 Make MapLibre Android request tiles from the loopback server while the device has no connectivity (`MapLibre.setConnected(true)` in `MainActivity`). Verify on the emulator that the heatmap renders in airplane mode
+
+## Verification evidence
+
+- Automated: `flutter analyze` clean; `flutter test` 454 passed (1 pre-existing skip); `cargo fmt --check`, `cargo clippy -p brandyfly_contracts`, `cargo test` and `tools/validate-data-sources.sh` pass; `openspec validate --all --strict` passes.
+- Live KK7 check (2026-10-05): 52/52 real tiles prefetched for a small Krippenstein bbox and served offline through the loopback server. KK7 answers empty tiles with HTTP 200 and a 68-byte image; real tiles average about 6 KB.
+- Android emulator (`brandyfly_test_device`, API 34, `-gpu host -no-snapshot`), 2026-10-06: a header-only test region (13.45-13.95 E, 47.35-47.70 N) was prefetched automatically on app start (292/292 tiles, 4 `oct_*` variants, 1.6 MB, about 4 requests/s). With the browse cache deleted and airplane mode on, the heatmap rendered from the region store for the morning, midday, evening and all-day variants at zoom 11; the browse cache stayed empty. Labels rendered correctly.
+- Performance: a 50 Hz timer stayed within 2 ms while prefetch ran at 250x the production rate.
+
+## Open limitations
+
+- MapLibre Android pauses all tile requests while Android reports no connectivity. This also affected the existing offline base map and terrain; task 7.5 fixes it for the whole app. Not yet checked on a physical device or on iOS.
+- The KK7 author was informed about the expected load on 2026-10-05; no reply yet. Request rate, zoom limit and prefetched variants are single constants if changes are requested.
+- Map labels render incorrectly in the emulator's software GPU mode (`swiftshader_indirect`); use `-gpu host -no-snapshot` (see `docs/development.md`).
+- No region download manager exists yet; regions currently have to be placed under `regions/<id>/map.pmtiles`.

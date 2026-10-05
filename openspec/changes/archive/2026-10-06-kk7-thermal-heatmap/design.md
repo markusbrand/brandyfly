@@ -54,6 +54,10 @@ Per map widget, in the `ui_config.dart` widget config: `mapShowThermals` (existi
 ### D7. Region bounds source
 `RegionBoundsProvider` returns catalog bounds when available and otherwise reads them from the `map.pmtiles` header. This decouples the change from `offline-region-download-manager` while keeping it ready to integrate.
 
+### D8. Keep MapLibre requesting tiles while the device is offline
+MapLibre Android stops issuing tile requests when Android reports no connectivity, including requests to `127.0.0.1`. Since every map source is served by the loopback tile server, which already falls back to local data or a transparent tile, `MainActivity` calls `MapLibre.setConnected(true)` at startup. Found during the airplane-mode device check; it also fixes the existing offline base map and terrain.
+- *Alternative*: register the loopback URLs as a MapLibre offline region or use `file://` sources. Rejected because PMTiles serving and the thermal fallback chain live in the tile server.
+
 ## Risks / Trade-offs
 
 - [KK7 changes URL scheme, layer names or terms] → All provider constants live in one place. Failures degrade to a transparent layer. The governance entry gets a revalidation date and a note to contact the author.
