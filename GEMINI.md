@@ -7,7 +7,7 @@ Always follow these guidelines when asked to start the paragliding vario applica
 Run the paragliding vario application on authentic target environments (Android Emulator or physical device on Linux, iOS Simulator on macOS):
 
 - **Command (Android Emulator / Device)**: `flutter run -d android --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true`
-  - If the emulator is not already running, launch it with: `flutter emulators --launch brandyfly_test_device` or `~/Android/Sdk/emulator/emulator -avd brandyfly_test_device`
+  - If the emulator is not already running, launch it with: `~/Android/Sdk/emulator/emulator -avd brandyfly_test_device -gpu host -no-snapshot` (detached when started from a script). Never use `-gpu swiftshader_indirect` (map labels render pink/green/red or not at all) and do not restore the quick-boot snapshot (crashes with host GPU). See `docs/development.md` → "Emulator GPU and snapshot pitfalls".
 - **Command (iOS Simulator on macOS)**: `flutter run -d iPhone --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true`
 - **Working Directory**: `/home/markus/Projects/private/brandyfly/apps/mobile`
 - **Tool Options**:
