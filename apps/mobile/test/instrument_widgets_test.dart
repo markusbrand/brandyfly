@@ -1,6 +1,7 @@
 import 'package:brandyfly/models/flight_model.dart';
 import 'package:brandyfly/models/flight_settings.dart';
 import 'package:brandyfly/models/ui_config.dart';
+import 'package:brandyfly/domain/models/size_tier.dart';
 import 'package:brandyfly/services/flight_replay_service.dart';
 import 'package:brandyfly/services/flight_storage_service.dart';
 import 'package:brandyfly/services/xcontest_upload_service.dart';
@@ -178,6 +179,21 @@ void main() {
         ),
       );
       expect(find.text('-1.8'), findsOneWidget);
+    });
+
+    testWidgets('renders verticalEdgeBar even when size tier is tiny', (tester) async {
+      await tester.pumpWidget(
+        wrapWidget(
+          const VarioLiftSinkBar(
+            climbRateMs: 2.5,
+            style: LiftSinkBarStyle.verticalEdgeBar,
+            tier: SizeTier.tiny,
+          ),
+        ),
+      );
+      // Renders vertical edge bar elements (+2.5, m/s), not the tiny numeric pill
+      expect(find.text('+2.5'), findsOneWidget);
+      expect(find.text('m/s'), findsOneWidget);
     });
 
     testWidgets('renders analogDial style', (tester) async {

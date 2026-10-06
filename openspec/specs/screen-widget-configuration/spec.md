@@ -196,7 +196,8 @@ Instrument widgets SHALL minimize internal padding and margins and select one of
 
 #### Scenario: Tiny tier rendering
 - **WHEN** an instrument widget renders with a shortest side below 40 dp
-- **THEN** it SHALL show only its primary value (or primary graphic) with no label or unit, without clipping or overflow.
+- **THEN** it SHALL show only its primary value (or primary graphic) with no label or unit, without clipping or overflow
+- **AND** for edge-style vario indicators (`LiftSinkBarStyle.verticalEdgeBar`), the widget SHALL preserve and render its dedicated continuous vertical edge bar graphic across the slot rather than collapsing into the tiny numeric pill.
 
 #### Scenario: Tier selection follows rendered size, not grid units
 - **WHEN** the same widget placement renders on canvases of different sizes

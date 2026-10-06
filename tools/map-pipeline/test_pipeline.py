@@ -284,6 +284,14 @@ regions:
         expected_offsets = [0, 100, 300, 0]
         self.assertEqual(decoded_offsets, expected_offsets)
 
+    def test_download_url_security_validation(self):
+        """Verifies download_file enforces strict URL validation to prevent SSRF."""
+        from download_osm import download_file
+        with self.assertRaises(ValueError):
+            download_file("https://attacker.com/malicious.pbf", "/tmp/test.pbf")
+        with self.assertRaises(ValueError):
+            download_file("http://download.geofabrik.de/insecure.pbf", "/tmp/test.pbf")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,10 @@ The application SHALL render OpenStreetMap vector tiles from locally stored PMTi
 - **WHEN** the MapLibre Native engine loads local PMTiles vector tiles on Android or iOS
 - **THEN** tiles are resolved via an internal loopback HTTP server (`127.0.0.1`) serving tile payloads directly from local archives or cached proxy storage without requiring custom native URI scheme support, permitted by platform network security configurations on both Android and iOS
 
+#### Scenario: Loopback HTTP tile server CORS restriction
+- **WHEN** the embedded loopback HTTP tile server processes requests for vector tiles, terrain tiles, or health probes
+- **THEN** responses SHALL NOT contain wildcard `Access-Control-Allow-Origin: *` headers, ensuring local browsers and webviews cannot perform unauthorized cross-origin reads against loopback endpoints
+
 #### Scenario: Development simulation vector fallback
 - **WHEN** the application runs in local mock flight mode or development testing without a downloaded regional archive
 - **THEN** vector tile requests gracefully fall back to an active open vector tile endpoint (OpenFreeMap snapshot) or bundled overview data, caching downloaded tiles locally so OpenStreetMap features render visibly on simulation displays

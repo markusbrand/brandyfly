@@ -5,14 +5,15 @@ The terrain-RGB PMTiles files downloaded per region (issue #84, #85) serve dual 
 ## Architecture Decisions
 
 ### 1. Dart PMTiles reader
+*(Implemented in `apps/mobile/lib/services/pmtiles_reader.dart` as part of change `embedded-tile-server-pmtiles`)*
 
-Implement a lightweight Dart library to read individual tiles from PMTiles archives:
+A lightweight Dart library reads individual tiles from PMTiles archives:
 - Parse the PMTiles v3 header and root/leaf directory entries
 - Support random access to individual tiles by (z, x, y) coordinate
 - Handle gzip/brotli tile compression
 - Operate on `RandomAccessFile` for efficient seek-based reads without loading the entire archive
 
-This reader is independent of MapLibre — it reads the same file but through Dart I/O, enabling programmatic pixel access.
+This reader is independent of MapLibre — it reads the same file but through Dart I/O, enabling programmatic pixel access for ElevationService.
 
 ### 2. Coordinate-to-pixel pipeline
 
