@@ -47,14 +47,7 @@ The screen layout strategy SHALL sort and render widgets in a specific vertical 
 - **THEN** the base map is rendered at layer 0, the thermal map at layer 1, and the numeric instruments at layer 2+.
 
 ### Requirement: Lift and Sink Circles Visualization
-The thermal map widget SHALL render circling flight track points as colored circular markers indicating instantaneous or smoothed vario climb rates:
-- Positive climb rate (lift) SHALL be rendered in green hue (`#00E676` / `#4CAF50`).
-- Negative climb rate (sink) SHALL be rendered in red hue (`#FF1744` / `#F44336`).
-- Neutral climb rate (0.0 m/s) SHALL be rendered as a neutral dot or transition point.
-- Color opacity (alpha transparency) SHALL scale proportionally with the magnitude of lift/sink:
-  - Strong lift (>= +3.0 m/s) and strong sink (<= -2.5 m/s) SHALL render at full opacity (1.0).
-  - Weak lift (+0.1 to +0.5 m/s) and weak sink (-0.1 to -0.5 m/s) SHALL render with light transparency (0.25 to 0.40).
-  - Intermediate values SHALL interpolate smoothly between the minimum and maximum opacity.
+The thermal map widget SHALL render circling flight track points as colored circular markers indicating instantaneous or smoothed vario climb rates. Positive climb rate (lift) SHALL be rendered in green, negative climb rate (sink) in red, and neutral climb rate (0.0 m/s) as neutral. Marker opacity SHALL scale proportionally with the magnitude of lift/sink from light transparency for weak values up to full opacity (1.0) for strong values (>= +3.0 m/s or <= -2.5 m/s).
 
 #### Scenario: Visualizing strong thermal lift
 - **WHEN** the glider circles through a strong core of +3.5 m/s
