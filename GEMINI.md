@@ -9,7 +9,10 @@ Run the paragliding vario application on authentic target environments (Android 
 - **Command (Android Emulator / Device)**: `flutter run -d android --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true`
   - If the emulator is not already running, launch it with: `~/Android/Sdk/emulator/emulator -avd brandyfly_test_device -gpu host -no-snapshot` (detached when started from a script). Never use `-gpu swiftshader_indirect` (map labels render pink/green/red or not at all) and do not restore the quick-boot snapshot (crashes with host GPU). See `docs/development.md` → "Emulator GPU and snapshot pitfalls".
 - **Command (iOS Simulator on macOS)**: `flutter run -d iPhone --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true`
-- **Working Directory**: `/home/markus/Projects/private/brandyfly/apps/mobile`
+  - **Simulator window visibility**: On macOS (Xcode 16+ / 27+), standalone `Simulator.app` is superseded by **Device Hub** (`/Applications/Xcode.app/Contents/Applications/DeviceHub.app`). Starting the simulator via CLI or Flutter boots it headless in the background. To ensure the emulator window is visible:
+    1. If not already booted: `xcrun simctl boot "iPhone 17"` (install platform runtime via `xcodebuild -downloadPlatform iOS` if needed).
+    2. Open and focus Device Hub: `open "/Applications/Xcode.app/Contents/Applications/DeviceHub.app"` and `osascript -e 'tell application "DeviceHub" to activate'`.
+- **Working Directory**: `apps/mobile` (`/Users/mbrandstaetter/Projects/private/brandyfly/apps/mobile` on macOS, `/home/markus/Projects/private/brandyfly/apps/mobile` on Linux)
 - **Tool Options**:
   - `IsDaemon: true`
   - `RunPersistent: true`
