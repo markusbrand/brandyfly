@@ -7,7 +7,7 @@ Provides local-first, offline vector map rendering and terrain hillshade visuali
 ## Requirements
 
 ### Requirement: Local PMTiles vector tile rendering
-The application SHALL render OpenStreetMap vector tiles from locally stored PMTiles archives using the native MapLibre GL engine on target mobile platforms (Android and iOS) and authentic mobile emulators without any network requests during flight when regional data is installed, served via an embedded loopback HTTP tile service. When regional PMTiles data is absent, the tile service SHALL transparently proxy and disk-cache online vector tiles from open providers in both simulation and real application environments, and the UI SHALL indicate whether offline data or an online preview is active.
+The application SHALL render OpenStreetMap vector tiles from locally stored PMTiles archives using the native MapLibre GL engine on target mobile platforms (Android and iOS) and authentic mobile emulators without any network requests during flight when regional data is installed, served via an embedded loopback HTTP tile service. When regional PMTiles data is absent, the tile service SHALL transparently proxy and disk-cache online vector tiles from open providers in both simulation and real application environments, and the UI SHALL indicate whether offline data or an online preview is active. The loopback tile server SHALL NOT include permissive wildcard CORS headers (`Access-Control-Allow-Origin: *`) on responses.
 
 #### Scenario: Offline map display from local PMTiles
 - **WHEN** a PMTiles archive is present in the local region storage for the pilot's current location
@@ -16,6 +16,10 @@ The application SHALL render OpenStreetMap vector tiles from locally stored PMTi
 #### Scenario: Loopback HTTP tile server compatibility
 - **WHEN** the MapLibre Native engine loads local PMTiles vector tiles on Android or iOS
 - **THEN** tiles are resolved via an internal loopback HTTP server (`127.0.0.1`) serving tile payloads directly from local archives or cached proxy storage without requiring custom native URI scheme support, permitted by platform network security configurations on both Android and iOS
+
+#### Scenario: Restrictive loopback CORS policy
+- **WHEN** an HTTP client queries the local loopback tile server health or tile endpoints
+- **THEN** the server responses omit wildcard `Access-Control-Allow-Origin` headers to protect local tile assets from cross-origin browser extraction
 
 #### Scenario: Development simulation vector fallback
 - **WHEN** the application runs in local mock flight mode or development testing without a downloaded regional archive

@@ -175,16 +175,17 @@ The main navigation drawer and application controls SHALL remain hidden during f
 - **AND** dismiss the navigation drawer without requiring multiple clicks.
 
 ### Requirement: High-Density Zero-Dead-Space Instrument Widgets
-Instrument widgets SHALL minimize internal padding and margins and select one of three content tiers based on their rendered pixel size: **tiny** (shortest side < 40 dp: value only), **compact** (shortest side < 80 dp: value plus short label or unit), and **regular** (full label, value and unit). Digits SHALL scale to fill the tier's value area.
+Instrument widgets SHALL minimize internal padding and margins and select one of three content tiers based on their rendered pixel size: **tiny** (shortest side < 40 dp: value only), **compact** (shortest side < 80 dp: value plus short label or unit), and **regular** (full label, value and unit). Digits SHALL scale to fill the tier's value area. The vario lift/sink bar widget SHALL preserve its vertical edge bar graphic indicator even when assigned to tiny tier slots.
+
+#### Scenario: Responsive vario bar expansion within allocated bounds
+- **WHEN** the vario lift/sink bar widget is rendered on a screen
+- **THEN** the indicator bar and numerical climb/sink text SHALL dynamically scale to fill the full height and width of the widget cell across varying aspect ratios
+- **AND** the vertical edge bar style SHALL remain visible as a graphical bar indicator in tiny tier slots instead of hiding the bar graphic.
 
 #### Scenario: Numeric instrument widget typography maximization
 - **WHEN** a numeric instrument widget (Altitude, Speed, Glide, HAG) is placed on a screen
 - **THEN** the widget SHALL minimize internal padding (<= 3px) and expand numerical digits to fill the value area with maximum legibility
 - **AND** align the label and unit cleanly without leaving unused dead space across sizes from 1x1 up to full screen width.
-
-#### Scenario: Responsive vario bar expansion within allocated bounds
-- **WHEN** the vario lift/sink bar widget is rendered on a screen
-- **THEN** the indicator bar and numerical climb/sink text SHALL dynamically scale to fill the full height and width of the widget cell across varying aspect ratios.
 
 #### Scenario: Responsive sparkline and wind widget rendering
 - **WHEN** altitude sparkline charts or wind direction indicators are rendered
