@@ -134,9 +134,8 @@ class ForwardAirspaceBlock {
 class AirspaceService extends ChangeNotifier {
   AirspaceService({
     BrandyflyNative? nativeClient,
-    ElevationService? elevationService,
-  })  : _native = nativeClient ?? const BrandyflyNative(),
-        _elevationService = elevationService;
+    this._elevationService,
+  })  : _native = nativeClient ?? const BrandyflyNative();
 
   final BrandyflyNative _native;
   final ElevationService? _elevationService;

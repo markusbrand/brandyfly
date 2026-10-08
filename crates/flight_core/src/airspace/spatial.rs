@@ -303,7 +303,7 @@ fn build_str_tree<T: Clone>(items: &mut [(BoundingBox, T)]) -> RTreeNode<T> {
 
     let num_leaves = (items.len() as f64 / MAX_LEAF_ITEMS as f64).ceil() as usize;
     let num_vertical_slices = (num_leaves as f64).sqrt().ceil() as usize;
-    let slice_size = (items.len() + num_vertical_slices - 1) / num_vertical_slices;
+    let slice_size = items.len().div_ceil(num_vertical_slices);
 
     let mut leaf_nodes = Vec::new();
 
@@ -360,11 +360,7 @@ fn build_branch_hierarchy<T: Clone>(mut nodes: Vec<RTreeNode<T>>) -> RTreeNode<T
     nodes.remove(0)
 }
 
-fn query_node<'a, T>(
-    node: &'a RTreeNode<T>,
-    target_bbox: &BoundingBox,
-    results: &mut Vec<&'a T>,
-) {
+fn query_node<'a, T>(node: &'a RTreeNode<T>, target_bbox: &BoundingBox, results: &mut Vec<&'a T>) {
     if !node.bbox().intersects(target_bbox) {
         return;
     }

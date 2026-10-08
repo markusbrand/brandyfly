@@ -11,6 +11,14 @@ pub mod replay_fixtures;
 pub mod thermal;
 pub mod wind;
 
+pub use airspace::{
+    Airspace, AirspaceBenchmarkResult, AirspaceClass, AirspaceDefinition, AirspaceEvaluationInput,
+    AirspaceEvaluationOutput, AirspaceProximity, AirspaceProximityEngine, AirspaceStore,
+    AlertLevel, ArcDirection, BoundingBox, Coordinate, ForwardAirspaceIntersection, GeometryRecord,
+    RTree, VerticalLimit, airspace_clear_store, airspace_count, airspace_evaluate,
+    airspace_init_store, airspace_load_dach_fixture, evaluate_airspace_proximity, parse_openair,
+    project_glide_slope, run_airspace_proximity_benchmark,
+};
 pub use benchmark::{BenchmarkConfig, run_pipeline_benchmark};
 pub use bounded_pipeline::{
     AudioToneCommand, AudioToneState, BoundedEventQueue, BoundedFlightPipeline, KpiSnapshot,
@@ -21,14 +29,6 @@ pub use durable_recorder::{
     RecoveryReport, calculate_crc32, recover_flight_records,
 };
 pub use procedural_generator::{ProceduralFlightGenerator, ProceduralManeuver, TelemetrySource};
-pub use airspace::{
-    Airspace, AirspaceBenchmarkResult, AirspaceClass, AirspaceDefinition, AirspaceEvaluationInput,
-    AirspaceEvaluationOutput, AirspaceProximity, AirspaceProximityEngine, AirspaceStore,
-    AlertLevel, ArcDirection, BoundingBox, Coordinate, ForwardAirspaceIntersection,
-    GeometryRecord, RTree, VerticalLimit, airspace_clear_store, airspace_count, airspace_evaluate,
-    airspace_init_store, airspace_load_dach_fixture, evaluate_airspace_proximity, parse_openair,
-    project_glide_slope, run_airspace_proximity_benchmark,
-};
 pub use replay_fixtures::{
     SkyDrop1ReplayGenerator, SkyDrop1ReplayScenario, SyntheticReplayGenerator,
     SyntheticReplayScenario, replay_skydrop1_sequence,

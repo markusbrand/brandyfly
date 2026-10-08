@@ -263,10 +263,7 @@ pub enum GeometryRecord {
         end_angle_deg: f64,
     },
     /// Arc between two endpoint coordinates around current center (`DB`)
-    ArcByPoints {
-        start: Coordinate,
-        end: Coordinate,
-    },
+    ArcByPoints { start: Coordinate, end: Coordinate },
 }
 
 /// Raw parsed airspace definition before discretization.

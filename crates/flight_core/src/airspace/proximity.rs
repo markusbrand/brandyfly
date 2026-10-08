@@ -96,7 +96,11 @@ pub fn evaluate_airspace_proximity(
     );
 
     let (v_dist_m, is_v_inside, delta_z) = if aircraft_alt_msl < floor_m {
-        (floor_m - aircraft_alt_msl, false, floor_m - aircraft_alt_msl)
+        (
+            floor_m - aircraft_alt_msl,
+            false,
+            floor_m - aircraft_alt_msl,
+        )
     } else if aircraft_alt_msl > ceiling_m {
         (
             aircraft_alt_msl - ceiling_m,
@@ -123,9 +127,9 @@ pub fn evaluate_airspace_proximity(
         } else {
             AlertLevel::None
         }
-    } else if (h_dist_m < 500.0 && is_v_inside) || (h_dist_m < 500.0 && v_dist_m < 75.0) {
+    } else if h_dist_m < 500.0 && (is_v_inside || v_dist_m < 75.0) {
         AlertLevel::Level2Warning
-    } else if (h_dist_m < 1000.0 && is_v_inside) || (h_dist_m < 1000.0 && v_dist_m < 150.0) {
+    } else if h_dist_m < 1000.0 && (is_v_inside || v_dist_m < 150.0) {
         AlertLevel::Level1Advisory
     } else {
         AlertLevel::None
@@ -181,10 +185,7 @@ impl AirspaceProximityEngine {
             terrain_elevation_msl,
         );
 
-        let state = self
-            .states
-            .entry(airspace.id.clone())
-            .or_insert_with(AirspaceHysteresisState::new);
+        let state = self.states.entry(airspace.id.clone()).or_default();
 
         let raw_level = prox.alert_level;
         let current_level = state.current_level;
@@ -262,6 +263,7 @@ pub struct ForwardAirspaceIntersection {
 
 /// Projects glider glide slope forward along track heading and calculates potential airspace penetration.
 /// Formula: z(x) = h_0 - x / (L/D)
+#[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn project_glide_slope(
     aircraft_pos: Coordinate,
@@ -306,8 +308,7 @@ pub fn project_glide_slope(
         let mut penetrates = false;
 
         for (x, coord, alt) in &forward_points {
-            let (_, is_inside, _) =
-                distance_point_to_polygon_meters(*coord, &airspace.polygon);
+            let (_, is_inside, _) = distance_point_to_polygon_meters(*coord, &airspace.polygon);
 
             if is_inside {
                 if entry_dist.is_none() {
@@ -480,15 +481,8 @@ mod tests {
         // Aircraft flying heading 90 (East) towards the airspace at 10 m/s
         let pos = Coordinate::new(47.25, 11.10); // West of airspace
         let intersections = project_glide_slope(
-            pos,
-            2200.0,
-            10.0,
-            90.0,
-            8.0, // L/D 8.0
-            &airspaces,
-            1013.25,
-            600.0,
-            15_000.0,
+            pos, 2200.0, 10.0, 90.0, 8.0, // L/D 8.0
+            &airspaces, 1013.25, 600.0, 15_000.0,
         );
 
         assert!(!intersections.is_empty());

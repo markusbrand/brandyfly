@@ -21,8 +21,8 @@ pub use ffi::{
 pub use fixtures::DACH_OPENAIR_SAMPLE;
 pub use parser::{
     ParseResult, ParseWarning, discretize_arc_by_angle, discretize_arc_by_points,
-    discretize_circle, geodesic_bearing, geodesic_destination, geodesic_distance,
-    parse_coordinate, parse_openair, parse_vertical_limit,
+    discretize_circle, geodesic_bearing, geodesic_destination, geodesic_distance, parse_coordinate,
+    parse_openair, parse_vertical_limit,
 };
 pub use proximity::{
     AirspaceHysteresisState, AirspaceProximity, AirspaceProximityEngine, AlertLevel,

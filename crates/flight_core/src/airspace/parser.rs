@@ -57,25 +57,30 @@ pub fn parse_openair(input: &str) -> ParseResult {
         match record_tag.as_str() {
             "AC" => {
                 // New airspace block starts
-                if let Some(def) = current_def.take() {
-                    if !def.geometry_records.is_empty() || !def.name.is_empty() {
-                        definitions.push(def);
-                    }
+                if let Some(def) = current_def
+                    .take()
+                    .filter(|d| !d.geometry_records.is_empty() || !d.name.is_empty())
+                {
+                    definitions.push(def);
                 }
-                let mut def = AirspaceDefinition::default();
-                def.class = AirspaceClass::parse_code(payload);
-                def.center_variable = current_center;
-                def.direction_variable = current_direction;
+                let def = AirspaceDefinition {
+                    class: AirspaceClass::parse_code(payload),
+                    center_variable: current_center,
+                    direction_variable: current_direction,
+                    ..AirspaceDefinition::default()
+                };
                 current_def = Some(def);
             }
             "AN" => {
                 if let Some(ref mut def) = current_def {
                     def.name = payload.to_string();
                 } else {
-                    let mut def = AirspaceDefinition::default();
-                    def.name = payload.to_string();
-                    def.center_variable = current_center;
-                    def.direction_variable = current_direction;
+                    let def = AirspaceDefinition {
+                        name: payload.to_string(),
+                        center_variable: current_center,
+                        direction_variable: current_direction,
+                        ..AirspaceDefinition::default()
+                    };
                     current_def = Some(def);
                 }
             }
@@ -101,60 +106,52 @@ pub fn parse_openair(input: &str) -> ParseResult {
                     }
                 }
             }
-            "DP" => {
-                match parse_coordinate(payload) {
-                    Ok(coord) => {
-                        let def = current_def.get_or_insert_with(AirspaceDefinition::default);
-                        def.geometry_records.push(GeometryRecord::Point(coord));
-                    }
-                    Err(err) => warnings.push(ParseWarning {
-                        line_number,
-                        message: format!("Failed to parse point coordinate '{payload}': {err}"),
-                    }),
+            "DP" => match parse_coordinate(payload) {
+                Ok(coord) => {
+                    let def = current_def.get_or_insert_with(AirspaceDefinition::default);
+                    def.geometry_records.push(GeometryRecord::Point(coord));
                 }
-            }
-            "DC" => {
-                match payload.parse::<f64>() {
-                    Ok(radius_nm) if radius_nm > 0.0 => {
-                        let def = current_def.get_or_insert_with(AirspaceDefinition::default);
-                        def.geometry_records
-                            .push(GeometryRecord::Circle { radius_nm });
-                    }
-                    _ => warnings.push(ParseWarning {
-                        line_number,
-                        message: format!("Invalid circle radius '{payload}'"),
-                    }),
+                Err(err) => warnings.push(ParseWarning {
+                    line_number,
+                    message: format!("Failed to parse point coordinate '{payload}': {err}"),
+                }),
+            },
+            "DC" => match payload.parse::<f64>() {
+                Ok(radius_nm) if radius_nm > 0.0 => {
+                    let def = current_def.get_or_insert_with(AirspaceDefinition::default);
+                    def.geometry_records
+                        .push(GeometryRecord::Circle { radius_nm });
                 }
-            }
-            "DA" => {
-                match parse_arc_angle_params(payload) {
-                    Ok((radius_nm, start_deg, end_deg)) => {
-                        let def = current_def.get_or_insert_with(AirspaceDefinition::default);
-                        def.geometry_records.push(GeometryRecord::ArcByAngle {
-                            radius_nm,
-                            start_angle_deg: start_deg,
-                            end_angle_deg: end_deg,
-                        });
-                    }
-                    Err(err) => warnings.push(ParseWarning {
-                        line_number,
-                        message: format!("Failed to parse arc DA parameters '{payload}': {err}"),
-                    }),
+                _ => warnings.push(ParseWarning {
+                    line_number,
+                    message: format!("Invalid circle radius '{payload}'"),
+                }),
+            },
+            "DA" => match parse_arc_angle_params(payload) {
+                Ok((radius_nm, start_deg, end_deg)) => {
+                    let def = current_def.get_or_insert_with(AirspaceDefinition::default);
+                    def.geometry_records.push(GeometryRecord::ArcByAngle {
+                        radius_nm,
+                        start_angle_deg: start_deg,
+                        end_angle_deg: end_deg,
+                    });
                 }
-            }
-            "DB" => {
-                match parse_arc_points_params(payload) {
-                    Ok((start, end)) => {
-                        let def = current_def.get_or_insert_with(AirspaceDefinition::default);
-                        def.geometry_records
-                            .push(GeometryRecord::ArcByPoints { start, end });
-                    }
-                    Err(err) => warnings.push(ParseWarning {
-                        line_number,
-                        message: format!("Failed to parse arc DB parameters '{payload}': {err}"),
-                    }),
+                Err(err) => warnings.push(ParseWarning {
+                    line_number,
+                    message: format!("Failed to parse arc DA parameters '{payload}': {err}"),
+                }),
+            },
+            "DB" => match parse_arc_points_params(payload) {
+                Ok((start, end)) => {
+                    let def = current_def.get_or_insert_with(AirspaceDefinition::default);
+                    def.geometry_records
+                        .push(GeometryRecord::ArcByPoints { start, end });
                 }
-            }
+                Err(err) => warnings.push(ParseWarning {
+                    line_number,
+                    message: format!("Failed to parse arc DB parameters '{payload}': {err}"),
+                }),
+            },
             "V" => {
                 // Variable assignments: V X=..., V D=+|-
                 let upper_payload = payload.to_uppercase();
@@ -168,7 +165,9 @@ pub fn parse_openair(input: &str) -> ParseResult {
                         }
                         Err(err) => warnings.push(ParseWarning {
                             line_number,
-                            message: format!("Failed to parse variable center 'V {payload}': {err}"),
+                            message: format!(
+                                "Failed to parse variable center 'V {payload}': {err}"
+                            ),
                         }),
                     }
                 } else if upper_payload.contains("D=+") {
@@ -199,10 +198,9 @@ pub fn parse_openair(input: &str) -> ParseResult {
         }
     }
 
-    if let Some(def) = current_def {
-        if !def.geometry_records.is_empty() || !def.name.is_empty() {
-            definitions.push(def);
-        }
+    if let Some(def) = current_def.filter(|d| !d.geometry_records.is_empty() || !d.name.is_empty())
+    {
+        definitions.push(def);
     }
 
     // Discretize and compile raw definitions into Airspace instances
@@ -210,10 +208,14 @@ pub fn parse_openair(input: &str) -> ParseResult {
     for (idx, def) in definitions.into_iter().enumerate() {
         let id = format!(
             "{}-{}",
-            if def.name.is_empty() { "airspace" } else { &def.name }
-                .to_lowercase()
-                .replace(|c: char| !c.is_alphanumeric(), "_")
-                .trim_matches('_'),
+            if def.name.is_empty() {
+                "airspace"
+            } else {
+                &def.name
+            }
+            .to_lowercase()
+            .replace(|c: char| !c.is_alphanumeric(), "_")
+            .trim_matches('_'),
             idx + 1
         );
 
@@ -225,18 +227,14 @@ pub fn parse_openair(input: &str) -> ParseResult {
         );
 
         if polygon.len() >= 3 {
-            if let Some(airspace) = Airspace::new(
-                id,
-                if def.name.is_empty() {
-                    format!("Airspace {}", idx + 1)
-                } else {
-                    def.name
-                },
-                def.class,
-                def.floor,
-                def.ceiling,
-                polygon,
-            ) {
+            let name = if def.name.is_empty() {
+                format!("Airspace {}", idx + 1)
+            } else {
+                def.name
+            };
+            if let Some(airspace) =
+                Airspace::new(id, name, def.class, def.floor, def.ceiling, polygon)
+            {
                 airspaces.push(airspace);
             }
         }
@@ -523,9 +521,9 @@ pub fn discretize_geometry(
 
     // Ensure polygon is closed
     if let (Some(first), Some(last)) = (vertices.first(), vertices.last()) {
-        if (first.latitude - last.latitude).abs() > 1e-7
-            || (first.longitude - last.longitude).abs() > 1e-7
-        {
+        let is_unclosed = (first.latitude - last.latitude).abs() > 1e-7
+            || (first.longitude - last.longitude).abs() > 1e-7;
+        if is_unclosed {
             vertices.push(*first);
         }
     }
@@ -754,14 +752,8 @@ mod tests {
             parse_vertical_limit("300m AGL").unwrap(),
             VerticalLimit::MetersAgl(300.0)
         );
-        assert_eq!(
-            parse_vertical_limit("GND").unwrap(),
-            VerticalLimit::Surface
-        );
-        assert_eq!(
-            parse_vertical_limit("SFC").unwrap(),
-            VerticalLimit::Surface
-        );
+        assert_eq!(parse_vertical_limit("GND").unwrap(), VerticalLimit::Surface);
+        assert_eq!(parse_vertical_limit("SFC").unwrap(), VerticalLimit::Surface);
         assert_eq!(
             parse_vertical_limit("UNL").unwrap(),
             VerticalLimit::Unlimited
@@ -812,7 +804,11 @@ DC 5.0
 "#;
 
         let result = parse_openair(openair_data);
-        assert!(result.warnings.is_empty(), "Warnings: {:?}", result.warnings);
+        assert!(
+            result.warnings.is_empty(),
+            "Warnings: {:?}",
+            result.warnings
+        );
         assert_eq!(result.airspaces.len(), 2);
 
         let edr = &result.airspaces[0];
