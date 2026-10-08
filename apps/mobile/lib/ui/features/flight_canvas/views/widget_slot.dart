@@ -88,9 +88,9 @@ class FlightWidgetContent extends StatelessWidget {
           unit: 'L/D',
         );
       case WidgetType.hag:
-        return _numeric<int>(
-          select: (t) => t.hag.round(),
-          format: (v) => '$v',
+        return _numeric<int?>(
+          select: (t) => t.hag?.round(),
+          format: (v) => v != null ? '$v' : '---',
           label: 'HAG',
           unit: 'm AGL',
         );

@@ -31,10 +31,12 @@ class CockpitTelemetry {
     1450.0,
   ];
 
+  static const Object _sentinel = Object();
+
   final double altitude;
   final double speed;
   final double glide;
-  final double hag;
+  final double? hag;
   final double climb;
   final double windDir;
   final double windSpeed;
@@ -68,6 +70,9 @@ class CockpitTelemetry {
       history = defaultHistory;
     }
 
+    final rawHag = map['hag'];
+    final double? hag = (rawHag is num) ? rawHag.toDouble() : null;
+
     final rawTrack = map['trackPoints'];
     final rawFlight = map['flightPoints'] ?? map['activeFlightPoints'];
 
@@ -75,7 +80,7 @@ class CockpitTelemetry {
       altitude: d('altitude', 1450.0),
       speed: d('speed', 42.5),
       glide: d('glide', 8.4),
-      hag: d('hag', 320.0),
+      hag: map.containsKey('hag') ? hag : 320.0,
       climb: d('climb', 1.8),
       windDir: d('windDir', 220.0),
       windSpeed: d('windSpeed', 14.0),
@@ -93,7 +98,7 @@ class CockpitTelemetry {
     double? altitude,
     double? speed,
     double? glide,
-    double? hag,
+    Object? hag = _sentinel,
     double? climb,
     double? windDir,
     double? windSpeed,
@@ -109,7 +114,7 @@ class CockpitTelemetry {
       altitude: altitude ?? this.altitude,
       speed: speed ?? this.speed,
       glide: glide ?? this.glide,
-      hag: hag ?? this.hag,
+      hag: identical(hag, _sentinel) ? this.hag : (hag as double?),
       climb: climb ?? this.climb,
       windDir: windDir ?? this.windDir,
       windSpeed: windSpeed ?? this.windSpeed,

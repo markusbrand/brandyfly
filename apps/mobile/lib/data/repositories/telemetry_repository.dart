@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/models/cockpit_telemetry.dart';
 import '../../models/flight_model.dart';
+import '../../services/elevation_service.dart';
 import '../../services/flight_replay_service.dart';
 import '../../services/flight_tracking_service.dart';
 import '../../services/telemetry/telemetry_source.dart';
@@ -18,6 +19,7 @@ class TelemetryRepository {
   TelemetryRepository({
     required this._replayService,
     this._trackingService,
+    this.elevationService,
     CockpitTelemetry idleTelemetry = const CockpitTelemetry(),
     this.historyLength = 60,
   }) : _idle = idleTelemetry,
@@ -29,6 +31,7 @@ class TelemetryRepository {
 
   final FlightReplayService _replayService;
   final FlightTrackingService? _trackingService;
+  final ElevationService? elevationService;
   final CockpitTelemetry _idle;
   final int historyLength;
   final ValueNotifier<CockpitTelemetry> _telemetry;
@@ -38,6 +41,9 @@ class TelemetryRepository {
   final List<double> _liveHistory = [];
   List<double> _liveHistorySnapshot = const [];
   DateTime? _lastHistorySample;
+
+  double? _lastHag;
+  int _elevationQuerySeq = 0;
 
   /// Altitude history is sampled at most once per [historyInterval] so a
   /// 10-50 Hz source does not allocate a new history list on every tick.
@@ -73,6 +79,8 @@ class TelemetryRepository {
     _liveHistory.clear();
     _liveHistorySnapshot = const [];
     _lastHistorySample = null;
+    _lastHag = null;
+    _elevationQuerySeq++;
     _emitLiveOrIdle();
   }
 
@@ -87,11 +95,43 @@ class TelemetryRepository {
       if (_liveHistory.length > historyLength) _liveHistory.removeAt(0);
       _liveHistorySnapshot = List<double>.unmodifiable(_liveHistory);
     }
+
+    double? hag = s.hag;
+    if (hag != null) {
+      _lastHag = hag;
+    } else if (elevationService != null) {
+      // 1. Immediate synchronous cache lookup (< 1ms)
+      final cachedGroundElev = elevationService!.getCachedElevation(s.latitude, s.longitude);
+      if (cachedGroundElev != null) {
+        _lastHag = s.altitude - cachedGroundElev;
+        hag = _lastHag;
+      } else {
+        // 2. Cache miss: hold previous HAG to avoid flickering (Task 18)
+        hag = _lastHag;
+        final querySeq = ++_elevationQuerySeq;
+        final alt = s.altitude;
+        elevationService!.getElevation(s.latitude, s.longitude).then((groundElev) {
+          if (_disposed || querySeq != _elevationQuerySeq) return;
+          if (groundElev != null) {
+            _lastHag = alt - groundElev;
+          } else {
+            _lastHag = null;
+          }
+          if (_liveSample != null && !_replayActive) {
+            _liveSample = _liveSample!.copyWith(hag: _lastHag);
+            _emitLiveOrIdle();
+          }
+        });
+      }
+    } else {
+      hag = _lastHag;
+    }
+
     _liveSample = CockpitTelemetry(
       altitude: s.altitude,
       speed: s.speed,
       glide: _idle.glide,
-      hag: s.hag ?? (s.altitude - 800.0).clamp(0.0, 9999.0),
+      hag: hag,
       climb: s.vario,
       windDir: s.windDirectionDeg ?? ((s.heading + 180.0) % 360.0),
       windSpeed: s.windSpeedKmh ?? _idle.windSpeed,
