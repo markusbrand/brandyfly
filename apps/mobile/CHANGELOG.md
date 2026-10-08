@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.12.0...brandyfly-v0.13.0) (2026-10-08)
+
+
+### Features
+
+* **airspace:** implement deterministic OpenAir parser, 3D proximity engine, and UI visualization ([#92](https://github.com/markusbrand/brandyfly/issues/92)) ([#250](https://github.com/markusbrand/brandyfly/issues/250)) ([de3b583](https://github.com/markusbrand/brandyfly/commit/de3b583e3c7096fc3d9aa6bc38b8402b73c46c68))
+* **mobile:** implement ElevationService and live HAG telemetry from DEM ([#248](https://github.com/markusbrand/brandyfly/issues/248)) ([5d592cb](https://github.com/markusbrand/brandyfly/commit/5d592cb06d923a275e0a9251e956399076d80777))
+
 ## [0.12.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.11.0...brandyfly-v0.12.0) (2026-10-05)
 
 

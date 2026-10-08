@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/markusbrand/brandyfly/compare/flight_core-v0.3.0...flight_core-v0.4.0) (2026-10-08)
+
+
+### Features
+
+* **airspace:** implement deterministic OpenAir parser, 3D proximity engine, and UI visualization ([#92](https://github.com/markusbrand/brandyfly/issues/92)) ([#250](https://github.com/markusbrand/brandyfly/issues/250)) ([de3b583](https://github.com/markusbrand/brandyfly/commit/de3b583e3c7096fc3d9aa6bc38b8402b73c46c68))
+
 ## [0.3.0](https://github.com/markusbrand/brandyfly/compare/flight_core-v0.2.0...flight_core-v0.3.0) (2026-09-23)
 
 
