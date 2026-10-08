@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, File, Platform;
 
 import 'package:brandyfly_native/brandyfly_native.dart';
 import 'package:flutter/foundation.dart';
@@ -12,6 +12,7 @@ import 'data/repositories/layout_repository.dart';
 import 'data/repositories/telemetry_repository.dart';
 import 'domain/models/cockpit_telemetry.dart';
 import 'models/flight_model.dart';
+import 'services/elevation_service.dart';
 import 'services/flight_replay_service.dart';
 import 'services/flight_storage_service.dart';
 import 'services/flight_tracking_service.dart';
@@ -52,6 +53,7 @@ class BrandyFlyApp extends StatefulWidget {
     this.replayService,
     this.uploadService,
     this.mapService,
+    this.elevationService,
     this.thermalPrefetchService,
   });
 
@@ -63,6 +65,7 @@ class BrandyFlyApp extends StatefulWidget {
   final FlightReplayService? replayService;
   final XContestUploadService? uploadService;
   final MapLibreMapService? mapService;
+  final ElevationService? elevationService;
 
   /// KK7 thermal prefetch; created automatically on mobile/desktop when null
   /// (not in `flutter test` and not on the web).
@@ -101,6 +104,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   late FlightReplayService _replayService;
   late XContestUploadService _uploadService;
   late MapLibreMapService _mapService;
+  late ElevationService _elevationService;
   late TelemetryRepository _telemetryRepository;
   LayoutRepository? _ownedLayoutRepository;
   ThermalPrefetchService? _thermalPrefetch;
@@ -116,9 +120,11 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     _trackingService = widget.trackingService ?? FlightTrackingService();
     _replayService = widget.replayService ?? FlightReplayService();
     _mapService = widget.mapService ?? MapLibreMapService();
+    _elevationService = widget.elevationService ?? ElevationService();
     _telemetryRepository = TelemetryRepository(
       replayService: _replayService,
       trackingService: _trackingService,
+      elevationService: _elevationService,
       idleTelemetry: widget.config.enabled
           ? const CockpitTelemetry()
           : _liveIdleTelemetry,
@@ -170,6 +176,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
           );
 
       _startThermalPrefetch();
+      _discoverTerrainSources();
 
       _flightCompletedSub = _trackingService.flightCompletedStream.listen((
         flight,
@@ -249,6 +256,26 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     );
   }
 
+  void _discoverTerrainSources() async {
+    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+    if (kIsWeb || isTest) return;
+    try {
+      final store = ThermalTileStore();
+      final regionsDir = Directory(await store.regionsBasePath());
+      if (!await regionsDir.exists()) return;
+      await for (final entry in regionsDir.list(followLinks: false)) {
+        if (entry is! Directory) continue;
+        final terrainFile = File('${entry.path}/terrain.pmtiles');
+        if (await terrainFile.exists() && await terrainFile.length() >= 127) {
+          final id = entry.path.split(Platform.pathSeparator).last;
+          await _elevationService.addTerrainSource(id, terrainFile.path);
+        }
+      }
+    } catch (e) {
+      debugPrint('[BrandyFlyApp] terrain sources discovery failed: $e');
+    }
+  }
+
   void _onFlightCompleted(FlightModel flight) async {
     await _storageService.saveFlight(flight);
     if (_trackingService.settings.autoUploadToXContest) {
@@ -284,6 +311,9 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     if (widget.mapService == null) {
       _mapService.dispose();
     }
+    if (widget.elevationService == null) {
+      _elevationService.dispose();
+    }
     super.dispose();
   }
 
@@ -315,6 +345,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
           value: _trackingService,
         ),
         ChangeNotifierProvider<MapLibreMapService>.value(value: _mapService),
+        Provider<ElevationService>.value(value: _elevationService),
       ],
       child: _buildApp(context),
     );
