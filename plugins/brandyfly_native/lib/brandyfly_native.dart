@@ -1,6 +1,8 @@
+import 'airspace_models.dart';
 import 'brandyfly_native_platform_interface.dart';
 import 'mock_flight_mode.dart';
 
+export 'airspace_models.dart';
 export 'mock_flight_mode.dart';
 export 'skydrop1_models.dart';
 
@@ -43,5 +45,31 @@ class BrandyflyNative {
 
   Future<Map<String, Object?>?> runSkyDrop1HardwareBenchmark() {
     return BrandyflyNativePlatform.instance.runSkyDrop1HardwareBenchmark();
+  }
+
+  Future<int> airspaceInitStore() {
+    return BrandyflyNativePlatform.instance.airspaceInitStore();
+  }
+
+  Future<int> airspaceLoadOpenAir(String openAirText) {
+    return BrandyflyNativePlatform.instance.airspaceLoadOpenAir(openAirText);
+  }
+
+  Future<int> airspaceLoadDachFixture() {
+    return BrandyflyNativePlatform.instance.airspaceLoadDachFixture();
+  }
+
+  Future<int> airspaceClearStore() {
+    return BrandyflyNativePlatform.instance.airspaceClearStore();
+  }
+
+  Future<int> airspaceCount() {
+    return BrandyflyNativePlatform.instance.airspaceCount();
+  }
+
+  Future<NativeAirspaceEvaluationOutput> airspaceEvaluate(
+    NativeAirspaceEvaluationInput input,
+  ) {
+    return BrandyflyNativePlatform.instance.airspaceEvaluate(input);
   }
 }
