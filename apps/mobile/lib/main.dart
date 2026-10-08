@@ -17,6 +17,7 @@ import 'services/flight_replay_service.dart';
 import 'services/flight_storage_service.dart';
 import 'services/flight_tracking_service.dart';
 import 'services/maplibre_map_service.dart';
+import 'services/region_manager_service.dart';
 import 'services/screen_manager_service.dart';
 import 'services/telemetry/synthetic_telemetry_source.dart';
 import 'services/ui_persistence_service.dart';
@@ -29,6 +30,7 @@ import 'widgets/flight/flights_screen.dart';
 import 'widgets/flight/replay_control_overlay.dart';
 import 'widgets/layout/layout_strategy_container.dart';
 import 'widgets/navigation/top_nav_bar.dart';
+import 'widgets/settings/pre_flight_coverage_prompt.dart';
 import 'widgets/settings/ui_settings_panel.dart';
 
 void main() {
@@ -54,6 +56,7 @@ class BrandyFlyApp extends StatefulWidget {
     this.uploadService,
     this.mapService,
     this.elevationService,
+    this.regionManagerService,
     this.thermalPrefetchService,
   });
 
@@ -66,6 +69,7 @@ class BrandyFlyApp extends StatefulWidget {
   final XContestUploadService? uploadService;
   final MapLibreMapService? mapService;
   final ElevationService? elevationService;
+  final RegionManagerService? regionManagerService;
 
   /// KK7 thermal prefetch; created automatically on mobile/desktop when null
   /// (not in `flutter test` and not on the web).
@@ -105,6 +109,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   late XContestUploadService _uploadService;
   late MapLibreMapService _mapService;
   late ElevationService _elevationService;
+  late RegionManagerService _regionManagerService;
   late TelemetryRepository _telemetryRepository;
   LayoutRepository? _ownedLayoutRepository;
   ThermalPrefetchService? _thermalPrefetch;
@@ -119,7 +124,11 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     _screenManager = widget.screenManager ?? ScreenManagerService();
     _trackingService = widget.trackingService ?? FlightTrackingService();
     _replayService = widget.replayService ?? FlightReplayService();
-    _mapService = widget.mapService ?? MapLibreMapService();
+    _regionManagerService =
+        widget.regionManagerService ?? RegionManagerService();
+    _mapService =
+        widget.mapService ??
+        MapLibreMapService(regionManagerService: _regionManagerService);
     _elevationService = widget.elevationService ?? ElevationService();
     _telemetryRepository = TelemetryRepository(
       replayService: _replayService,
@@ -174,6 +183,13 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
             storageService: _storageService,
             settings: _trackingService.settings,
           );
+
+      unawaited(
+        _regionManagerService.fetchCatalog().catchError((Object e) {
+          debugPrint('[BrandyFlyApp] catalog fetch error: $e');
+          return null;
+        }),
+      );
 
       _startThermalPrefetch();
       _discoverTerrainSources();
@@ -247,13 +263,49 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     }
     _thermalPrefetch = service;
     _lifecycleListener = AppLifecycleListener(
-      onResume: () => _thermalPrefetch?.notifyRegionsChanged(),
+      onResume: () {
+        _thermalPrefetch?.notifyRegionsChanged();
+        final lastPoint = _trackingService.activeFlightPoints.lastOrNull;
+        if (lastPoint != null) {
+          _checkPreFlightCoverage(lastPoint.latitude, lastPoint.longitude);
+        }
+      },
     );
     unawaited(
       service.start().catchError((Object e) {
         debugPrint('[BrandyFlyApp] thermal prefetch start failed: $e');
       }),
     );
+  }
+
+  bool _coverageCheckInProgress = false;
+
+  void _checkPreFlightCoverage(double lat, double lon) async {
+    if (!mounted || _coverageCheckInProgress) return;
+    if (lat == 0.0 && lon == 0.0) return;
+    if (_screenManager.isSettingsVisible ||
+        _screenManager.isFlightsScreenVisible) {
+      return;
+    }
+
+    _coverageCheckInProgress = true;
+    try {
+      final shouldShow =
+          await _regionManagerService.shouldShowPreFlightPrompt(lat, lon);
+      if (shouldShow && mounted) {
+        await PreFlightCoveragePrompt.show(
+          context: context,
+          latitude: lat,
+          longitude: lon,
+          regionManager: _regionManagerService,
+          onManageRegions: () {
+            _screenManager.toggleSettingsPanel(true);
+          },
+        );
+      }
+    } finally {
+      _coverageCheckInProgress = false;
+    }
   }
 
   void _discoverTerrainSources() async {
@@ -346,6 +398,9 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
         ),
         ChangeNotifierProvider<MapLibreMapService>.value(value: _mapService),
         Provider<ElevationService>.value(value: _elevationService),
+        ChangeNotifierProvider<RegionManagerService>.value(
+          value: _regionManagerService,
+        ),
       ],
       child: _buildApp(context),
     );
@@ -392,6 +447,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                         trackingService: _trackingService,
                         uploadService: _uploadService,
                         thermalPrefetchService: _thermalPrefetch,
+                        regionManagerService: _regionManagerService,
                       )
                     : widget.config.enabled
                     ? _MockFlightView(
