@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../../models/flight_settings.dart';
 import '../../models/ui_config.dart';
 import '../../services/flight_tracking_service.dart';
+import '../../services/region_manager_service.dart';
 import '../../services/screen_manager_service.dart';
 import '../../services/thermal_prefetch_service.dart';
 import '../../services/xcontest_upload_service.dart';
+import 'region_manager_screen.dart';
 import 'thermal_map_data_panel.dart';
 
 class UISettingsPanel extends StatefulWidget {
@@ -14,6 +16,7 @@ class UISettingsPanel extends StatefulWidget {
     this.trackingService,
     this.uploadService,
     this.thermalPrefetchService,
+    this.regionManagerService,
   });
 
   final ScreenManagerService screenManager;
@@ -22,6 +25,9 @@ class UISettingsPanel extends StatefulWidget {
   final ThermalPrefetchService? thermalPrefetchService;
   final FlightTrackingService? trackingService;
   final XContestUploadService? uploadService;
+
+  /// Offline map and DEM region manager service.
+  final RegionManagerService? regionManagerService;
 
   @override
   State<UISettingsPanel> createState() => _UISettingsPanelState();
@@ -317,6 +323,33 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
               ),
             ],
           ),
+        ),
+      ),
+      Card(
+        key: const Key('offline_regions_entry_card'),
+        color: Colors.grey.shade900,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: ListTile(
+          leading: const Icon(Icons.map, color: Colors.lightBlueAccent),
+          title: const Text(
+            'Offline Map Regions',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          subtitle: const Text(
+            'Browse, download, and manage regional vector & DEM maps',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          trailing: const Icon(Icons.chevron_right, color: Colors.white70),
+          onTap: () {
+            final rm = widget.regionManagerService;
+            if (rm != null) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (ctx) => RegionManagerScreen(regionManager: rm),
+                ),
+              );
+            }
+          },
         ),
       ),
       ThermalMapDataPanel(

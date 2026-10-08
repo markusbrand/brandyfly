@@ -10,6 +10,7 @@ import '../../../../domain/thermal/kk7_provider.dart';
 import '../../../../domain/thermal/thermal_layer_spec.dart';
 import '../../../../domain/thermal/thermal_variant_resolver.dart';
 import '../../../../services/maplibre_map_service.dart';
+import '../../../../services/region_manager_service.dart';
 import '../platform/map_renderer_availability.dart';
 import '../view_models/map_camera_view_model.dart';
 
@@ -41,6 +42,7 @@ class MapWidget extends StatefulWidget {
     this.onZoomOut,
     this.onZoomChanged,
     this.regionId,
+    this.regionManager,
     this.mapService,
     this.cameraViewModel,
     this.cameraId,
@@ -73,6 +75,7 @@ class MapWidget extends StatefulWidget {
   final VoidCallback? onZoomOut;
   final ValueChanged<double>? onZoomChanged;
   final String? regionId;
+  final RegionManagerService? regionManager;
   final MapLibreMapService? mapService;
 
   /// Optional externally owned camera state. When null the widget creates its
@@ -343,8 +346,27 @@ class _MapWidgetState extends State<MapWidget> {
   bool _syncingGestureZoom = false;
 
   Future<void> _initMapStyle() async {
+    String? effectiveRegion = widget.regionId;
+    if (effectiveRegion == null && widget.regionManager != null) {
+      final pos = widget.pilotPosition ?? _lastKnownPilot;
+      if (pos != null) {
+        final downloaded = await widget.regionManager!.getDownloadedRegions();
+        for (final r in downloaded) {
+          final b = r.bounds;
+          if (b != null &&
+              b.isValid &&
+              pos.latitude >= b.south &&
+              pos.latitude <= b.north &&
+              pos.longitude >= b.west &&
+              pos.longitude <= b.east) {
+            effectiveRegion = r.id;
+            break;
+          }
+        }
+      }
+    }
     final style = await _mapService.buildStyleJson(
-      regionId: widget.regionId,
+      regionId: effectiveRegion,
       thermal: _thermalSpec,
     );
     if (mounted) {

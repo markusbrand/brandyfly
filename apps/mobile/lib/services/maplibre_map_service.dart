@@ -11,12 +11,16 @@ import '../domain/thermal/thermal_layer_spec.dart';
 import '../domain/thermal/thermal_variant.dart';
 import '../models/lat_lng.dart';
 import 'local_tile_server.dart';
+import 'region_manager_service.dart';
 
 /// Service managing MapLibre GL controller lifecycle, style JSON compilation,
 /// PMTiles local source configuration, camera operations, and offline fallback detection.
 class MapLibreMapService extends ChangeNotifier {
-  MapLibreMapService({this.customAppSupportDir, LocalTileServer? tileServer})
-    : _tileServer =
+  MapLibreMapService({
+    this.customAppSupportDir,
+    LocalTileServer? tileServer,
+    this.regionManagerService,
+  }) : _tileServer =
           tileServer ??
           LocalTileServer(
             thermalStore: ThermalTileStore(appSupportDir: customAppSupportDir),
@@ -26,6 +30,7 @@ class MapLibreMapService extends ChangeNotifier {
 
   final String? customAppSupportDir;
   final LocalTileServer _tileServer;
+  final RegionManagerService? regionManagerService;
 
   LocalTileServer get tileServer => _tileServer;
 
@@ -53,6 +58,12 @@ class MapLibreMapService extends ChangeNotifier {
   bool get isOnlinePreviewActive => _tileServer.isOnlinePreviewActive;
   String? get activeRegionId => _activeRegionId;
   String? get lastLoadedStyleJson => _lastLoadedStyleJson;
+
+  /// Sets the active region ID to render from local PMTiles.
+  Future<void> setActiveRegion(String? regionId) async {
+    _activeRegionId = regionId;
+    notifyListeners();
+  }
 
   /// Sets or updates the active MapController.
   void onMapCreated(MapController controller) {
@@ -284,7 +295,17 @@ class MapLibreMapService extends ChangeNotifier {
     final basePath = await getRegionsBasePath();
     bool useRegion = false;
 
-    String? effectiveRegionId = regionId;
+    String? effectiveRegionId = regionId ?? _activeRegionId;
+    if (effectiveRegionId == null || effectiveRegionId.isEmpty) {
+      if (regionManagerService != null) {
+        try {
+          final downloaded = await regionManagerService!.getDownloadedRegions();
+          if (downloaded.isNotEmpty) {
+            effectiveRegionId = downloaded.first.id;
+          }
+        } catch (_) {}
+      }
+    }
     if (effectiveRegionId == null || effectiveRegionId.isEmpty) {
       try {
         final baseDir = Directory(basePath);
