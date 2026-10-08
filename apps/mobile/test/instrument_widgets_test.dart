@@ -1,3 +1,4 @@
+import 'package:brandyfly/domain/models/size_tier.dart';
 import 'package:brandyfly/models/flight_model.dart';
 import 'package:brandyfly/models/flight_settings.dart';
 import 'package:brandyfly/models/ui_config.dart';
@@ -204,6 +205,20 @@ void main() {
       );
       expect(find.text('VARIO GLOW'), findsOneWidget);
       expect(find.text('+3.0 m/s'), findsOneWidget);
+    });
+
+    testWidgets('renders verticalEdgeBar in tiny tier without collapsing to tiny text', (tester) async {
+      await tester.pumpWidget(
+        wrapWidget(
+          const VarioLiftSinkBar(
+            climbRateMs: 1.5,
+            style: LiftSinkBarStyle.verticalEdgeBar,
+            tier: SizeTier.tiny,
+          ),
+        ),
+      );
+      // In tiny tier with verticalEdgeBar, it renders the bar structure rather than the single-line _buildTiny
+      expect(find.byType(CustomPaint), findsWidgets);
     });
   });
 

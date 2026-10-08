@@ -7,7 +7,7 @@ Provides local-first, offline vector map rendering and terrain hillshade visuali
 ## Requirements
 
 ### Requirement: Local PMTiles vector tile rendering
-The application SHALL render OpenStreetMap vector tiles from locally stored PMTiles archives using the native MapLibre GL engine on target mobile platforms (Android and iOS) and authentic mobile emulators without any network requests during flight when regional data is installed, served via an embedded loopback HTTP tile service. When regional PMTiles data is absent, the tile service SHALL transparently proxy and disk-cache online vector tiles from open providers in both simulation and real application environments, and the UI SHALL indicate whether offline data or an online preview is active.
+The application SHALL render OpenStreetMap vector tiles from locally stored PMTiles archives using the native MapLibre GL engine on target mobile platforms (Android and iOS) without network requests during flight. When regional data is absent, an embedded loopback HTTP tile service SHALL proxy and disk-cache online vector tiles with active status indication. The loopback tile server SHALL NOT include permissive wildcard CORS headers (`Access-Control-Allow-Origin: *`) on responses.
 
 #### Scenario: Offline map display from local PMTiles
 - **WHEN** a PMTiles archive is present in the local region storage for the pilot's current location
@@ -16,6 +16,10 @@ The application SHALL render OpenStreetMap vector tiles from locally stored PMTi
 #### Scenario: Loopback HTTP tile server compatibility
 - **WHEN** the MapLibre Native engine loads local PMTiles vector tiles on Android or iOS
 - **THEN** tiles are resolved via an internal loopback HTTP server (`127.0.0.1`) serving tile payloads directly from local archives or cached proxy storage without requiring custom native URI scheme support, permitted by platform network security configurations on both Android and iOS
+
+#### Scenario: Restrictive loopback CORS policy
+- **WHEN** an HTTP client queries the local loopback tile server health or tile endpoints
+- **THEN** the server responses omit wildcard `Access-Control-Allow-Origin` headers to protect local tile assets from cross-origin browser extraction
 
 #### Scenario: Development simulation vector fallback
 - **WHEN** the application runs in local mock flight mode or development testing without a downloaded regional archive
@@ -57,7 +61,7 @@ The application SHALL render hillshade terrain relief from Copernicus GLO-30 ter
 - **THEN** terrain tile requests to the embedded loopback tile server resolve from cached online raster DEM sources or an upstream terrarium endpoint, rendering visible hillshade relief in development environments
 
 ### Requirement: Alpine Relief map style
-The application SHALL render maps using a custom "Alpine Relief" MapLibre style optimized for paragliding situational awareness conforming to the OpenMapTiles v3 schema. The style MUST use a highly compatible glyphs URL (`https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf`) that natively supports MapLibre GL Native on Android without triggering protobuf parsing exceptions. Fallback font families (`Noto Sans Bold`, `Noto Sans Regular`) MUST be explicitly specified for text layers to prevent missing glyph rendering errors on software GPUs (e.g. SwiftShader). The style SHALL prioritize terrain relief by rendering hillshade without obscuring landcover or landuse polygons.
+The application SHALL render maps using a custom "Alpine Relief" MapLibre style conforming to the OpenMapTiles v3 schema. The style MUST use a compatible glyphs endpoint and explicit fallback font families (`Noto Sans Bold`, `Noto Sans Regular`) to ensure reliable Android text rendering across GPUs. The style SHALL prioritize terrain relief by rendering hillshade without obscuring landcover or landuse polygons.
 
 #### Scenario: Style layer hierarchy
 - **WHEN** the map is rendered with the Alpine Relief style

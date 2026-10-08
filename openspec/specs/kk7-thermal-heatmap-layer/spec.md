@@ -44,7 +44,7 @@ When the season setting is `auto`, the application SHALL select the season bin f
 - **THEN** the selected season bin changes from `jan` to `apr`
 
 ### Requirement: Automatic time-of-day selection
-When the time-of-day setting is `auto`, the application SHALL compute local sunrise on the device from the current date and the pilot position, and SHALL select `morning` for 0 to less than 6 hours after sunrise, `midday` for 6 to less than 9 hours after sunrise, and `evening` for 9 hours or more after sunrise. Before sunrise the application SHALL select `morning`. If no sunrise occurs at the position on that date (polar day or night), the application SHALL select `all`. If no GPS fix is available, the application SHALL use the last known position, else the center of the active map view.
+When time of day is `auto`, the application SHALL compute local sunrise on the device from the current date and pilot position. It SHALL select `morning` for 0 to <6 hours after sunrise, `midday` for 6 to <9 hours after sunrise, and `evening` for >=9 hours after sunrise. Before sunrise `morning` is selected; under polar day/night `all` is selected. Without GPS, the last known position or map center is used.
 
 #### Scenario: Morning flight
 - **WHEN** time of day is `auto`, sunrise at the pilot position was at 05:40 and the local time is 10:00
@@ -88,7 +88,7 @@ The thermal heatmap SHALL render above the base map and terrain relief and below
 - **THEN** airspace polygons and the pilot marker are drawn on top of the heatmap
 
 ### Requirement: Thermal tile resolution order
-For each requested thermal tile the application SHALL use the first available source in this order: tiles prefetched for a downloaded region, previously viewed tiles in the persistent thermal cache, then thermal.kk7.ch online. Online requests SHALL include the `src` tracking parameter required by the provider and SHALL NOT include pilot position, identity or device identifiers. Tiles fetched online SHALL be stored in the persistent thermal cache. If a tile is unavailable from all sources, the application SHALL render it as transparent without error dialogs.
+The application SHALL resolve thermal tiles in priority order: region prefetch, persistent disk cache, then thermal.kk7.ch online. Online requests SHALL include the required `src` parameter and omit personal or device identifiers. Online tiles SHALL be cached locally. Unavailable tiles SHALL render transparently without error dialogs.
 
 #### Scenario: Offline with prefetched region
 - **WHEN** the device is offline and the map shows an area inside a region with prefetched tiles for the selected variant

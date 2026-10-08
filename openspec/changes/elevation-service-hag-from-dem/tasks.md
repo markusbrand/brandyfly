@@ -1,11 +1,11 @@
 ## Tasks
 
 ### Dart PMTiles reader
-- [ ] Implement PMTiles v3 header parser (version, tile type, compression, bounds, center, min/max zoom, directory offsets)
-- [ ] Implement root and leaf directory entry parsing for tile offset/length lookup
-- [ ] Implement tile retrieval by (z, x, y) coordinate with seek-based RandomAccessFile reads
-- [ ] Handle gzip and brotli tile decompression
-- [ ] Add unit tests with a small fixture PMTiles file containing known terrain-RGB tiles
+- [x] Implement PMTiles v3 header parser (version, tile type, compression, bounds, center, min/max zoom, directory offsets)
+- [x] Implement root and leaf directory entry parsing for tile offset/length lookup
+- [x] Implement tile retrieval by (z, x, y) coordinate with seek-based RandomAccessFile reads
+- [x] Handle gzip and brotli tile decompression
+- [x] Add unit tests with a small fixture PMTiles file containing known terrain-RGB tiles
 
 ### ElevationService core
 - [ ] Implement Web Mercator coordinate-to-tile projection (lat, lon to z=12 tile x, y and pixel px, py)
@@ -25,7 +25,7 @@
 - [ ] Hold previous HAG value during cache miss async resolution to avoid flickering
 
 ### Testing
-- [ ] Unit test PMTiles reader against fixture archive with known tile contents
+- [x] Unit test PMTiles reader against fixture archive with known tile contents
 - [ ] Unit test terrain-RGB decoding against known elevation values
 - [ ] Unit test bilinear interpolation accuracy
 - [ ] Unit test LRU cache behavior (eviction, hit rates)
