@@ -43,6 +43,39 @@ class MockBrandyflyNativePlatform
         'androidStatus': 'supported',
         'iosStatus': 'unsupported',
       });
+
+  @override
+  Future<int> airspaceInitStore() => Future.value(1);
+
+  @override
+  Future<int> airspaceLoadOpenAir(String openAirText) => Future.value(2);
+
+  @override
+  Future<int> airspaceLoadDachFixture() => Future.value(7);
+
+  @override
+  Future<int> airspaceClearStore() => Future.value(0);
+
+  @override
+  Future<int> airspaceCount() => Future.value(7);
+
+  @override
+  Future<NativeAirspaceEvaluationOutput> airspaceEvaluate(
+    NativeAirspaceEvaluationInput input,
+  ) =>
+      Future.value(const NativeAirspaceEvaluationOutput(
+        alertLevel: 2,
+        horizontalSeparationM: 450.0,
+        verticalSeparationM: 60.0,
+        total3dDistanceM: 454.0,
+        isInsideHorizontal: false,
+        isInsideVertical: true,
+        floorMslM: 1000.0,
+        ceilingMslM: 3000.0,
+        forwardIntersectionDistanceM: 1200.0,
+        forwardIntersectionTimeS: 100.0,
+        willPenetrateGlideSlope: true,
+      ));
 }
 
 void main() {
@@ -125,5 +158,34 @@ void main() {
     expect(benchResult.reconnectWithoutRestartPassed, true);
     expect(benchResult.androidStatus, 'supported');
     expect(benchResult.iosStatus, 'unsupported');
+  });
+
+  test('airspace lifecycle and evaluation methods', () async {
+    final brandyflyNativePlugin = BrandyflyNative();
+    final fakePlatform = MockBrandyflyNativePlatform();
+    BrandyflyNativePlatform.instance = fakePlatform;
+
+    expect(await brandyflyNativePlugin.airspaceInitStore(), 1);
+    expect(await brandyflyNativePlugin.airspaceLoadDachFixture(), 7);
+    expect(await brandyflyNativePlugin.airspaceCount(), 7);
+
+    const input = NativeAirspaceEvaluationInput(
+      latitude: 47.25,
+      longitude: 11.35,
+      altitudeMsl: 1200.0,
+      groundspeedMps: 12.0,
+      trackHeadingDeg: 90.0,
+      glideRatio: 8.0,
+      qnhHpa: 1013.25,
+      terrainElevationMsl: 600.0,
+      timestampMs: 1234,
+    );
+
+    final eval = await brandyflyNativePlugin.airspaceEvaluate(input);
+    expect(eval.alertLevel, 2);
+    expect(eval.horizontalSeparationM, 450.0);
+    expect(eval.willPenetrateGlideSlope, true);
+
+    expect(await brandyflyNativePlugin.airspaceClearStore(), 0);
   });
 }

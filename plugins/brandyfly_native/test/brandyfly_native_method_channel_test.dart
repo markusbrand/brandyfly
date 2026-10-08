@@ -96,4 +96,52 @@ void main() {
     expect(res?['platform'], 'android');
     expect(res?['allGatesPassed'], true);
   });
+
+  test('airspace method channel calls and evaluation', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'airspaceInitStore') return 1;
+          if (methodCall.method == 'airspaceLoadDachFixture') return 7;
+          if (methodCall.method == 'airspaceCount') return 7;
+          if (methodCall.method == 'airspaceClearStore') return 0;
+          if (methodCall.method == 'airspaceEvaluate') {
+            return {
+              'alertLevel': 3,
+              'horizontalSeparationM': 0.0,
+              'verticalSeparationM': 0.0,
+              'total3dDistanceM': 0.0,
+              'isInsideHorizontal': true,
+              'isInsideVertical': true,
+              'floorMslM': 500.0,
+              'ceilingMslM': 2000.0,
+              'forwardIntersectionDistanceM': -1.0,
+              'forwardIntersectionTimeS': -1.0,
+              'willPenetrateGlideSlope': false,
+            };
+          }
+          return null;
+        });
+
+    expect(await platform.airspaceInitStore(), 1);
+    expect(await platform.airspaceLoadDachFixture(), 7);
+    expect(await platform.airspaceCount(), 7);
+
+    const input = NativeAirspaceEvaluationInput(
+      latitude: 47.25,
+      longitude: 11.35,
+      altitudeMsl: 1000.0,
+      groundspeedMps: 10.0,
+      trackHeadingDeg: 90.0,
+      glideRatio: 8.0,
+      qnhHpa: 1013.25,
+      terrainElevationMsl: 600.0,
+      timestampMs: 5000,
+    );
+
+    final eval = await platform.airspaceEvaluate(input);
+    expect(eval.alertLevel, 3);
+    expect(eval.isInsideHorizontal, true);
+
+    expect(await platform.airspaceClearStore(), 0);
+  });
 }

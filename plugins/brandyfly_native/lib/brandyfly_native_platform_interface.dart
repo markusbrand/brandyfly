@@ -1,5 +1,6 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+import 'airspace_models.dart';
 import 'brandyfly_native_method_channel.dart';
 import 'mock_flight_mode.dart';
 
@@ -65,5 +66,35 @@ abstract class BrandyflyNativePlatform extends PlatformInterface {
     throw UnimplementedError(
       'runSkyDrop1HardwareBenchmark() has not been implemented.',
     );
+  }
+
+  Future<int> airspaceInitStore() {
+    throw UnimplementedError('airspaceInitStore() has not been implemented.');
+  }
+
+  Future<int> airspaceLoadOpenAir(String openAirText) {
+    throw UnimplementedError(
+      'airspaceLoadOpenAir() has not been implemented.',
+    );
+  }
+
+  Future<int> airspaceLoadDachFixture() {
+    throw UnimplementedError(
+      'airspaceLoadDachFixture() has not been implemented.',
+    );
+  }
+
+  Future<int> airspaceClearStore() {
+    throw UnimplementedError('airspaceClearStore() has not been implemented.');
+  }
+
+  Future<int> airspaceCount() {
+    throw UnimplementedError('airspaceCount() has not been implemented.');
+  }
+
+  Future<NativeAirspaceEvaluationOutput> airspaceEvaluate(
+    NativeAirspaceEvaluationInput input,
+  ) {
+    throw UnimplementedError('airspaceEvaluate() has not been implemented.');
   }
 }

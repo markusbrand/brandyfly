@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'airspace_models.dart';
 import 'brandyfly_native_platform_interface.dart';
 import 'mock_flight_mode.dart';
 
@@ -95,6 +96,90 @@ class MethodChannelBrandyflyNative extends BrandyflyNativePlatform {
       return result;
     } on MissingPluginException {
       return null;
+    }
+  }
+
+  int _fallbackAirspaceCount = 0;
+
+  @override
+  Future<int> airspaceInitStore() async {
+    try {
+      final res = await methodChannel.invokeMethod<int>('airspaceInitStore');
+      _fallbackAirspaceCount = res ?? 0;
+      return res ?? 0;
+    } on MissingPluginException {
+      _fallbackAirspaceCount = 0;
+      return 1;
+    }
+  }
+
+  @override
+  Future<int> airspaceLoadOpenAir(String openAirText) async {
+    try {
+      final res = await methodChannel.invokeMethod<int>(
+        'airspaceLoadOpenAir',
+        {'openAirText': openAirText},
+      );
+      _fallbackAirspaceCount = res ?? 0;
+      return res ?? 0;
+    } on MissingPluginException {
+      // In-memory fallback: count AC records
+      final matches = RegExp(r'^\s*AC\s+', multiLine: true).allMatches(openAirText);
+      _fallbackAirspaceCount = matches.length;
+      return _fallbackAirspaceCount;
+    }
+  }
+
+  @override
+  Future<int> airspaceLoadDachFixture() async {
+    try {
+      final res =
+          await methodChannel.invokeMethod<int>('airspaceLoadDachFixture');
+      _fallbackAirspaceCount = res ?? 0;
+      return res ?? 0;
+    } on MissingPluginException {
+      _fallbackAirspaceCount = 7;
+      return 7;
+    }
+  }
+
+  @override
+  Future<int> airspaceClearStore() async {
+    try {
+      final res = await methodChannel.invokeMethod<int>('airspaceClearStore');
+      _fallbackAirspaceCount = 0;
+      return res ?? 0;
+    } on MissingPluginException {
+      _fallbackAirspaceCount = 0;
+      return 0;
+    }
+  }
+
+  @override
+  Future<int> airspaceCount() async {
+    try {
+      final res = await methodChannel.invokeMethod<int>('airspaceCount');
+      return res ?? _fallbackAirspaceCount;
+    } on MissingPluginException {
+      return _fallbackAirspaceCount;
+    }
+  }
+
+  @override
+  Future<NativeAirspaceEvaluationOutput> airspaceEvaluate(
+    NativeAirspaceEvaluationInput input,
+  ) async {
+    try {
+      final res = await methodChannel.invokeMapMethod<String, Object?>(
+        'airspaceEvaluate',
+        input.toMap(),
+      );
+      if (res != null) {
+        return NativeAirspaceEvaluationOutput.fromMap(res);
+      }
+      return NativeAirspaceEvaluationOutput.clear;
+    } on MissingPluginException {
+      return NativeAirspaceEvaluationOutput.clear;
     }
   }
 }

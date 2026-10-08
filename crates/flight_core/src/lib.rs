@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod airspace;
 pub mod benchmark;
 pub mod bounded_pipeline;
 
@@ -20,6 +21,14 @@ pub use durable_recorder::{
     RecoveryReport, calculate_crc32, recover_flight_records,
 };
 pub use procedural_generator::{ProceduralFlightGenerator, ProceduralManeuver, TelemetrySource};
+pub use airspace::{
+    Airspace, AirspaceBenchmarkResult, AirspaceClass, AirspaceDefinition, AirspaceEvaluationInput,
+    AirspaceEvaluationOutput, AirspaceProximity, AirspaceProximityEngine, AirspaceStore,
+    AlertLevel, ArcDirection, BoundingBox, Coordinate, ForwardAirspaceIntersection,
+    GeometryRecord, RTree, VerticalLimit, airspace_clear_store, airspace_count, airspace_evaluate,
+    airspace_init_store, airspace_load_dach_fixture, evaluate_airspace_proximity, parse_openair,
+    project_glide_slope, run_airspace_proximity_benchmark,
+};
 pub use replay_fixtures::{
     SkyDrop1ReplayGenerator, SkyDrop1ReplayScenario, SyntheticReplayGenerator,
     SyntheticReplayScenario, replay_skydrop1_sequence,

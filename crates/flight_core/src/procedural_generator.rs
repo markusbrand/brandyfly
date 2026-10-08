@@ -4,6 +4,8 @@ use brandyfly_contracts::{
     NATIVE_PIPELINE_SCHEMA_VERSION, SensorEvent, SensorPayload, SensorQualityFlags, SensorSourceId,
 };
 
+use crate::airspace::ffi::{AirspaceEvaluationInput, AirspaceEvaluationOutput, AirspaceStore};
+
 /// Abstract trait for telemetry and sensor event providers in the native core.
 pub trait TelemetrySource {
     /// Produces the next sensor event for the given timestamp in nanoseconds, or `None` if exhausted/idle.
@@ -140,6 +142,26 @@ impl ProceduralFlightGenerator {
     pub fn altitude_to_pressure_hpa(altitude_m: f64) -> f64 {
         let base_p = 1013.25;
         base_p * (1.0 - (altitude_m / 44330.0)).powf(5.25588)
+    }
+
+    /// Evaluates current aircraft position from procedural flight against loaded airspaces.
+    #[must_use]
+    pub fn evaluate_airspace_proximity(
+        &self,
+        store: &mut AirspaceStore,
+    ) -> AirspaceEvaluationOutput {
+        let input = AirspaceEvaluationInput {
+            latitude: self.current_lat_deg,
+            longitude: self.current_lon_deg,
+            altitude_msl: self.current_altitude_m,
+            groundspeed_mps: 10.0,
+            track_heading_deg: self.current_bearing_deg,
+            glide_ratio: 8.0,
+            qnh_hpa: 1013.25,
+            terrain_elevation_msl: 600.0,
+            timestamp_ms: self.current_timestamp_ns / 1_000_000,
+        };
+        store.evaluate(input)
     }
 
     /// Advances kinematic state based on active maneuver.
@@ -443,5 +465,25 @@ mod tests {
                 "Expected pressure at {alt1}m ({p1}) to be strictly greater than at {alt2}m ({p2})"
             );
         }
+    }
+
+    #[test]
+    fn procedural_generator_airspace_proximity_evaluation_works() {
+        let mut generator = ProceduralFlightGenerator::new(170607, 1_000_000_000);
+        let mut store = AirspaceStore::new();
+        store.load_openair_text(crate::airspace::fixtures::DACH_OPENAIR_SAMPLE);
+
+        // At default Dachstein location (47.52, 13.69), flight is clear of airspace
+        let eval_clear = generator.evaluate_airspace_proximity(&mut store);
+        assert_eq!(eval_clear.alert_level, 0);
+
+        // Position generator inside Innsbruck CTR (lat 47.26, lon 11.25)
+        generator.current_lat_deg = 47.26;
+        generator.current_lon_deg = 11.25;
+        generator.current_altitude_m = 1000.0;
+        let eval_ctr = generator.evaluate_airspace_proximity(&mut store);
+        assert_eq!(eval_ctr.alert_level, 3); // Level 3 Violation
+        assert_eq!(eval_ctr.is_inside_horizontal, 1);
+        assert_eq!(eval_ctr.is_inside_vertical, 1);
     }
 }
