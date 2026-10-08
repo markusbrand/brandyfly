@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use super::ast::{Airspace, AirspaceClass, Coordinate};
+use super::ast::{Airspace, AirspaceClass, BoundingBox, Coordinate};
 use super::parser::geodesic_destination;
 use super::spatial::distance_point_to_polygon_meters;
 use super::vertical::resolve_airspace_vertical_bounds_meters;
@@ -294,7 +294,22 @@ pub fn project_glide_slope(
 
     let mut intersections = Vec::new();
 
+    let end_coord = forward_points
+        .last()
+        .map(|(_, c, _)| *c)
+        .unwrap_or(aircraft_pos);
+    let track_bbox = BoundingBox {
+        min_lat: aircraft_pos.latitude.min(end_coord.latitude) - 0.02,
+        max_lat: aircraft_pos.latitude.max(end_coord.latitude) + 0.02,
+        min_lon: aircraft_pos.longitude.min(end_coord.longitude) - 0.02,
+        max_lon: aircraft_pos.longitude.max(end_coord.longitude) + 0.02,
+    };
+
     for airspace in airspaces {
+        if !airspace.bounding_box.intersects(&track_bbox) {
+            continue;
+        }
+
         let (floor_m, ceiling_m) = resolve_airspace_vertical_bounds_meters(
             airspace.floor,
             airspace.ceiling,
