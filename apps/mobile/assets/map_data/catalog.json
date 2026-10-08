@@ -1,0 +1,211 @@
+{
+  "catalogVersion": 1,
+  "generatedAt": "2026-10-08T20:00:00.000Z",
+  "attribution": {
+    "osm": "© OpenStreetMap contributors, licensed under ODbL 1.0 (https://www.openstreetmap.org/copyright)",
+    "copernicus": "Contains modified Copernicus DEM data © ESA/Copernicus (2021) distributed under CC BY 4.0 (https://spacedata.copernicus.eu)",
+    "naturalEarth": "Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com (public domain)"
+  },
+  "regions": [
+    {
+      "id": "alps-east",
+      "name": "Alps - Eastern",
+      "description": "Eastern Austria, Slovenia, SE Bavaria (Dachstein, Karawanken, Julian Alps)",
+      "bounds": {
+        "north": 48.3,
+        "south": 46.2,
+        "west": 12.5,
+        "east": 16.6
+      },
+      "version": "2026-10",
+      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "files": {
+        "map": {
+          "url": "https://cdn.brandyfly.org/maps/regions/alps-east/map.pmtiles",
+          "sizeBytes": 104857600,
+          "sha256": ""
+        },
+        "terrain": {
+          "url": "https://cdn.brandyfly.org/maps/regions/alps-east/terrain.pmtiles",
+          "sizeBytes": 62914560,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "id": "alps-central",
+      "name": "Alps - Central",
+      "description": "Tyrol, Vorarlberg, eastern Switzerland, Allgaeu (Stubai, Zillertal, Arlberg, Engadin)",
+      "bounds": {
+        "north": 47.8,
+        "south": 46.2,
+        "west": 9.5,
+        "east": 12.8
+      },
+      "version": "2026-10",
+      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "files": {
+        "map": {
+          "url": "https://cdn.brandyfly.org/maps/regions/alps-central/map.pmtiles",
+          "sizeBytes": 83886080,
+          "sha256": ""
+        },
+        "terrain": {
+          "url": "https://cdn.brandyfly.org/maps/regions/alps-central/terrain.pmtiles",
+          "sizeBytes": 52428800,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "id": "alps-west",
+      "name": "Alps - Western",
+      "description": "Western Switzerland, French Alps, Aosta, Savoie (Chamonix, Verbier, Annecy)",
+      "bounds": {
+        "north": 46.5,
+        "south": 44.8,
+        "west": 5.7,
+        "east": 8.0
+      },
+      "version": "2026-10",
+      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "files": {
+        "map": {
+          "url": "https://cdn.brandyfly.org/maps/regions/alps-west/map.pmtiles",
+          "sizeBytes": 115343360,
+          "sha256": ""
+        },
+        "terrain": {
+          "url": "https://cdn.brandyfly.org/maps/regions/alps-west/terrain.pmtiles",
+          "sizeBytes": 73400320,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "id": "alps-south",
+      "name": "Alps - Southern",
+      "description": "South Tyrol, Trentino, Dolomites, Lombardy lakes (Bassano, Garda, Feltre)",
+      "bounds": {
+        "north": 46.7,
+        "south": 45.4,
+        "west": 9.8,
+        "east": 12.6
+      },
+      "version": "2026-10",
+      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "files": {
+        "map": {
+          "url": "https://cdn.brandyfly.org/maps/regions/alps-south/map.pmtiles",
+          "sizeBytes": 83886080,
+          "sha256": ""
+        },
+        "terrain": {
+          "url": "https://cdn.brandyfly.org/maps/regions/alps-south/terrain.pmtiles",
+          "sizeBytes": 52428800,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "id": "pyrenees",
+      "name": "Pyrenees",
+      "description": "French and Spanish Pyrenees, Andorra (Ager, Castejon, Organya)",
+      "bounds": {
+        "north": 43.3,
+        "south": 41.8,
+        "west": -2.0,
+        "east": 3.2
+      },
+      "version": "2026-10",
+      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "files": {
+        "map": {
+          "url": "https://cdn.brandyfly.org/maps/regions/pyrenees/map.pmtiles",
+          "sizeBytes": 73400320,
+          "sha256": ""
+        },
+        "terrain": {
+          "url": "https://cdn.brandyfly.org/maps/regions/pyrenees/terrain.pmtiles",
+          "sizeBytes": 52428800,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "id": "balkans-west",
+      "name": "Balkans - Western",
+      "description": "Croatia coast, Montenegro, Albania, North Macedonia, Pindus",
+      "bounds": {
+        "north": 45.2,
+        "south": 39.5,
+        "west": 14.5,
+        "east": 22.0
+      },
+      "version": "2026-10",
+      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "files": {
+        "map": {
+          "url": "https://cdn.brandyfly.org/maps/regions/balkans-west/map.pmtiles",
+          "sizeBytes": 83886080,
+          "sha256": ""
+        },
+        "terrain": {
+          "url": "https://cdn.brandyfly.org/maps/regions/balkans-west/terrain.pmtiles",
+          "sizeBytes": 52428800,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "id": "turkey-aegean",
+      "name": "Turkey - Aegean & Turquoise Coast",
+      "description": "Babadag / Oludeniz, Kas, Antalya, Mugla",
+      "bounds": {
+        "north": 37.5,
+        "south": 35.8,
+        "west": 27.5,
+        "east": 31.5
+      },
+      "version": "2026-10",
+      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "files": {
+        "map": {
+          "url": "https://cdn.brandyfly.org/maps/regions/turkey-aegean/map.pmtiles",
+          "sizeBytes": 62914560,
+          "sha256": ""
+        },
+        "terrain": {
+          "url": "https://cdn.brandyfly.org/maps/regions/turkey-aegean/terrain.pmtiles",
+          "sizeBytes": 41943040,
+          "sha256": ""
+        }
+      }
+    },
+    {
+      "id": "carpathians",
+      "name": "Carpathians",
+      "description": "Tatra mountains, Romanian Carpathians (Brasov, Sinaia, Low/High Tatras)",
+      "bounds": {
+        "north": 49.8,
+        "south": 45.2,
+        "west": 18.5,
+        "east": 26.5
+      },
+      "version": "2026-10",
+      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "files": {
+        "map": {
+          "url": "https://cdn.brandyfly.org/maps/regions/carpathians/map.pmtiles",
+          "sizeBytes": 83886080,
+          "sha256": ""
+        },
+        "terrain": {
+          "url": "https://cdn.brandyfly.org/maps/regions/carpathians/terrain.pmtiles",
+          "sizeBytes": 62914560,
+          "sha256": ""
+        }
+      }
+    }
+  ]
+}

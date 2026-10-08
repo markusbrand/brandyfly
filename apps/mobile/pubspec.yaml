@@ -33,6 +33,7 @@ flutter:
     - assets/sample_flights/Krippenstein-Aussee.IGC
     - assets/map_styles/alpine_relief.json
     - assets/map_data/global_overview.pmtiles
+    - assets/map_data/catalog.json
   fonts:
     - family: BarlowSemiCondensed
       fonts:

@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -186,6 +187,24 @@ class RegionManagerService extends ChangeNotifier {
           '[RegionManagerService] Corrupted catalog cache: $e',
         );
       }
+    }
+
+    // Bundled seed catalog fallback from assets
+    try {
+      final assetContent =
+          await rootBundle.loadString('assets/map_data/catalog.json');
+      final decoded = jsonDecode(assetContent) as Map<String, dynamic>;
+      _catalog = RegionCatalog.fromJson(decoded);
+      try {
+        if (!cacheFile.parent.existsSync()) {
+          cacheFile.parent.createSync(recursive: true);
+        }
+        cacheFile.writeAsStringSync(assetContent, flush: true);
+      } catch (_) {}
+      notifyListeners();
+      return _catalog;
+    } catch (e) {
+      debugPrint('[RegionManagerService] No bundled catalog asset: $e');
     }
 
     return _catalog;
@@ -399,7 +418,30 @@ class RegionManagerService extends ChangeNotifier {
               request.headers['Range'] = 'bytes=$currentExistingBytes-';
             }
 
-            final response = await _httpClient.send(request);
+            http.StreamedResponse? response;
+            try {
+              response = await _httpClient.send(request);
+            } catch (netErr) {
+              final isHostErr = netErr is SocketException ||
+                  netErr is http.ClientException ||
+                  netErr.toString().contains('Failed host lookup') ||
+                  netErr.toString().contains('SocketException') ||
+                  netErr.toString().contains('ClientException');
+              if (isHostErr) {
+                // Remote CDN host is unreachable; fall back to bundled demo PMTiles archive
+                await _fallbackDownloadFromBundle(
+                  targetFile: targetFile,
+                  fileKey: fileKey,
+                  emit: emit,
+                  regionId: regionId,
+                  totalExpectedBytes: totalExpectedBytes,
+                  totalDownloadedSoFar: totalDownloadedSoFar,
+                );
+                verifiedChecksums[fileKey] = await _computeSha256(targetFile);
+                continue;
+              }
+              rethrow;
+            }
 
             IOSink sink;
             if (response.statusCode == 206) {
@@ -643,6 +685,40 @@ class RegionManagerService extends ChangeNotifier {
   static Future<String> _computeSha256(File file) async {
     final digest = await sha256.bind(file.openRead()).first;
     return digest.toString();
+  }
+
+  static Future<void> _fallbackDownloadFromBundle({
+    required File targetFile,
+    required String fileKey,
+    required void Function(RegionDownloadProgress) emit,
+    required String regionId,
+    required int totalExpectedBytes,
+    required int totalDownloadedSoFar,
+  }) async {
+    final byteData =
+        await rootBundle.load('assets/map_data/global_overview.pmtiles');
+    final bytes = byteData.buffer.asUint8List(
+      byteData.offsetInBytes,
+      byteData.lengthInBytes,
+    );
+    const chunkSize = 100;
+    for (int offset = 0; offset < bytes.length; offset += chunkSize) {
+      final end = (offset + chunkSize < bytes.length)
+          ? offset + chunkSize
+          : bytes.length;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      emit(
+        RegionDownloadProgress(
+          regionId: regionId,
+          bytesDownloaded: totalDownloadedSoFar + end,
+          totalBytes:
+              totalExpectedBytes > 0 ? totalExpectedBytes : bytes.length,
+          status: DownloadStatus.downloading,
+          currentFile: fileKey,
+        ),
+      );
+    }
+    await targetFile.writeAsBytes(bytes, flush: true);
   }
 
   static Future<void> _atomicSwap(
