@@ -1,6 +1,7 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'airspace_models.dart';
+import 'audio_vario_models.dart';
 import 'brandyfly_native_method_channel.dart';
 import 'mock_flight_mode.dart';
 
@@ -96,5 +97,25 @@ abstract class BrandyflyNativePlatform extends PlatformInterface {
     NativeAirspaceEvaluationInput input,
   ) {
     throw UnimplementedError('airspaceEvaluate() has not been implemented.');
+  }
+
+  Future<bool> audioVarioStart() {
+    throw UnimplementedError('audioVarioStart() has not been implemented.');
+  }
+
+  Future<bool> audioVarioStop() {
+    throw UnimplementedError('audioVarioStop() has not been implemented.');
+  }
+
+  Future<bool> audioVarioUpdateTone(AudioToneCommand command) {
+    throw UnimplementedError('audioVarioUpdateTone() has not been implemented.');
+  }
+
+  Future<bool> audioVarioSetVolume(double volume) {
+    throw UnimplementedError('audioVarioSetVolume() has not been implemented.');
+  }
+
+  Future<bool> audioVarioSetMuted(bool isMuted) {
+    throw UnimplementedError('audioVarioSetMuted() has not been implemented.');
   }
 }

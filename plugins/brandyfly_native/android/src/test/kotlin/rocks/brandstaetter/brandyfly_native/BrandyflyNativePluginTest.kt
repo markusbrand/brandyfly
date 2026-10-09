@@ -147,5 +147,45 @@ internal class BrandyflyNativePluginTest {
 
         manager.stopTransport()
     }
+
+    @Test
+    fun onMethodCall_audioVarioLifecycleAndControls_returnsSuccess() {
+        val plugin = BrandyflyNativePlugin()
+
+        val startCall = MethodCall("audioVarioStart", null)
+        val startResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        plugin.onMethodCall(startCall, startResult)
+        Mockito.verify(startResult).success(Mockito.anyBoolean())
+
+        val updateCall = MethodCall(
+            "audioVarioUpdateTone",
+            mapOf(
+                "state" to "climb",
+                "frequencyHz" to 750.0,
+                "cadenceMs" to 280,
+                "dutyCycle" to 0.55,
+                "volume" to 0.8,
+                "isMuted" to false
+            )
+        )
+        val updateResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        plugin.onMethodCall(updateCall, updateResult)
+        Mockito.verify(updateResult).success(true)
+
+        val volCall = MethodCall("audioVarioSetVolume", mapOf("volume" to 0.7))
+        val volResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        plugin.onMethodCall(volCall, volResult)
+        Mockito.verify(volResult).success(true)
+
+        val muteCall = MethodCall("audioVarioSetMuted", mapOf("isMuted" to true))
+        val muteResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        plugin.onMethodCall(muteCall, muteResult)
+        Mockito.verify(muteResult).success(true)
+
+        val stopCall = MethodCall("audioVarioStop", null)
+        val stopResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        plugin.onMethodCall(stopCall, stopResult)
+        Mockito.verify(stopResult).success(true)
+    }
 }
 

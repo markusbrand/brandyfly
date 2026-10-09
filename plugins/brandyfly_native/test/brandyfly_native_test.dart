@@ -76,6 +76,21 @@ class MockBrandyflyNativePlatform
         forwardIntersectionTimeS: 100.0,
         willPenetrateGlideSlope: true,
       ));
+
+  @override
+  Future<bool> audioVarioStart() => Future.value(true);
+
+  @override
+  Future<bool> audioVarioStop() => Future.value(true);
+
+  @override
+  Future<bool> audioVarioUpdateTone(AudioToneCommand command) => Future.value(true);
+
+  @override
+  Future<bool> audioVarioSetVolume(double volume) => Future.value(true);
+
+  @override
+  Future<bool> audioVarioSetMuted(bool isMuted) => Future.value(true);
 }
 
 void main() {
@@ -187,5 +202,26 @@ void main() {
     expect(eval.willPenetrateGlideSlope, true);
 
     expect(await brandyflyNativePlugin.airspaceClearStore(), 0);
+  });
+
+  test('audio vario lifecycle and command forwarding', () async {
+    final brandyflyNativePlugin = BrandyflyNative();
+    final fakePlatform = MockBrandyflyNativePlatform();
+    BrandyflyNativePlatform.instance = fakePlatform;
+
+    expect(await brandyflyNativePlugin.audioVarioStart(), true);
+
+    const cmd = AudioToneCommand(
+      state: AudioVarioToneState.climb,
+      frequencyHz: 600.0,
+      cadenceMs: 400,
+      dutyCycle: 0.5,
+      volume: 0.8,
+      isMuted: false,
+    );
+    expect(await brandyflyNativePlugin.audioVarioUpdateTone(cmd), true);
+    expect(await brandyflyNativePlugin.audioVarioSetVolume(0.5), true);
+    expect(await brandyflyNativePlugin.audioVarioSetMuted(true), true);
+    expect(await brandyflyNativePlugin.audioVarioStop(), true);
   });
 }

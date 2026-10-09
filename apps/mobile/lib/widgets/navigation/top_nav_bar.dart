@@ -1,16 +1,19 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../models/ui_config.dart';
+import '../../services/audio_vario_service.dart';
 import '../../services/screen_manager_service.dart';
 
 class TopNavBarOverlay extends StatefulWidget {
   const TopNavBarOverlay({
     super.key,
     required this.screenManager,
+    this.audioVarioService,
     required this.child,
   });
 
   final ScreenManagerService screenManager;
+  final AudioVarioService? audioVarioService;
   final Widget child;
 
   @override
@@ -36,13 +39,19 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     widget.screenManager.addListener(_onScreenManagerChange);
+    widget.audioVarioService?.addListener(_onAudioVarioChange);
   }
 
   @override
   void dispose() {
     widget.screenManager.removeListener(_onScreenManagerChange);
+    widget.audioVarioService?.removeListener(_onAudioVarioChange);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onAudioVarioChange() {
+    if (mounted) setState(() {});
   }
 
   void _onScreenManagerChange() {
@@ -237,6 +246,24 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             Expanded(
               child: Center(child: _buildScreenSelectorDropdown(context)),
             ),
+            if (widget.audioVarioService != null)
+              IconButton(
+                key: const Key('nav_pill_btn_audio_mute'),
+                icon: Icon(
+                  widget.audioVarioService!.isMuted
+                      ? Icons.volume_off
+                      : Icons.volume_up,
+                  color: widget.audioVarioService!.isMuted
+                      ? Colors.redAccent
+                      : Colors.lightBlueAccent,
+                ),
+                tooltip: widget.audioVarioService!.isMuted
+                    ? 'Unmute Audio'
+                    : 'Mute Audio',
+                onPressed: () {
+                  widget.audioVarioService!.toggleMute();
+                },
+              ),
             IconButton(
               key: const Key('nav_pill_btn_flights'),
               icon: const Icon(Icons.flight, color: Colors.lightGreenAccent),
@@ -466,6 +493,27 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
             widget.screenManager.toggleSettingsPanel(true);
           },
         ),
+        if (widget.audioVarioService != null)
+          ElevatedButton.icon(
+            key: const Key('nav_btn_audio_mute'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: widget.audioVarioService!.isMuted
+                  ? Colors.red.shade900
+                  : Colors.deepPurple.shade700,
+              foregroundColor: Colors.white,
+            ),
+            icon: Icon(
+              widget.audioVarioService!.isMuted
+                  ? Icons.volume_off
+                  : Icons.volume_up,
+            ),
+            label: Text(
+              widget.audioVarioService!.isMuted ? 'Unmute Audio' : 'Mute Audio',
+            ),
+            onPressed: () {
+              widget.audioVarioService!.toggleMute();
+            },
+          ),
       ],
     );
   }

@@ -11,6 +11,11 @@ class FlightSettings {
     this.autoUploadToXContest = false,
     this.xcontestUsername = '',
     this.xcontestPassword = '',
+    this.varioAudioEnabled = true,
+    this.varioVolume = 0.8,
+    this.varioClimbThresholdMs = 0.2,
+    this.varioSinkThresholdMs = -1.5,
+    this.varioSnifferEnabled = false,
   });
 
   final double takeoffSpeedThresholdKmh;
@@ -24,6 +29,11 @@ class FlightSettings {
   final bool autoUploadToXContest;
   final String xcontestUsername;
   final String xcontestPassword;
+  final bool varioAudioEnabled;
+  final double varioVolume;
+  final double varioClimbThresholdMs;
+  final double varioSinkThresholdMs;
+  final bool varioSnifferEnabled;
 
   FlightSettings copyWith({
     double? takeoffSpeedThresholdKmh,
@@ -37,6 +47,11 @@ class FlightSettings {
     bool? autoUploadToXContest,
     String? xcontestUsername,
     String? xcontestPassword,
+    bool? varioAudioEnabled,
+    double? varioVolume,
+    double? varioClimbThresholdMs,
+    double? varioSinkThresholdMs,
+    bool? varioSnifferEnabled,
   }) {
     return FlightSettings(
       takeoffSpeedThresholdKmh:
@@ -61,6 +76,12 @@ class FlightSettings {
       autoUploadToXContest: autoUploadToXContest ?? this.autoUploadToXContest,
       xcontestUsername: xcontestUsername ?? this.xcontestUsername,
       xcontestPassword: xcontestPassword ?? this.xcontestPassword,
+      varioAudioEnabled: varioAudioEnabled ?? this.varioAudioEnabled,
+      varioVolume: varioVolume ?? this.varioVolume,
+      varioClimbThresholdMs:
+          varioClimbThresholdMs ?? this.varioClimbThresholdMs,
+      varioSinkThresholdMs: varioSinkThresholdMs ?? this.varioSinkThresholdMs,
+      varioSnifferEnabled: varioSnifferEnabled ?? this.varioSnifferEnabled,
     );
   }
 
@@ -76,6 +97,11 @@ class FlightSettings {
     'autoUploadToXContest': autoUploadToXContest,
     'xcontestUsername': xcontestUsername,
     'xcontestPassword': xcontestPassword,
+    'varioAudioEnabled': varioAudioEnabled,
+    'varioVolume': varioVolume,
+    'varioClimbThresholdMs': varioClimbThresholdMs,
+    'varioSinkThresholdMs': varioSinkThresholdMs,
+    'varioSnifferEnabled': varioSnifferEnabled,
   };
 
   factory FlightSettings.fromJson(Map<String, dynamic> json) => FlightSettings(
@@ -98,5 +124,12 @@ class FlightSettings {
     autoUploadToXContest: json['autoUploadToXContest'] as bool? ?? false,
     xcontestUsername: json['xcontestUsername'] as String? ?? '',
     xcontestPassword: json['xcontestPassword'] as String? ?? '',
+    varioAudioEnabled: json['varioAudioEnabled'] as bool? ?? true,
+    varioVolume: (json['varioVolume'] as num?)?.toDouble() ?? 0.8,
+    varioClimbThresholdMs:
+        (json['varioClimbThresholdMs'] as num?)?.toDouble() ?? 0.2,
+    varioSinkThresholdMs:
+        (json['varioSinkThresholdMs'] as num?)?.toDouble() ?? -1.5,
+    varioSnifferEnabled: json['varioSnifferEnabled'] as bool? ?? false,
   );
 }

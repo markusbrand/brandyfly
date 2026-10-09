@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'airspace_models.dart';
+import 'audio_vario_models.dart';
 import 'brandyfly_native_platform_interface.dart';
 import 'mock_flight_mode.dart';
 
@@ -180,6 +181,84 @@ class MethodChannelBrandyflyNative extends BrandyflyNativePlatform {
       return NativeAirspaceEvaluationOutput.clear;
     } on MissingPluginException {
       return NativeAirspaceEvaluationOutput.clear;
+    }
+  }
+
+  bool _fallbackAudioRunning = false;
+  AudioToneCommand _fallbackAudioCommand = AudioToneCommand.silent;
+  double _fallbackVolume = 0.8;
+  bool _fallbackMuted = false;
+
+  @visibleForTesting
+  AudioToneCommand get fallbackAudioCommand => _fallbackAudioCommand;
+
+  @visibleForTesting
+  bool get fallbackAudioRunning => _fallbackAudioRunning;
+
+  @override
+  Future<bool> audioVarioStart() async {
+    try {
+      final res = await methodChannel.invokeMethod<bool>('audioVarioStart');
+      _fallbackAudioRunning = res ?? true;
+      return res ?? true;
+    } on MissingPluginException {
+      _fallbackAudioRunning = true;
+      return true;
+    }
+  }
+
+  @override
+  Future<bool> audioVarioStop() async {
+    try {
+      final res = await methodChannel.invokeMethod<bool>('audioVarioStop');
+      _fallbackAudioRunning = false;
+      return res ?? true;
+    } on MissingPluginException {
+      _fallbackAudioRunning = false;
+      _fallbackAudioCommand = AudioToneCommand.silent;
+      return true;
+    }
+  }
+
+  @override
+  Future<bool> audioVarioUpdateTone(AudioToneCommand command) async {
+    _fallbackAudioCommand = command;
+    try {
+      final res = await methodChannel.invokeMethod<bool>(
+        'audioVarioUpdateTone',
+        command.toMap(),
+      );
+      return res ?? true;
+    } on MissingPluginException {
+      return true;
+    }
+  }
+
+  @override
+  Future<bool> audioVarioSetVolume(double volume) async {
+    _fallbackVolume = volume.clamp(0.0, 1.0);
+    try {
+      final res = await methodChannel.invokeMethod<bool>(
+        'audioVarioSetVolume',
+        {'volume': _fallbackVolume},
+      );
+      return res ?? true;
+    } on MissingPluginException {
+      return true;
+    }
+  }
+
+  @override
+  Future<bool> audioVarioSetMuted(bool isMuted) async {
+    _fallbackMuted = isMuted;
+    try {
+      final res = await methodChannel.invokeMethod<bool>(
+        'audioVarioSetMuted',
+        {'isMuted': isMuted},
+      );
+      return res ?? true;
+    } on MissingPluginException {
+      return true;
     }
   }
 }

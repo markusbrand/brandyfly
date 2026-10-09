@@ -12,6 +12,7 @@ import 'data/repositories/layout_repository.dart';
 import 'data/repositories/telemetry_repository.dart';
 import 'domain/models/cockpit_telemetry.dart';
 import 'models/flight_model.dart';
+import 'services/audio_vario_service.dart';
 import 'services/elevation_service.dart';
 import 'services/flight_replay_service.dart';
 import 'services/flight_storage_service.dart';
@@ -58,6 +59,7 @@ class BrandyFlyApp extends StatefulWidget {
     this.elevationService,
     this.regionManagerService,
     this.thermalPrefetchService,
+    this.audioVarioService,
   });
 
   final MockFlightModeConfig config;
@@ -74,6 +76,9 @@ class BrandyFlyApp extends StatefulWidget {
   /// KK7 thermal prefetch; created automatically on mobile/desktop when null
   /// (not in `flutter test` and not on the web).
   final ThermalPrefetchService? thermalPrefetchService;
+
+  /// Acoustic vario sound synthesis service.
+  final AudioVarioService? audioVarioService;
 
   @override
   State<BrandyFlyApp> createState() => _BrandyFlyAppState();
@@ -110,6 +115,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   late MapLibreMapService _mapService;
   late ElevationService _elevationService;
   late RegionManagerService _regionManagerService;
+  late AudioVarioService _audioVarioService;
   late TelemetryRepository _telemetryRepository;
   LayoutRepository? _ownedLayoutRepository;
   ThermalPrefetchService? _thermalPrefetch;
@@ -126,6 +132,11 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     _replayService = widget.replayService ?? FlightReplayService();
     _regionManagerService =
         widget.regionManagerService ?? RegionManagerService();
+    _audioVarioService =
+        widget.audioVarioService ??
+        AudioVarioService(initialSettings: _trackingService.settings);
+    _audioVarioService.attachTrackingService(_trackingService);
+    unawaited(_audioVarioService.start());
     _mapService =
         widget.mapService ??
         MapLibreMapService(regionManagerService: _regionManagerService);
@@ -267,7 +278,11 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     }
     _thermalPrefetch = service;
     _lifecycleListener = AppLifecycleListener(
+      onPause: () {
+        _audioVarioService.handleAppLifecycleState(AppLifecycleState.paused);
+      },
       onResume: () {
+        _audioVarioService.handleAppLifecycleState(AppLifecycleState.resumed);
         _thermalPrefetch?.notifyRegionsChanged();
         final lastPoint = _trackingService.activeFlightPoints.lastOrNull;
         if (lastPoint != null) {
@@ -354,6 +369,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   void dispose() {
     _timer?.cancel();
     _lifecycleListener?.dispose();
+    _audioVarioService.dispose();
     if (_ownsThermalPrefetch) _thermalPrefetch?.dispose();
     _syntheticTelemetry?.dispose();
     _flightCompletedSub?.cancel();
@@ -405,6 +421,9 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
         ChangeNotifierProvider<RegionManagerService>.value(
           value: _regionManagerService,
         ),
+        ChangeNotifierProvider<AudioVarioService>.value(
+          value: _audioVarioService,
+        ),
       ],
       child: _buildApp(context),
     );
@@ -445,6 +464,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
             children: [
               TopNavBarOverlay(
                 screenManager: _screenManager,
+                audioVarioService: _audioVarioService,
                 child: _screenManager.isSettingsVisible
                     ? UISettingsPanel(
                         screenManager: _screenManager,
@@ -452,6 +472,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                         uploadService: _uploadService,
                         thermalPrefetchService: _thermalPrefetch,
                         regionManagerService: _regionManagerService,
+                        audioVarioService: _audioVarioService,
                       )
                     : widget.config.enabled
                     ? _MockFlightView(
