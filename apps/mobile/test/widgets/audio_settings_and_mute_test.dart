@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:brandyfly/models/flight_settings.dart';
 import 'package:brandyfly/models/ui_config.dart';
 import 'package:brandyfly/services/audio/audio_vario_engine.dart';
 import 'package:brandyfly/services/audio_vario_service.dart';

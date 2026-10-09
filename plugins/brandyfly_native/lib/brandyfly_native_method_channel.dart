@@ -195,6 +195,12 @@ class MethodChannelBrandyflyNative extends BrandyflyNativePlatform {
   @visibleForTesting
   bool get fallbackAudioRunning => _fallbackAudioRunning;
 
+  @visibleForTesting
+  double get fallbackVolume => _fallbackVolume;
+
+  @visibleForTesting
+  bool get fallbackMuted => _fallbackMuted;
+
   @override
   Future<bool> audioVarioStart() async {
     try {

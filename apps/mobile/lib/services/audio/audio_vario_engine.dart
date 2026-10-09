@@ -1,4 +1,3 @@
-import 'package:brandyfly_native/audio_vario_models.dart';
 import 'package:brandyfly_native/brandyfly_native.dart';
 
 /// Abstract contract for platform-specific audio vario synthesis engines.

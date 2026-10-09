@@ -6,9 +6,6 @@ import 'package:brandyfly/services/audio/audio_vario_engine.dart';
 import 'package:brandyfly/services/audio_vario_service.dart';
 import 'package:brandyfly/services/flight_tracking_service.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
-import 'package:brandyfly/models/flight_model.dart';
-import 'package:brandyfly/models/ui_config.dart';
-import 'package:brandyfly_native/audio_vario_models.dart';
 import 'package:brandyfly_native/brandyfly_native.dart';
 
 class FakeSimulationNative extends BrandyflyNative {
