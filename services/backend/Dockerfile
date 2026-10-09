@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.8
-FROM golang:1.27-alpine AS build
+# Build on the native build platform and cross-compile for the target
+# (amd64 home server, arm64 fallback) - avoids slow QEMU emulation.
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build
 
 ARG TARGETOS
 ARG TARGETARCH

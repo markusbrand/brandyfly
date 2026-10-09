@@ -115,7 +115,9 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: services/backend
-          platforms: linux/arm64
+          # Multi-arch: the deployment server (Bosgame, Ubuntu) is x86_64;
+          # arm64 is kept so the image still runs on a Raspberry Pi.
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/brandyfly-backend:latest
           cache-from: type=gha
@@ -124,7 +126,8 @@ jobs:
   deploy:
     needs: build-and-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: [self-hosted, raspberry-pi]
+    # Self-hosted runner on the Bosgame home server (Ubuntu, x86_64).
+    runs-on: [self-hosted, Linux, X64]
     defaults:
       run:
         working-directory: deploy
@@ -140,3 +143,14 @@ jobs:
           [ -f ~/brandyfly/deploy/.env ] && cp ~/brandyfly/deploy/.env .env || true
           docker compose pull
           docker compose up -d --remove-orphans
+      - name: Verify backend health
+        run: |
+          port=$(grep -E '^BRANDYFLY_HOST_PORT=' .env 2>/dev/null | cut -d= -f2)
+          port=${port:-8090}
+          for i in $(seq 1 15); do
+            if curl -fsS "http://127.0.0.1:${port}/healthz"; then echo; exit 0; fi
+            sleep 2
+          done
+          echo "::error::backend /healthz did not answer on port ${port} within 30 s"
+          docker compose logs --tail 50
+          exit 1
