@@ -49,6 +49,8 @@ class TelemetrySnapshot {
   final double longitude;
   final double? gnssAltitude;
   final double? hag; // height above ground (meters)
+  /// Wind from an explicitly declared external wind source only (e.g. a
+  /// future wind sensor). Null for all current sources; never fabricated.
   final double? windDirectionDeg;
   final double? windSpeedKmh;
   final bool isStale;
@@ -89,8 +91,8 @@ class TelemetrySnapshot {
       longitude: point.longitude,
       gnssAltitude: point.gnssAltitude,
       hag: point.hag,
-      windDirectionDeg: windDirectionDeg ?? ((point.heading + 180.0) % 360.0),
-      windSpeedKmh: windSpeedKmh ?? 12.0,
+      windDirectionDeg: windDirectionDeg,
+      windSpeedKmh: windSpeedKmh,
       isStale: isStale,
       isValid: true,
       isCircling: false,
@@ -107,8 +109,8 @@ class TelemetrySnapshot {
       'glide': 8.0,
       'hag': hag ?? (altitude - 800.0).clamp(0.0, 9999.0),
       'climb': vario,
-      'windDir': windDirectionDeg ?? ((heading + 180.0) % 360.0),
-      'windSpeed': windSpeedKmh ?? 12.0,
+      'windDir': ?windDirectionDeg,
+      'windSpeed': ?windSpeedKmh,
       'latitude': latitude,
       'longitude': longitude,
       'heading': heading,

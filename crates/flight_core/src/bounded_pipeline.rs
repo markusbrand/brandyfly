@@ -201,10 +201,9 @@ impl RateLimitedKpiPublisher {
     }
 }
 
-use crate::circling::CirclingStateDetector;
-use crate::thermal::{ThermalCoreCalculator, ThermalStateSnapshot, TrackPoint};
+use crate::thermal::{ThermalCoreEstimate, ThermalStateSnapshot};
+use crate::thermal_assistant::{ThermalAssistant, ThermalSample};
 use crate::wind::Position;
-use crate::wind::WindEstimator;
 
 /// Core processing engine connecting bounded queues, validation, audio control, and KPI snapshots.
 pub struct BoundedFlightPipeline {
@@ -222,10 +221,8 @@ pub struct BoundedFlightPipeline {
     pub last_pressure_hpa: Option<f64>,
     pub last_baro_time_ns: Option<u64>,
     pub last_thermal_snapshot: Option<ThermalStateSnapshot>,
-    // Flight Mode detectors
-    circling_detector: CirclingStateDetector,
-    wind_estimator: WindEstimator,
-    thermal_calculator: ThermalCoreCalculator,
+    // Thermal assistant (circling, wind drift, thermal core)
+    thermal_assistant: ThermalAssistant,
 }
 
 impl BoundedFlightPipeline {
@@ -249,9 +246,7 @@ impl BoundedFlightPipeline {
             last_pressure_hpa: None,
             last_baro_time_ns: None,
             last_thermal_snapshot: None,
-            circling_detector: CirclingStateDetector::new(),
-            wind_estimator: WindEstimator::new(),
-            thermal_calculator: ThermalCoreCalculator::new(),
+            thermal_assistant: ThermalAssistant::new(),
         }
     }
 
@@ -338,23 +333,32 @@ impl BoundedFlightPipeline {
                 self.last_bearing_deg = *bearing_deg;
 
                 let time_ms = event.native_received_timestamp_ns / 1_000_000;
-                let is_circling = matches!(
-                    self.circling_detector.update(time_ms, *bearing_deg as f64),
-                    crate::circling::FlightState::Circling(_)
-                );
-
-                let pos = Position {
-                    lat: *latitude_deg,
-                    lon: *longitude_deg,
-                };
-                self.wind_estimator
-                    .update(time_ms, *bearing_deg as f64, pos, is_circling);
-
-                self.thermal_calculator.add_point(TrackPoint {
+                let out = self.thermal_assistant.update(ThermalSample {
                     timestamp_ms: time_ms,
-                    position: pos,
-                    climb_rate_ms: self.last_climb_rate_mps as f64,
+                    position: Position {
+                        lat: *latitude_deg,
+                        lon: *longitude_deg,
+                    },
+                    heading_deg: f64::from(*bearing_deg),
+                    climb_rate_ms: f64::from(self.last_climb_rate_mps),
+                    stale: event.quality_flags.is_stale || !event.quality_flags.is_valid,
                 });
+                if out.timestamp_ms == time_ms {
+                    let fallback = Position {
+                        lat: *latitude_deg,
+                        lon: *longitude_deg,
+                    };
+                    self.last_thermal_snapshot = Some(ThermalStateSnapshot {
+                        timestamp_ms: time_ms,
+                        state: out.state,
+                        wind: out.wind,
+                        core_estimate: out.core.unwrap_or(ThermalCoreEstimate {
+                            center: fallback,
+                            center_airmass: fallback,
+                            valid: false,
+                        }),
+                    });
+                }
             }
             SensorPayload::Variometer {
                 climb_rate_mps,
@@ -369,19 +373,6 @@ impl BoundedFlightPipeline {
         let audio_cmd = self.compute_audio_command(core_processed_ns);
         let audio_reaction_ns = Some(core_processed_ns + 1_500_000); // 1.5ms audio dispatch
         self.audio_control.update(audio_cmd);
-
-        // Update thermal snapshot based on updated state
-        if let Some(time_ms) = self.last_baro_time_ns.map(|ns| ns / 1_000_000) {
-            let state = self.circling_detector.state();
-            let wind = self.wind_estimator.estimate();
-            let core_estimate = self.thermal_calculator.calculate(time_ms, wind);
-            self.last_thermal_snapshot = Some(ThermalStateSnapshot {
-                timestamp_ms: time_ms,
-                state,
-                wind,
-                core_estimate,
-            });
-        }
 
         // Submit KPI snapshot
         let kpi = KpiSnapshot {
@@ -694,5 +685,68 @@ mod tests {
         let snap1 = pipeline1.last_thermal_snapshot.unwrap();
         let snap2 = pipeline2.last_thermal_snapshot.unwrap();
         assert_eq!(snap1, snap2);
+    }
+
+    fn gps_event(seq: u64, t_ms: u64, lat: f64, lon: f64, bearing: f32) -> SensorEvent {
+        SensorEvent {
+            schema_version: NATIVE_PIPELINE_SCHEMA_VERSION,
+            source_id: SensorSourceId::Gps,
+            source_timestamp_ns: Some(t_ms * 1_000_000),
+            native_received_timestamp_ns: t_ms * 1_000_000,
+            sequence: seq,
+            quality_flags: SensorQualityFlags::nominal(),
+            payload: SensorPayload::Gps {
+                latitude_deg: lat,
+                longitude_deg: lon,
+                altitude_m: 1500.0,
+                ground_speed_mps: 10.0,
+                bearing_deg: bearing,
+                accuracy_m: 3.0,
+            },
+        }
+    }
+
+    #[test]
+    fn gps_only_stream_produces_thermal_snapshot() {
+        let mut pipeline = BoundedFlightPipeline::new(16, OverflowPolicy::DropOldest, 1);
+        pipeline.ingest(gps_event(1, 1_000, 47.0, 13.0, 90.0));
+        pipeline.step(1_000 * 1_000_000);
+        let snap = pipeline
+            .last_thermal_snapshot
+            .expect("snapshot without barometer");
+        assert_eq!(snap.timestamp_ms, 1_000);
+        assert_eq!(snap.state, crate::circling::FlightState::Gliding);
+        assert!(!snap.core_estimate.valid);
+    }
+
+    #[test]
+    fn core_estimate_resets_when_returning_to_glide() {
+        let mut pipeline = BoundedFlightPipeline::new(16, OverflowPolicy::DropOldest, 1);
+        let mut heading = 0.0_f32;
+        let (mut lat, lon) = (47.0, 13.0);
+        let mut seq = 1;
+        for i in 0..40u64 {
+            heading = (heading + 18.0) % 360.0;
+            lat += 0.00005 * f64::from(heading.to_radians().cos());
+            let t = 1_000 + i * 1_000;
+            pipeline.ingest(gps_event(seq, t, lat, lon, heading));
+            pipeline.step(t * 1_000_000);
+            seq += 1;
+        }
+        let snap = pipeline.last_thermal_snapshot.unwrap();
+        assert!(matches!(
+            snap.state,
+            crate::circling::FlightState::Circling(_)
+        ));
+        assert!(snap.core_estimate.valid);
+        for i in 40..55u64 {
+            let t = 1_000 + i * 1_000;
+            pipeline.ingest(gps_event(seq, t, lat, lon, heading));
+            pipeline.step(t * 1_000_000);
+            seq += 1;
+        }
+        let snap = pipeline.last_thermal_snapshot.unwrap();
+        assert_eq!(snap.state, crate::circling::FlightState::Gliding);
+        assert!(!snap.core_estimate.valid);
     }
 }

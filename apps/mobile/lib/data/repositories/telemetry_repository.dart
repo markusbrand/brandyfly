@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../domain/models/cockpit_telemetry.dart';
+import '../../domain/thermal_assistant/thermal_assistant_engine.dart';
 import '../../models/flight_model.dart';
 import '../../services/elevation_service.dart';
 import '../../services/flight_replay_service.dart';
 import '../../services/flight_tracking_service.dart';
 import '../../services/telemetry/telemetry_source.dart';
 import '../../services/telemetry/telemetry_types.dart';
+import 'replay_thermal_tracker.dart';
 
 /// Converts the app's telemetry sources (replay, attached live/synthetic
 /// source, idle defaults) into one typed [CockpitTelemetry] stream for the UI.
@@ -45,6 +47,16 @@ class TelemetryRepository {
   double? _lastHag;
   int _elevationQuerySeq = 0;
 
+  /// On-device thermal assistant (circling, wind drift, thermal core).
+  final ThermalAssistantEngine _thermalEngine = ThermalAssistantEngine();
+
+  /// Replay thermal state: fed in order with checkpoints for cheap seeks.
+  final ReplayThermalTracker _replayThermal = ReplayThermalTracker();
+
+  /// Latest thermal assistant state (exposed for screen auto-switching).
+  ThermalAssistantState get thermalState =>
+      _replayActive ? _replayThermal.state : _thermalEngine.state;
+
   /// Altitude history is sampled at most once per [historyInterval] so a
   /// 10-50 Hz source does not allocate a new history list on every tick.
   static const Duration historyInterval = Duration(seconds: 1);
@@ -69,6 +81,7 @@ class TelemetryRepository {
   /// Uses [source] (synthetic, BLE, internal sensors) for live telemetry.
   void attachSource(ITelemetrySource source) {
     _sourceSub?.cancel();
+    _thermalEngine.reset();
     _sourceSub = source.telemetryStream.listen(onSnapshot);
   }
 
@@ -81,6 +94,7 @@ class TelemetryRepository {
     _lastHistorySample = null;
     _lastHag = null;
     _elevationQuerySeq++;
+    _thermalEngine.reset();
     _emitLiveOrIdle();
   }
 
@@ -127,26 +141,62 @@ class TelemetryRepository {
       hag = _lastHag;
     }
 
+    final thermal = _thermalEngine.update(
+      ThermalSample(
+        timestampMs: s.timestamp.millisecondsSinceEpoch,
+        position: GeoPosition(s.latitude, s.longitude),
+        headingDeg: s.heading,
+        climbRateMs: s.vario,
+        stale: s.isStale || !s.isValid,
+      ),
+    );
+    // Wind only from an explicitly declared external source or the thermal
+    // assistant estimate - never fabricated.
+    final externalWind = s.windDirectionDeg != null && s.windSpeedKmh != null;
+    final wind = thermal.wind;
+
     _liveSample = CockpitTelemetry(
       altitude: s.altitude,
       speed: s.speed,
       glide: _idle.glide,
       hag: hag,
       climb: s.vario,
-      windDir: s.windDirectionDeg ?? ((s.heading + 180.0) % 360.0),
-      windSpeed: s.windSpeedKmh ?? _idle.windSpeed,
+      windDir: externalWind ? s.windDirectionDeg : wind?.directionDeg,
+      windSpeed: externalWind ? s.windSpeedKmh : wind?.speedKmh,
+      windStale: !externalWind && (wind?.isStale ?? false),
       latitude: s.latitude,
       longitude: s.longitude,
       heading: s.heading,
       history: _liveHistorySnapshot,
       isStale: s.isStale || !s.isValid,
+      thermal: thermal,
+      hasSource: true,
     );
     if (!_replayActive) _emitLiveOrIdle();
   }
 
   void _onReplayChanged() {
     if (_disposed || !_replayActive) return;
-    _telemetry.value = CockpitTelemetry.fromMap(_replayService.currentTelemetry);
+    final base = CockpitTelemetry.fromMap(_replayService.currentTelemetry);
+    final points = _replayService.flight?.points;
+    if (points == null || points.isEmpty) {
+      _replayThermal.clear();
+      _telemetry.value = base;
+      return;
+    }
+    // Thermal state is derived solely from recorded points (deterministic).
+    final thermal = _replayThermal.advanceTo(
+      points,
+      _replayService.currentIndex,
+    );
+    final wind = thermal.wind;
+    _telemetry.value = base.copyWith(
+      windDir: wind?.directionDeg,
+      windSpeed: wind?.speedKmh,
+      windStale: wind?.isStale ?? false,
+      thermal: thermal,
+      hasSource: true,
+    );
   }
 
   void _onTrackingChanged() {

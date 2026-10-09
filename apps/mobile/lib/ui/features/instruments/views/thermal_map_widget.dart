@@ -41,9 +41,12 @@ class ThermalMapWidget extends StatefulWidget {
     this.speedKmh = 38.5,
     this.climbRateMs = 2.4,
     this.headingDeg = 140.0,
-    this.windDirDeg = 220.0,
-    this.windSpeedKmh = 14.0,
+    this.windDirDeg,
+    this.windSpeedKmh,
     this.trackPoints,
+    this.coreOffset,
+    this.referenceTime,
+    this.preview = false,
     this.onZoomIn,
     this.onZoomOut,
   });
@@ -54,10 +57,28 @@ class ThermalMapWidget extends StatefulWidget {
   final double altitudeM;
   final double speedKmh;
   final double climbRateMs;
+
+  /// Pilot track heading (degrees). Must not be the wind direction.
   final double headingDeg;
-  final double windDirDeg;
-  final double windSpeedKmh;
+
+  /// Estimated wind (direction FROM, km/h); null when no estimate exists.
+  final double? windDirDeg;
+  final double? windSpeedKmh;
+
+  /// Live circling track window, metres relative to the pilot
+  /// (dx east, dy south). Never replaced by demo data unless [preview].
   final List<ThermalPoint>? trackPoints;
+
+  /// Estimated thermal core, metres relative to the pilot (dx east, dy south).
+  final Offset? coreOffset;
+
+  /// Time of the latest telemetry sample used for age decay (replay-safe).
+  /// Defaults to the wall clock.
+  final DateTime? referenceTime;
+
+  /// True when no live/replay telemetry is active: renders a labelled demo
+  /// track instead of live data.
+  final bool preview;
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
 
@@ -148,6 +169,9 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
                     windDirDeg: widget.windDirDeg,
                     windSpeedKmh: widget.windSpeedKmh,
                     trackPoints: widget.trackPoints,
+                    coreOffset: widget.coreOffset,
+                    referenceTime: widget.referenceTime,
+                    preview: widget.preview,
                     pulseAnimation: _pulseController,
                     useAirmassTrack: _useAirmassTrack,
                   ),
@@ -155,6 +179,33 @@ class _ThermalMapWidgetState extends State<ThermalMapWidget>
               ),
             ),
           ),
+
+          if (widget.preview)
+            Positioned(
+              left: 8,
+              bottom: 8,
+              child: IgnorePointer(
+                child: Container(
+                  key: const Key('thermal_map_preview_label'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade800.withAlpha(220),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'PREVIEW',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           // Zoom & Recenter Controls Overlay
           Positioned(
@@ -323,6 +374,9 @@ class _ThermalMapPainter extends CustomPainter {
     required this.windDirDeg,
     required this.windSpeedKmh,
     required this.trackPoints,
+    required this.coreOffset,
+    required this.referenceTime,
+    required this.preview,
     required this.pulseAnimation,
     required this.useAirmassTrack,
   }) : super(
@@ -338,10 +392,28 @@ class _ThermalMapPainter extends CustomPainter {
   final double speedKmh;
   final double climbRateMs;
   final double headingDeg;
-  final double windDirDeg;
-  final double windSpeedKmh;
+  final double? windDirDeg;
+  final double? windSpeedKmh;
   final List<ThermalPoint>? trackPoints;
+  final Offset? coreOffset;
+  final DateTime? referenceTime;
+  final bool preview;
   final Animation<double> pulseAnimation;
+
+  DateTime get _now => referenceTime ?? DateTime.now();
+
+  /// Wind drift velocity (canvas units = metres/s, x east, y south).
+  (double, double) get _windDrift {
+    final dir = windDirDeg;
+    final speed = windSpeedKmh;
+    if (!useAirmassTrack || dir == null || speed == null) return (0.0, 0.0);
+    final toward = (dir + 180) * math.pi / 180.0;
+    return (
+      math.sin(toward) * (speed / 3.6),
+      -math.cos(toward) * (speed / 3.6),
+    );
+  }
+
   final bool useAirmassTrack;
 
   // Cached Paint objects to prevent per-frame allocation
@@ -440,9 +512,11 @@ class _ThermalMapPainter extends CustomPainter {
     if (trackPoints != null && trackPoints!.isNotEmpty) {
       return trackPoints!;
     }
+    // Demo data only in labelled preview mode; never during live flight.
+    if (!preview) return const [];
 
     // Generate a realistic circling spiral track with varying lift/sink
-    final now = DateTime.now();
+    final now = _now;
     final points = <ThermalPoint>[];
     const totalPoints = 36;
     const turnRadius = 65.0;
@@ -493,17 +567,11 @@ class _ThermalMapPainter extends CustomPainter {
   void _drawXCtrackBubbles(Canvas canvas, List<ThermalPoint> points) {
     if (points.isEmpty) return;
 
-    final now = DateTime.now();
+    final now = _now;
     final historyDecayFactor = historySeconds > 0 ? 0.6 / historySeconds : 0.0;
 
     // Pre-calculate wind drift velocity vector outside inner loops if airmass track is enabled
-    double wx = 0.0;
-    double wy = 0.0;
-    if (useAirmassTrack) {
-      final windVx = (windDirDeg + 180) * math.pi / 180.0;
-      wx = math.sin(windVx) * (windSpeedKmh / 3.6);
-      wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
-    }
+    final (wx, wy) = _windDrift;
 
     // Draw connecting faint path
     final path = Path();
@@ -599,48 +667,35 @@ class _ThermalMapPainter extends CustomPainter {
 
     if (!showCore) return;
 
-    // Calculate weighted centroid of lift points (climb > 0.5 m/s)
-    double totalWeight = 0.0;
-    double weightedX = 0.0;
-    double weightedY = 0.0;
     double maxClimb = 0.0;
-
-    final now = DateTime.now();
-
-    double wx = 0.0;
-    double wy = 0.0;
-    if (useAirmassTrack) {
-      final windVx = (windDirDeg + 180) * math.pi / 180.0;
-      wx = math.sin(windVx) * (windSpeedKmh / 3.6);
-      wy = -math.cos(windVx) * (windSpeedKmh / 3.6);
+    for (final p in points) {
+      if (p.climbRateMs > maxClimb) maxClimb = p.climbRateMs;
     }
 
-    for (final p in points) {
-      final climb = p.climbRateMs;
-      if (climb > 0.5) {
-        final weight = climb * climb;
-        double px = p.dx;
-        double py = p.dy;
-
-        if (useAirmassTrack) {
+    // Live: engine-estimated core. Preview: local lift-weighted centroid.
+    Offset? coreCenter = coreOffset;
+    if (coreCenter == null && preview) {
+      double totalWeight = 0.0;
+      double weightedX = 0.0;
+      double weightedY = 0.0;
+      final now = _now;
+      final (wx, wy) = _windDrift;
+      for (final p in points) {
+        final climb = p.climbRateMs;
+        if (climb > 0.5) {
+          final weight = climb * climb;
           final ageSec = now.difference(p.timestamp).inMilliseconds / 1000.0;
-          px += wx * ageSec;
-          py += wy * ageSec;
+          weightedX += (p.dx + wx * ageSec) * weight;
+          weightedY += (p.dy + wy * ageSec) * weight;
+          totalWeight += weight;
         }
-
-        weightedX += px * weight;
-        weightedY += py * weight;
-        totalWeight += weight;
-        if (climb > maxClimb) maxClimb = climb;
+      }
+      if (totalWeight > 0) {
+        coreCenter = Offset(weightedX / totalWeight, weightedY / totalWeight);
       }
     }
 
-    if (totalWeight > 0) {
-      final coreCenter = Offset(
-        weightedX / totalWeight,
-        weightedY / totalWeight,
-      );
-
+    if (coreCenter != null) {
       // Draw dashed guidance line from glider to core
       _driftPaint.color = Colors.white.withAlpha(120);
       _drawDashedLine(canvas, Offset.zero, coreCenter, _driftPaint);
@@ -657,15 +712,17 @@ class _ThermalMapPainter extends CustomPainter {
       canvas.drawCircle(coreCenter, 14.0, _coreCenterPaint);
       canvas.drawCircle(coreCenter, 4.0, _coreInnerDotPaint);
 
-      // Draw wind overlay separately (often done via widget, but here if needed)
-      // Wind drift vector arrow originating from core
-      final windRad = (windDirDeg) * math.pi / 180.0;
-      final driftEnd = Offset(
-        coreCenter.dx + math.sin(windRad) * 35.0,
-        coreCenter.dy - math.cos(windRad) * 35.0,
-      );
-      _driftPaint.color = Colors.lightBlueAccent.withAlpha(180);
-      _drawArrow(canvas, coreCenter, driftEnd, _driftPaint);
+      // Wind drift vector arrow originating from core (only with an estimate)
+      final windDir = windDirDeg;
+      if (windDir != null) {
+        final windRad = (windDir + 180.0) * math.pi / 180.0;
+        final driftEnd = Offset(
+          coreCenter.dx + math.sin(windRad) * 35.0,
+          coreCenter.dy - math.cos(windRad) * 35.0,
+        );
+        _driftPaint.color = Colors.lightBlueAccent.withAlpha(180);
+        _drawArrow(canvas, coreCenter, driftEnd, _driftPaint);
+      }
 
       // Core Climb Label
       final tp = TextPainter(
@@ -733,7 +790,7 @@ class _ThermalMapPainter extends CustomPainter {
   void _drawNavigatorRibbon(Canvas canvas, List<ThermalPoint> points) {
     if (points.isEmpty) return;
 
-    final now = DateTime.now();
+    final now = _now;
     final historyDecayFactor = historySeconds > 0 ? 0.6 / historySeconds : 0.0;
 
     // Draw continuous color-graded ribbon segments
@@ -840,7 +897,11 @@ class _ThermalMapPainter extends CustomPainter {
         oldDelegate.climbRateMs != climbRateMs ||
         oldDelegate.headingDeg != headingDeg ||
         oldDelegate.windDirDeg != windDirDeg ||
+        oldDelegate.windSpeedKmh != windSpeedKmh ||
         oldDelegate.trackPoints != trackPoints ||
+        oldDelegate.coreOffset != coreOffset ||
+        oldDelegate.referenceTime != referenceTime ||
+        oldDelegate.preview != preview ||
         oldDelegate.useAirmassTrack != useAirmassTrack;
   }
 }

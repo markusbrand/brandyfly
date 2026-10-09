@@ -11,6 +11,7 @@ import '../../../core/rebuild_probe.dart';
 import '../../../core/value_selector.dart';
 import '../../instruments/views/altitude_sparkline_chart.dart';
 import '../../instruments/views/numeric_text_widget.dart';
+import '../../instruments/views/thermal_map_adapter.dart';
 import '../../instruments/views/thermal_map_widget.dart';
 import '../../instruments/views/vario_lift_sink_bar.dart';
 import '../../instruments/views/wind_direction_widget.dart';
@@ -98,14 +99,19 @@ class FlightWidgetContent extends StatelessWidget {
           unit: 'm AGL',
         );
       case WidgetType.windDirection:
-        return ValueSelector<CockpitTelemetry, (int, int)>(
+        return ValueSelector<CockpitTelemetry, (int?, int?, bool)>(
           listenable: telemetry,
-          select: (t) => (t.windDir.round(), (t.windSpeed * 10).round()),
+          select: (t) => (
+            t.windDir?.round(),
+            t.windSpeed == null ? null : (t.windSpeed! * 10).round(),
+            t.windStale,
+          ),
           builder: (context, v) {
             RebuildProbe.tick(_probeKey);
             return WindDirectionWidget(
-              directionDegrees: v.$1.toDouble(),
-              speedKmH: v.$2 / 10,
+              directionDegrees: v.$1?.toDouble(),
+              speedKmH: v.$2 == null ? null : v.$2! / 10,
+              isStale: v.$3,
               style: model.effectiveWindStyle,
               tier: tier,
             );
@@ -171,28 +177,19 @@ class FlightWidgetContent extends StatelessWidget {
           },
         );
       case WidgetType.thermalMap:
-        return ValueSelector<CockpitTelemetry, (int, int, int, int, int)>(
+        return ValueSelector<CockpitTelemetry, (int, int, int, int, int, bool)>(
           listenable: telemetry,
           select: (t) => (
+            t.thermal.revision,
             t.altitude.round(),
             (t.speed * 10).round(),
             (t.climb * 10).round(),
-            t.windDir.round(),
-            (t.windSpeed * 10).round(),
+            t.effectiveHeading.round(),
+            t.hasSource,
           ),
           builder: (context, v) {
             RebuildProbe.tick(_probeKey);
-            return ThermalMapWidget(
-              style: model.effectiveThermalMapStyle,
-              showCore: model.effectiveThermalMapShowCore,
-              historySeconds: model.effectiveThermalMapHistorySeconds,
-              altitudeM: v.$1.toDouble(),
-              speedKmh: v.$2 / 10,
-              climbRateMs: v.$3 / 10,
-              headingDeg: v.$4.toDouble(),
-              windDirDeg: v.$4.toDouble(),
-              windSpeedKmh: v.$5 / 10,
-            );
+            return _LiveThermalMap(model: model, telemetry: telemetry.value);
           },
         );
       case WidgetType.airspaceSideCut:
@@ -232,5 +229,51 @@ class FlightWidgetContent extends StatelessWidget {
           targetMapId: mapControlTarget,
         );
     }
+  }
+}
+
+/// Thermal map fed by the live thermal assistant state. Holds the projection
+/// adapter so unchanged track data is not re-projected on every rebuild.
+class _LiveThermalMap extends StatefulWidget {
+  const _LiveThermalMap({required this.model, required this.telemetry});
+
+  final WidgetPlacementModel model;
+  final CockpitTelemetry telemetry;
+
+  @override
+  State<_LiveThermalMap> createState() => _LiveThermalMapState();
+}
+
+class _LiveThermalMapState extends State<_LiveThermalMap> {
+  final ThermalMapAdapter _adapter = ThermalMapAdapter();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.telemetry;
+    final model = widget.model;
+    final preview = !t.hasSource;
+    if (!preview) {
+      _adapter.update(
+        t.thermal,
+        pilotLat: t.latitude,
+        pilotLon: t.longitude,
+        historySeconds: model.effectiveThermalMapHistorySeconds,
+      );
+    }
+    return ThermalMapWidget(
+      style: model.effectiveThermalMapStyle,
+      showCore: model.effectiveThermalMapShowCore,
+      historySeconds: model.effectiveThermalMapHistorySeconds,
+      altitudeM: t.altitude,
+      speedKmh: t.speed,
+      climbRateMs: t.climb,
+      headingDeg: t.effectiveHeading,
+      windDirDeg: t.windDir,
+      windSpeedKmh: t.windSpeed,
+      trackPoints: preview ? null : _adapter.points,
+      coreOffset: preview ? null : _adapter.core,
+      referenceTime: preview ? null : t.thermal.timestamp,
+      preview: preview,
+    );
   }
 }

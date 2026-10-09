@@ -74,11 +74,13 @@ class LayoutRepository extends ChangeNotifier {
 
   /// Replaces the configuration, notifies listeners and persists.
   /// Identical configurations are ignored.
-  void replace(UIConfig next) {
+  /// Replaces the configuration. [persist] = false keeps the change in memory
+  /// only (e.g. automatic screen switches must not change the start screen).
+  void replace(UIConfig next, {bool persist = true}) {
     if (identical(next, _config)) return;
     _config = next;
     notifyListeners();
-    _persist();
+    if (persist) _persist();
   }
 
   /// Applies [update] to the screen with [screenId].

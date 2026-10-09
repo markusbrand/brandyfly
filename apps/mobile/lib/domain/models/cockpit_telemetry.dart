@@ -1,5 +1,6 @@
 import '../../models/flight_model.dart';
 import '../../models/lat_lng.dart';
+import '../thermal_assistant/thermal_assistant_engine.dart';
 
 /// Immutable, typed telemetry snapshot rendered by the flight canvas.
 ///
@@ -12,8 +13,9 @@ class CockpitTelemetry {
     this.glide = 8.4,
     this.hag = 320.0,
     this.climb = 1.8,
-    this.windDir = 220.0,
-    this.windSpeed = 14.0,
+    this.windDir,
+    this.windSpeed,
+    this.windStale = false,
     this.latitude,
     this.longitude,
     this.heading,
@@ -21,6 +23,8 @@ class CockpitTelemetry {
     this.flightPoints,
     this.history = defaultHistory,
     this.isStale = false,
+    this.thermal = ThermalAssistantState.idle,
+    this.hasSource = false,
   });
 
   static const List<double> defaultHistory = [
@@ -38,22 +42,38 @@ class CockpitTelemetry {
   final double glide;
   final double? hag;
   final double climb;
-  final double windDir;
-  final double windSpeed;
+  /// Wind direction (degrees, from) - null when no estimate is available.
+  /// Never fabricated from heading or defaults.
+  final double? windDir;
+
+  /// Wind speed (km/h) - null when no estimate is available.
+  final double? windSpeed;
+
+  /// True when the wind estimate is older than the staleness limit.
+  final bool windStale;
   final double? latitude;
   final double? longitude;
 
-  /// Track heading; falls back to wind direction when unknown (legacy behavior).
+  /// Track heading (degrees); null when unknown.
   final double? heading;
   final List<LatLng>? trackPoints;
   final List<FlightPoint>? flightPoints;
   final List<double> history;
   final bool isStale;
 
+  /// Live thermal assistant state (circling, wind, core, track window).
+  final ThermalAssistantState thermal;
+
+  /// True when values come from a live or replay telemetry source; false for
+  /// idle/demo telemetry (instruments may then render labelled previews).
+  final bool hasSource;
+
+  bool get hasWind => windDir != null && windSpeed != null;
+
   LatLng? get pilotPosition =>
       (latitude != null && longitude != null) ? LatLng(latitude!, longitude!) : null;
 
-  double get effectiveHeading => heading ?? windDir;
+  double get effectiveHeading => heading ?? 0.0;
 
   /// Builds a snapshot from the legacy telemetry map format.
   factory CockpitTelemetry.fromMap(Map<String, dynamic> map) {
@@ -82,8 +102,9 @@ class CockpitTelemetry {
       glide: d('glide', 8.4),
       hag: map.containsKey('hag') ? hag : 320.0,
       climb: d('climb', 1.8),
-      windDir: d('windDir', 220.0),
-      windSpeed: d('windSpeed', 14.0),
+      windDir: (map['windDir'] as num?)?.toDouble(),
+      windSpeed: (map['windSpeed'] as num?)?.toDouble(),
+      windStale: map['windStale'] == true,
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
       heading: (map['heading'] as num?)?.toDouble(),
@@ -100,8 +121,9 @@ class CockpitTelemetry {
     double? glide,
     Object? hag = _sentinel,
     double? climb,
-    double? windDir,
-    double? windSpeed,
+    Object? windDir = _sentinel,
+    Object? windSpeed = _sentinel,
+    bool? windStale,
     double? latitude,
     double? longitude,
     double? heading,
@@ -109,6 +131,8 @@ class CockpitTelemetry {
     List<FlightPoint>? flightPoints,
     List<double>? history,
     bool? isStale,
+    ThermalAssistantState? thermal,
+    bool? hasSource,
   }) {
     return CockpitTelemetry(
       altitude: altitude ?? this.altitude,
@@ -116,8 +140,13 @@ class CockpitTelemetry {
       glide: glide ?? this.glide,
       hag: identical(hag, _sentinel) ? this.hag : (hag as double?),
       climb: climb ?? this.climb,
-      windDir: windDir ?? this.windDir,
-      windSpeed: windSpeed ?? this.windSpeed,
+      windDir: identical(windDir, _sentinel)
+          ? this.windDir
+          : (windDir as double?),
+      windSpeed: identical(windSpeed, _sentinel)
+          ? this.windSpeed
+          : (windSpeed as double?),
+      windStale: windStale ?? this.windStale,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       heading: heading ?? this.heading,
@@ -125,6 +154,8 @@ class CockpitTelemetry {
       flightPoints: flightPoints ?? this.flightPoints,
       history: history ?? this.history,
       isStale: isStale ?? this.isStale,
+      thermal: thermal ?? this.thermal,
+      hasSource: hasSource ?? this.hasSource,
     );
   }
 }
