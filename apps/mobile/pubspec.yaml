@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  shared_preferences: ^2.5.2
+  shared_preferences: ^2.5.6
   brandyfly_native:
     path: ../../plugins/brandyfly_native
   maplibre: 0.3.6
