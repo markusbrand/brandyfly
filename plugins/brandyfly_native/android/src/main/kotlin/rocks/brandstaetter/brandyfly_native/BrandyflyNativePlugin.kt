@@ -22,6 +22,7 @@ class BrandyflyNativePlugin :
     }
 
     private val skydrop1Manager = SkyDrop1TransportManager()
+    private val audioVarioSynthesizer = AudioVarioSynthesizer()
 
     override fun onMethodCall(
         call: MethodCall,
@@ -50,6 +51,41 @@ class BrandyflyNativePlugin :
             "runSkyDrop1HardwareBenchmark" -> {
                 val benchmarkMap = skydrop1Manager.runHardwareBenchmark()
                 result.success(benchmarkMap)
+            }
+            "audioVarioStart" -> {
+                val started = audioVarioSynthesizer.start()
+                result.success(started)
+            }
+            "audioVarioStop" -> {
+                val stopped = audioVarioSynthesizer.stop()
+                result.success(stopped)
+            }
+            "audioVarioUpdateTone" -> {
+                val state = call.argument<String>("state") ?: "silent"
+                val frequencyHz = call.argument<Double>("frequencyHz") ?: 0.0
+                val cadenceMs = call.argument<Int>("cadenceMs") ?: 500
+                val dutyCycle = call.argument<Double>("dutyCycle") ?: 0.5
+                val volume = call.argument<Double>("volume") ?: 0.8
+                val isMuted = call.argument<Boolean>("isMuted") ?: false
+                audioVarioSynthesizer.updateTone(
+                    stateStr = state,
+                    frequencyHz = frequencyHz,
+                    cadenceMs = cadenceMs,
+                    dutyCycle = dutyCycle,
+                    volume = volume,
+                    muted = isMuted
+                )
+                result.success(true)
+            }
+            "audioVarioSetVolume" -> {
+                val volume = call.argument<Double>("volume") ?: 0.8
+                audioVarioSynthesizer.setVolume(volume)
+                result.success(true)
+            }
+            "audioVarioSetMuted" -> {
+                val muted = call.argument<Boolean>("isMuted") ?: false
+                audioVarioSynthesizer.setMuted(muted)
+                result.success(true)
             }
             else -> result.notImplemented()
         }
@@ -107,6 +143,7 @@ class BrandyflyNativePlugin :
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        audioVarioSynthesizer.stop()
         channel.setMethodCallHandler(null)
     }
 }

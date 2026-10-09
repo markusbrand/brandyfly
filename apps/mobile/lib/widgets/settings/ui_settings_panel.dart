@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/flight_settings.dart';
 import '../../models/ui_config.dart';
+import '../../services/audio_vario_service.dart';
 import '../../services/flight_tracking_service.dart';
 import '../../services/region_manager_service.dart';
 import '../../services/screen_manager_service.dart';
@@ -17,6 +18,7 @@ class UISettingsPanel extends StatefulWidget {
     this.uploadService,
     this.thermalPrefetchService,
     this.regionManagerService,
+    this.audioVarioService,
   });
 
   final ScreenManagerService screenManager;
@@ -28,6 +30,9 @@ class UISettingsPanel extends StatefulWidget {
 
   /// Offline map and DEM region manager service.
   final RegionManagerService? regionManagerService;
+
+  /// Acoustic vario sound synthesis service.
+  final AudioVarioService? audioVarioService;
 
   @override
   State<UISettingsPanel> createState() => _UISettingsPanelState();
@@ -93,6 +98,8 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
           ..._buildMapDisplaySection(cfg),
           const Divider(color: Colors.white24, height: 32),
           ..._buildFlightTrackingSection(),
+          const Divider(color: Colors.white24, height: 32),
+          ..._buildAudioVarioSection(),
           const Divider(color: Colors.white24, height: 32),
           ..._buildXContestSection(),
         ],
@@ -657,6 +664,138 @@ class _UISettingsPanelState extends State<UISettingsPanel> {
                       landingSettlingDurationSeconds: val.round(),
                     ),
                   );
+                  setState(() {});
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildAudioVarioSection() {
+    final settings = widget.trackingService?.settings ?? const FlightSettings();
+    return [
+      _buildCategoryHeader('Acoustic Vario & Sound Synthesizer'),
+      Card(
+        color: Colors.blueGrey.shade900,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SwitchListTile(
+                key: const Key('setting_vario_audio_enabled'),
+                title: const Text(
+                  'Acoustic Vario Sound (FM Synthesis)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Zero-latency continuous audio feedback for climb and sink',
+                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                ),
+                value: settings.varioAudioEnabled,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) {
+                  final newSettings = settings.copyWith(varioAudioEnabled: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.audioVarioService?.updateSettings(newSettings);
+                  setState(() {});
+                },
+              ),
+              const Divider(color: Colors.white12),
+              Text(
+                'Master Volume: ${(settings.varioVolume * 100).round()}%',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Slider(
+                key: const Key('setting_vario_volume_slider'),
+                value: settings.varioVolume,
+                min: 0.0,
+                max: 1.0,
+                divisions: 10,
+                label: '${(settings.varioVolume * 100).round()}%',
+                onChanged: (val) {
+                  final newSettings = settings.copyWith(varioVolume: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.audioVarioService?.updateSettings(newSettings);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Lift Beep Threshold: +${settings.varioClimbThresholdMs.toStringAsFixed(1)} m/s',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Slider(
+                key: const Key('setting_vario_climb_threshold_slider'),
+                value: settings.varioClimbThresholdMs,
+                min: 0.1,
+                max: 1.5,
+                divisions: 14,
+                label: '+${settings.varioClimbThresholdMs.toStringAsFixed(1)} m/s',
+                onChanged: (val) {
+                  final newSettings =
+                      settings.copyWith(varioClimbThresholdMs: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.audioVarioService?.updateSettings(newSettings);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sink Alarm Threshold: ${settings.varioSinkThresholdMs.toStringAsFixed(1)} m/s',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Slider(
+                key: const Key('setting_vario_sink_threshold_slider'),
+                value: settings.varioSinkThresholdMs,
+                min: -4.0,
+                max: -0.5,
+                divisions: 14,
+                label: '${settings.varioSinkThresholdMs.toStringAsFixed(1)} m/s',
+                onChanged: (val) {
+                  final newSettings =
+                      settings.copyWith(varioSinkThresholdMs: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.audioVarioService?.updateSettings(newSettings);
+                  setState(() {});
+                },
+              ),
+              const Divider(color: Colors.white12),
+              SwitchListTile(
+                key: const Key('setting_vario_sniffer_enabled'),
+                title: const Text(
+                  'Near-Thermal Sniffer Tone',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Subtle buzz cadence in buoyant zero-sink air (-0.3 to +0.1 m/s)',
+                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                ),
+                value: settings.varioSnifferEnabled,
+                activeThumbColor: Colors.cyanAccent,
+                onChanged: (val) {
+                  final newSettings =
+                      settings.copyWith(varioSnifferEnabled: val);
+                  widget.trackingService?.updateSettings(newSettings);
+                  widget.audioVarioService?.updateSettings(newSettings);
                   setState(() {});
                 },
               ),

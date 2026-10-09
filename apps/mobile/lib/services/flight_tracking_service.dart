@@ -38,6 +38,7 @@ class FlightTrackingService extends ChangeNotifier {
   final _stateController = StreamController<FlightState>.broadcast();
   final _pointController = StreamController<FlightPoint>.broadcast();
   final _flightCompletedController = StreamController<FlightModel>.broadcast();
+  final _varioController = StreamController<double>.broadcast();
 
   FlightState get state => _state;
   FlightSettings get settings => _settings;
@@ -48,6 +49,7 @@ class FlightTrackingService extends ChangeNotifier {
   Stream<FlightState> get stateStream => _stateController.stream;
   Stream<FlightPoint> get pointStream => _pointController.stream;
   Stream<FlightModel> get flightCompletedStream => _flightCompletedController.stream;
+  Stream<double> get varioStream => _varioController.stream;
 
   void attachTelemetrySource(ITelemetrySource source) {
     detachTelemetrySource();
@@ -92,6 +94,9 @@ class FlightTrackingService extends ChangeNotifier {
   }
 
   void processPoint(FlightPoint point) {
+    if (!_varioController.isClosed) {
+      _varioController.add(point.vario);
+    }
     switch (_state) {
       case FlightState.groundPreflight:
         _handlePreflightPoint(point);
@@ -206,6 +211,7 @@ class FlightTrackingService extends ChangeNotifier {
     _stateController.close();
     _pointController.close();
     _flightCompletedController.close();
+    _varioController.close();
     super.dispose();
   }
 }

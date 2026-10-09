@@ -144,4 +144,58 @@ void main() {
 
     expect(await platform.airspaceClearStore(), 0);
   });
+
+  test('audio vario method channel methods', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          switch (methodCall.method) {
+            case 'audioVarioStart':
+              return true;
+            case 'audioVarioStop':
+              return true;
+            case 'audioVarioUpdateTone':
+              final args = methodCall.arguments as Map<dynamic, dynamic>;
+              expect(args['state'], 'climb');
+              expect(args['frequencyHz'], 700.0);
+              expect(args['cadenceMs'], 300);
+              expect(args['dutyCycle'], 0.55);
+              expect(args['volume'], 0.8);
+              expect(args['isMuted'], false);
+              return true;
+            case 'audioVarioSetVolume':
+              final args = methodCall.arguments as Map<dynamic, dynamic>;
+              expect(args['volume'], 0.6);
+              return true;
+            case 'audioVarioSetMuted':
+              final args = methodCall.arguments as Map<dynamic, dynamic>;
+              expect(args['isMuted'], true);
+              return true;
+            default:
+              return null;
+          }
+        });
+
+    final started = await platform.audioVarioStart();
+    expect(started, true);
+
+    const cmd = AudioToneCommand(
+      state: AudioVarioToneState.climb,
+      frequencyHz: 700.0,
+      cadenceMs: 300,
+      dutyCycle: 0.55,
+      volume: 0.8,
+      isMuted: false,
+    );
+    final updated = await platform.audioVarioUpdateTone(cmd);
+    expect(updated, true);
+
+    final volUpdated = await platform.audioVarioSetVolume(0.6);
+    expect(volUpdated, true);
+
+    final mutedUpdated = await platform.audioVarioSetMuted(true);
+    expect(mutedUpdated, true);
+
+    final stopped = await platform.audioVarioStop();
+    expect(stopped, true);
+  });
 }
