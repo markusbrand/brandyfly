@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import '../../domain/thermal/geo_bounds.dart';
@@ -61,6 +62,24 @@ class RegionBoundsProvider {
 
     final fromCatalog = catalogBounds?.call(id);
     if (fromCatalog != null && fromCatalog.isValid) return fromCatalog;
+
+    final metaFile = File('$directoryPath/meta.json');
+    if (metaFile.existsSync()) {
+      try {
+        final data =
+            jsonDecode(metaFile.readAsStringSync()) as Map<String, dynamic>;
+        if (data['bounds'] != null) {
+          final b = data['bounds'] as Map<String, dynamic>;
+          final bounds = GeoBounds(
+            west: (b['west'] as num).toDouble(),
+            south: (b['south'] as num).toDouble(),
+            east: (b['east'] as num).toDouble(),
+            north: (b['north'] as num).toDouble(),
+          );
+          if (bounds.isValid) return bounds;
+        }
+      } catch (_) {}
+    }
 
     PMTilesReader? reader;
     try {
