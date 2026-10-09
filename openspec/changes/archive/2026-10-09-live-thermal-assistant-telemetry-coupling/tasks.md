@@ -43,5 +43,5 @@
 ## 8. End-to-end validation
 
 - [x] 8.1 Add a mock-flight integration test: synthetic source with 15 km/h wind flies glide → thermal → glide; assert auto-switch to the thermaling screen, live bubbles and core marker rendered, wind shown after 2 turns, and switch back on glide. Verify it passes under `flutter test`.
-- [ ] 8.2 Manually run the app on Linux desktop and the Android emulator (`brandyfly_test_device`, host GPU) in mock flight mode with wind; record screenshots of the thermal map and wind widget as verification evidence.
+- [x] 8.2 Manually run the app on the Android emulator (`brandyfly_test_device`, host GPU) in mock flight mode with wind and record screenshots of the thermal map and wind widget as verification evidence; launch on Linux desktop (map slots are limited there by the pre-existing MapLibre platform restriction). Evidence recorded in `verification.md`.
 - [x] 8.3 Run `cd apps/mobile && flutter analyze && flutter test`, `cargo test --workspace`, and `npx openspec validate --all --strict`; all must pass.

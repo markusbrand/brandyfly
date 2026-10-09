@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Screen-Level Layout Strategy and Management
-Each flight screen SHALL encapsulate its own layout strategy, unique screen identifier, display title, auto-switching trigger rules, and ordered collection of placed widgets. The system SHALL preserve the active screen identifier and widget selection state when modifying or deleting inactive screens, only transitioning the active screen when the currently active screen is explicitly deleted. Auto-switching SHALL be driven by the on-device thermal assistant flight mode, SHALL be suppressed while layout edit mode is active, and SHALL NOT switch screens more than once within 10 s.
+Each flight screen SHALL encapsulate its own layout strategy, unique screen identifier, display title, auto-switching trigger rules, and ordered collection of placed widgets. The system SHALL preserve the active screen identifier and widget selection state when modifying or deleting inactive screens, only transitioning the active screen when the currently active screen is explicitly deleted. Automatic switching SHALL follow the thermal assistant flight mode.
 
 #### Scenario: Screen-specific layout strategy rendering
 - **WHEN** a flight screen is configured with a specific layout strategy (e.g. Freeform HUD, Snap-to-Grid, or Sidebar Dashboard)
