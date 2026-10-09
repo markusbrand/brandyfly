@@ -311,6 +311,14 @@ class ThermalPrefetchService extends ChangeNotifier {
   }
 
   Future<void> _runRegion(LocalRegion region) async {
+    final count = ThermalPrefetchPlanner.tileCount(region.bounds);
+    if (count > 25000) {
+      debugPrint(
+        '[ThermalPrefetch] Region ${region.id} bounds too large for thermal prefetch ($count tiles), skipping.',
+      );
+      return;
+    }
+
     final root = ThermalTileStore.regionThermalRoot(region.directoryPath);
     final required = ThermalPrefetchPlanner.requiredVariants(_clock());
     final tiles = ThermalPrefetchPlanner.tiles(region.bounds).toList();

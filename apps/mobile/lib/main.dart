@@ -256,7 +256,11 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
       final store = ThermalTileStore();
       service = ThermalPrefetchService(
         store: store,
-        regions: RegionBoundsProvider(regionsBasePath: store.regionsBasePath),
+        regions: RegionBoundsProvider(
+          regionsBasePath: store.regionsBasePath,
+          catalogBounds: (id) =>
+              _regionManagerService.catalog?.findRegion(id)?.bounds,
+        ),
         autoPrefetchEnabled: () => _screenManager.config.thermalAutoPrefetch,
       );
       _ownsThermalPrefetch = true;
