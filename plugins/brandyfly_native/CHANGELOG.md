@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_native-v0.4.0...brandyfly_native-v0.5.0) (2026-10-09)
+
+
+### Features
+
+* **audio:** continuous FM audio vario synthesizer engine ([#255](https://github.com/markusbrand/brandyfly/issues/255)) ([263d6b7](https://github.com/markusbrand/brandyfly/commit/263d6b74e7df93a5f93cbff200f090bde17c7fa1))
+
 ## [0.4.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_native-v0.3.0...brandyfly_native-v0.4.0) (2026-10-08)
 
 
