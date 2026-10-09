@@ -67,6 +67,12 @@ const List<_PickerEntry> _instrumentEntries = [
     'Lift (green) & sink (red) trail with core tracking & ribbon modes',
     Icons.radar,
   ),
+  _PickerEntry(
+    WidgetType.airspaceSideCut,
+    'Airspace Side-Cut Profile',
+    'Vertical cross-section of forward airspaces, glide slope & terrain',
+    Icons.view_agenda,
+  ),
 ];
 
 const List<_PickerEntry> _mapControlEntries = [

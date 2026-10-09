@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:maplibre/maplibre.dart' hide Marker;
+import 'package:provider/provider.dart';
 
 import '../../../../models/flight_model.dart';
 import '../../../../models/lat_lng.dart';
@@ -9,8 +10,10 @@ import '../../../../domain/models/ui_config.dart';
 import '../../../../domain/thermal/kk7_provider.dart';
 import '../../../../domain/thermal/thermal_layer_spec.dart';
 import '../../../../domain/thermal/thermal_variant_resolver.dart';
+import '../../../../services/airspace_service.dart';
 import '../../../../services/maplibre_map_service.dart';
 import '../../../../services/region_manager_service.dart';
+import '../../../../widgets/flight/airspace_map_layer.dart';
 import '../platform/map_renderer_availability.dart';
 import '../view_models/map_camera_view_model.dart';
 
@@ -597,7 +600,28 @@ class _MapWidgetState extends State<MapWidget> {
             ),
           ),
 
-          // 2. Flight Overlays (Airspace, Flight Track, Pilot Marker). The
+          // 2. Airspace vector map layer
+          if (widget.showAirspace)
+            Consumer<AirspaceService?>(
+              builder: (context, airspace, _) {
+                if (airspace == null || airspace.loadedAirspaces.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Positioned.fill(
+                  child: IgnorePointer(
+                    child: AirspaceMapLayer(
+                      airspaces: airspace.loadedAirspaces,
+                      centerLat: _cameraCenter.latitude,
+                      centerLon: _cameraCenter.longitude,
+                      zoom: _currentZoom,
+                      activeAlertLevel: airspace.activeAlertLevel,
+                    ),
+                  ),
+                );
+              },
+            ),
+
+          // 2b. Flight Overlays (Airspace, Flight Track, Pilot Marker). The
           //    KK7 thermal heatmap is a MapLibre raster layer below these.
           Positioned.fill(
             child: IgnorePointer(

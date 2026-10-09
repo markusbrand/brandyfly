@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../services/airspace_service.dart';
@@ -31,38 +32,45 @@ class AirspaceSideCutWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Airspace Side-Cut Profile View',
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F172A).withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(8.0),
-          border: Border.all(color: Colors.white12),
-        ),
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 6.0),
-            Expanded(
-              child: CustomPaint(
-                painter: AirspaceSideCutPainter(
-                  aircraftAltitudeMsl: aircraftAltitudeMsl,
-                  groundspeedMps: groundspeedMps,
-                  headingDeg: headingDeg,
-                  glideRatio: glideRatio,
-                  terrainElevationMsl: terrainElevationMsl,
-                  forwardBlocks: forwardBlocks,
-                  lookaheadDistanceM: lookaheadDistanceM,
-                  maxAltitudeMsl: maxAltitudeMsl,
-                  minAltitudeMsl: minAltitudeMsl,
-                ),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxHeight < 75.0;
+        return Semantics(
+          label: 'Airspace Side-Cut Profile View',
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(compact ? 4.0 : 8.0),
+              border: Border.all(color: Colors.white12),
             ),
-          ],
-        ),
-      ),
+            padding: EdgeInsets.all(compact ? 2.0 : 6.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!compact) ...[
+                  _buildHeader(context),
+                  const SizedBox(height: 4.0),
+                ],
+                Expanded(
+                  child: CustomPaint(
+                    painter: AirspaceSideCutPainter(
+                      aircraftAltitudeMsl: aircraftAltitudeMsl,
+                      groundspeedMps: groundspeedMps,
+                      headingDeg: headingDeg,
+                      glideRatio: glideRatio,
+                      terrainElevationMsl: terrainElevationMsl,
+                      forwardBlocks: forwardBlocks,
+                      lookaheadDistanceM: lookaheadDistanceM,
+                      maxAltitudeMsl: maxAltitudeMsl,
+                      minAltitudeMsl: minAltitudeMsl,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -155,7 +163,7 @@ class AirspaceSideCutPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
+    if (size.width < 10.0 || size.height < 10.0) return;
 
     final altRange = (maxAltitudeMsl - minAltitudeMsl).clamp(500.0, 10000.0);
     double toScreenX(double distM) =>
@@ -269,8 +277,11 @@ class AirspaceSideCutPainter extends CustomPainter {
 
       final top = toY(block.ceilingMslM).clamp(0.0, size.height);
       final bottom = toY(block.floorMslM).clamp(0.0, size.height);
+      final rectTop = math.min(top, bottom);
+      final rectBottom = math.max(top, bottom);
+      if (rectBottom <= rectTop) continue;
 
-      final rect = Rect.fromLTRB(left, top, right, bottom);
+      final rect = Rect.fromLTRB(left, rectTop, right, rectBottom);
       final color = _airspaceColor(block.airspace.airspaceClass);
 
       final fillPaint = Paint()
@@ -333,7 +344,13 @@ class AirspaceSideCutPainter extends CustomPainter {
     Size size,
     double Function(double) toY,
   ) {
-    final cy = toY(aircraftAltitudeMsl).clamp(4.0, size.height - 4.0);
+    final double cy = (size.height <= 8.0
+            ? size.height / 2
+            : toY(aircraftAltitudeMsl).clamp(
+                4.0,
+                math.max(4.0, size.height - 4.0),
+              ))
+        .toDouble();
     const cx = 8.0;
 
     final dotPaint = Paint()

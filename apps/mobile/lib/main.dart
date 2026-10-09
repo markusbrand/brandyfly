@@ -12,6 +12,7 @@ import 'data/repositories/layout_repository.dart';
 import 'data/repositories/telemetry_repository.dart';
 import 'domain/models/cockpit_telemetry.dart';
 import 'models/flight_model.dart';
+import 'services/airspace_service.dart';
 import 'services/audio_vario_service.dart';
 import 'services/elevation_service.dart';
 import 'services/flight_replay_service.dart';
@@ -60,6 +61,7 @@ class BrandyFlyApp extends StatefulWidget {
     this.regionManagerService,
     this.thermalPrefetchService,
     this.audioVarioService,
+    this.airspaceService,
   });
 
   final MockFlightModeConfig config;
@@ -72,6 +74,7 @@ class BrandyFlyApp extends StatefulWidget {
   final MapLibreMapService? mapService;
   final ElevationService? elevationService;
   final RegionManagerService? regionManagerService;
+  final AirspaceService? airspaceService;
 
   /// KK7 thermal prefetch; created automatically on mobile/desktop when null
   /// (not in `flutter test` and not on the web).
@@ -116,6 +119,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   late ElevationService _elevationService;
   late RegionManagerService _regionManagerService;
   late AudioVarioService _audioVarioService;
+  late AirspaceService _airspaceService;
+  StreamSubscription<AirspaceAlertLevel>? _airspaceAlertSub;
   late TelemetryRepository _telemetryRepository;
   LayoutRepository? _ownedLayoutRepository;
   ThermalPrefetchService? _thermalPrefetch;
@@ -141,6 +146,19 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
         widget.mapService ??
         MapLibreMapService(regionManagerService: _regionManagerService);
     _elevationService = widget.elevationService ?? ElevationService();
+    _airspaceService = widget.airspaceService ??
+        AirspaceService(
+          nativeClient: widget.native,
+          elevationService: _elevationService,
+        );
+    _airspaceService.attachFlightTrackingService(_trackingService);
+    _airspaceService.attachFlightReplayService(_replayService);
+    _airspaceAlertSub = _airspaceService.alertStream.listen((level) {
+      if (level == AirspaceAlertLevel.warning ||
+          level == AirspaceAlertLevel.violation) {
+        _audioVarioService.playAirspaceAlert(level);
+      }
+    });
     _telemetryRepository = TelemetryRepository(
       replayService: _replayService,
       trackingService: _trackingService,
@@ -229,6 +247,10 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
       }
 
       if (widget.config.enabled || kIsWeb) {
+        unawaited(_airspaceService.loadDachFixture().catchError((Object e) {
+          debugPrint('[BrandyFlyApp] Failed to load DACH airspace fixture: $e');
+          return 0;
+        }));
         _mockReplay = MockFlightReplay(widget.config);
         _syntheticTelemetry = SyntheticTelemetrySource(
           seed: widget.config.seed.toInt(),
@@ -369,6 +391,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   void dispose() {
     _timer?.cancel();
     _lifecycleListener?.dispose();
+    _airspaceAlertSub?.cancel();
+    _airspaceService.dispose();
     _audioVarioService.dispose();
     if (_ownsThermalPrefetch) _thermalPrefetch?.dispose();
     _syntheticTelemetry?.dispose();
@@ -423,6 +447,9 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
         ),
         ChangeNotifierProvider<AudioVarioService>.value(
           value: _audioVarioService,
+        ),
+        ChangeNotifierProvider<AirspaceService>.value(
+          value: _airspaceService,
         ),
       ],
       child: _buildApp(context),
