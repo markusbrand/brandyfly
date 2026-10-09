@@ -12,6 +12,8 @@ import '../../../../services/screen_manager_service.dart';
 import '../../../core/rebuild_probe.dart';
 import '../../../core/theme/cockpit_tokens.dart';
 import '../../layout_editor/view_models/edit_mode_view_model.dart';
+import '../../../../services/airspace_service.dart';
+import '../../../../widgets/flight/airspace_warning_banner_hud.dart';
 import '../../layout_editor/views/edit_frame.dart';
 import '../../layout_editor/views/edit_toolbar.dart';
 import '../../layout_editor/views/inspector_panel.dart';
@@ -256,6 +258,20 @@ class _LayoutStrategyContainerState extends State<LayoutStrategyContainer> {
                 ),
               ),
           ],
+          if (!isEditMode)
+            Positioned(
+              top: 8,
+              left: 16,
+              right: 16,
+              child: Consumer<AirspaceService?>(
+                builder: (context, airspace, _) {
+                  if (airspace == null) return const SizedBox.shrink();
+                  return AirspaceWarningBannerHUD(
+                    proximity: airspace.latestProximity,
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );

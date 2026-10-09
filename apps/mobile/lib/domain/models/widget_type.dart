@@ -16,6 +16,7 @@ enum WidgetType {
   mapZoomOut,
   mapZoomRocker,
   mapRecenter,
+  airspaceSideCut,
 }
 
 extension WidgetTypeX on WidgetType {
@@ -64,6 +65,8 @@ extension WidgetTypeX on WidgetType {
         return 'Zoom rocker';
       case WidgetType.mapRecenter:
         return 'Recenter';
+      case WidgetType.airspaceSideCut:
+        return 'Airspace profile';
     }
   }
 }

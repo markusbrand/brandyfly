@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:brandyfly/domain/models/cockpit_telemetry.dart';
+import 'package:brandyfly/domain/models/size_tier.dart';
+import 'package:brandyfly/domain/models/ui_config.dart';
 import 'package:brandyfly/services/airspace_service.dart';
+import 'package:brandyfly/ui/features/flight_canvas/views/widget_slot.dart';
 import 'package:brandyfly/widgets/flight/airspace_map_layer.dart';
 import 'package:brandyfly/widgets/flight/airspace_side_cut_widget.dart';
 import 'package:brandyfly/widgets/flight/airspace_warning_banner_hud.dart';
@@ -216,6 +221,86 @@ void main() {
 
       expect(dismissed, isTrue);
       expect(find.text('WARNING'), findsNothing);
+    });
+
+    testWidgets('AirspaceWarningBannerHUD renders nothing when alert level is clear', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AirspaceWarningBannerHUD(
+              proximity: AirspaceProximityState.clear,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(AirspaceWarningBannerHUD), findsOneWidget);
+      expect(find.text('ADVISORY'), findsNothing);
+      expect(find.text('WARNING'), findsNothing);
+      expect(find.text('VIOLATION'), findsNothing);
+    });
+
+    testWidgets('AirspaceMapLayer returns empty when airspaces list is empty', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AirspaceMapLayer(
+              airspaces: [],
+              centerLat: 47.0,
+              centerLon: 13.0,
+              zoom: 10.0,
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.descendant(
+          of: find.byType(AirspaceMapLayer),
+          matching: find.byType(CustomPaint),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('FlightWidgetContent renders AirspaceSideCutWidget for airspaceSideCut slot', (tester) async {
+      final model = WidgetPlacementModel(
+        id: 'slot-airspace-cut',
+        type: WidgetType.airspaceSideCut,
+        x: 0,
+        y: 16,
+        w: 16,
+        h: 8,
+      );
+
+      final telemetry = ValueNotifier<CockpitTelemetry>(
+        const CockpitTelemetry(
+          altitude: 1650.0,
+          speed: 40.0,
+          glide: 8.2,
+          heading: 120.0,
+          latitude: 47.53,
+          longitude: 13.68,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Provider<AirspaceService?>.value(
+              value: null,
+              child: FlightWidgetContent(
+                model: model,
+                telemetry: telemetry,
+                tier: SizeTier.regular,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(AirspaceSideCutWidget), findsOneWidget);
+      expect(find.text('SIDE-CUT (120°)'), findsOneWidget);
     });
   });
 }

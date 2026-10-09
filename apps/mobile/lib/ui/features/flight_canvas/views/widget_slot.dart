@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../domain/models/cockpit_telemetry.dart';
 import '../../../../domain/models/size_tier.dart';
 import '../../../../domain/models/ui_config.dart';
+import '../../../../services/airspace_service.dart';
+import '../../../../widgets/flight/airspace_side_cut_widget.dart';
 import '../../../core/rebuild_probe.dart';
 import '../../../core/value_selector.dart';
 import '../../instruments/views/altitude_sparkline_chart.dart';
@@ -189,6 +192,33 @@ class FlightWidgetContent extends StatelessWidget {
               headingDeg: v.$4.toDouble(),
               windDirDeg: v.$4.toDouble(),
               windSpeedKmh: v.$5 / 10,
+            );
+          },
+        );
+      case WidgetType.airspaceSideCut:
+        return ValueListenableBuilder<CockpitTelemetry>(
+          valueListenable: telemetry,
+          builder: (context, t, _) {
+            RebuildProbe.tick(_probeKey);
+            final airspaceService = Provider.of<AirspaceService?>(context);
+            final lat = t.latitude ?? 47.53;
+            final lon = t.longitude ?? 13.68;
+            final forwardBlocks = airspaceService?.getForwardAirspaces(
+                  lat: lat,
+                  lon: lon,
+                  altitudeMsl: t.altitude,
+                  headingDeg: t.effectiveHeading,
+                  glideRatio: t.glide.clamp(1.0, 30.0),
+                ) ??
+                const [];
+            final hag = t.hag ?? 300.0;
+            return AirspaceSideCutWidget(
+              aircraftAltitudeMsl: t.altitude,
+              groundspeedMps: t.speed / 3.6,
+              headingDeg: t.effectiveHeading,
+              glideRatio: t.glide.clamp(1.0, 30.0),
+              terrainElevationMsl: (t.altitude - hag).clamp(0.0, 6000.0),
+              forwardBlocks: forwardBlocks,
             );
           },
         );

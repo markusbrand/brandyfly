@@ -22,7 +22,10 @@ All development work MUST follow a strict branch-based GitHub workflow:
 3. **Pull Request (PR) Workflow**:
    - Immediately after archiving an OpenSpec change, execute a git commit (`git commit -m "chore(openspec): archive <change-name>"`), push the feature branch to GitHub (`git push -u origin <branch-name>`), and create a GitHub Pull Request associated with the branch targeting `main` (including PR status info and merge state).
 
-4. **GitHub Account**:
+4. **Post-Merge Local Synchronization**:
+   - Immediately following any successful PR merge, automatically synchronize the local repository with remote `main` (`git fetch origin main --prune && git pull --ff-only origin main` in the main repository and fast-forwarding active worktrees), ensuring the local environment is always completely up-to-date with merged changes.
+
+5. **GitHub Account**:
    - Always use the personal GitHub account `markusbrand` for every GitHub CLI/API operation in this project (PRs, issues, checks, releases). The default `gh` account on this machine is a managed enterprise account that cannot access this repository.
    - Run `gh` commands with that account's token without switching the global active account, e.g. `GH_TOKEN=$(gh auth token --user markusbrand) gh pr create ...`.
 

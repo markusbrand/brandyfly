@@ -6,6 +6,7 @@ import '../models/flight_settings.dart';
 import 'audio/audio_vario_engine.dart';
 import 'audio/tone_mapping_engine.dart';
 import 'audio/web_audio_synthesizer.dart';
+import 'airspace_service.dart';
 import 'flight_tracking_service.dart';
 
 /// Coordinates real-time flight telemetry updates with platform audio synthesis engines.
@@ -81,6 +82,30 @@ class AudioVarioService extends ChangeNotifier {
       if (!_disposed) {
         notifyListeners();
       }
+    }
+  }
+
+  /// Emits an acoustic warning cue for an airspace alert level.
+  void playAirspaceAlert(AirspaceAlertLevel level) {
+    if (!_isRunning || _isMuted) return;
+    if (level == AirspaceAlertLevel.warning) {
+      _engine.updateTone(const AudioToneCommand(
+        state: AudioVarioToneState.sink,
+        frequencyHz: 880.0,
+        cadenceMs: 250,
+        dutyCycle: 0.5,
+        volume: 1.0,
+        isMuted: false,
+      ));
+    } else if (level == AirspaceAlertLevel.violation) {
+      _engine.updateTone(const AudioToneCommand(
+        state: AudioVarioToneState.climb,
+        frequencyHz: 1200.0,
+        cadenceMs: 500,
+        dutyCycle: 1.0,
+        volume: 1.0,
+        isMuted: false,
+      ));
     }
   }
 
