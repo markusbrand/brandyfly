@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.14.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.13.0...brandyfly-v0.14.0) (2026-10-09)
+
+
+### Features
+
+* **audio:** continuous FM audio vario synthesizer engine ([#255](https://github.com/markusbrand/brandyfly/issues/255)) ([263d6b7](https://github.com/markusbrand/brandyfly/commit/263d6b74e7df93a5f93cbff200f090bde17c7fa1))
+* **thermal:** live thermal assistant coupled to telemetry ([#258](https://github.com/markusbrand/brandyfly/issues/258)) ([0758b59](https://github.com/markusbrand/brandyfly/commit/0758b5996b26409ae7d044ad3c18b06ebb0c648d))
+
+
+### Bug Fixes
+
+* **map:** add bundled catalog fallback and thermal prefetch bounds guard ([#252](https://github.com/markusbrand/brandyfly/issues/252)) ([96390d5](https://github.com/markusbrand/brandyfly/commit/96390d5ff4f51bf15399f3f7b705de547da446ab))
+
 ## [0.13.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.12.0...brandyfly-v0.13.0) (2026-10-08)
 
 

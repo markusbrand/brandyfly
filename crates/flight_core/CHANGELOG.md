@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/markusbrand/brandyfly/compare/flight_core-v0.4.0...flight_core-v0.5.0) (2026-10-09)
+
+
+### Features
+
+* **thermal:** live thermal assistant coupled to telemetry ([#258](https://github.com/markusbrand/brandyfly/issues/258)) ([0758b59](https://github.com/markusbrand/brandyfly/commit/0758b5996b26409ae7d044ad3c18b06ebb0c648d))
+
 ## [0.4.0](https://github.com/markusbrand/brandyfly/compare/flight_core-v0.3.0...flight_core-v0.4.0) (2026-10-08)
 
 

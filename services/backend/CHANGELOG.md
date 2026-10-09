@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/markusbrand/brandyfly/compare/backend-v0.2.0...backend-v0.2.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **deploy:** deploy backend to Bosgame x86_64 server ([#257](https://github.com/markusbrand/brandyfly/issues/257)) ([d422971](https://github.com/markusbrand/brandyfly/commit/d42297158d813303205b655b4dd886013cef3932))
+
 ## [0.2.0](https://github.com/markusbrand/brandyfly/compare/backend-v0.1.2...backend-v0.2.0) (2026-09-23)
 
 
