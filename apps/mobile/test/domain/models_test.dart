@@ -189,7 +189,10 @@ void main() {
       expect(t.speed, 42.5);
       expect(t.history, [1.0, 2.0, 3.0]);
       expect(t.pilotPosition, isNotNull);
-      expect(t.effectiveHeading, t.windDir);
+      expect(t.effectiveHeading, 0.0);
+      expect(t.windDir, isNull, reason: 'wind is never fabricated');
+      expect(t.windSpeed, isNull);
+      expect(t.hasWind, isFalse);
     });
   });
 }

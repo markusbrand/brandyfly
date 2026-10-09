@@ -1,7 +1,7 @@
 use crate::circling::FlightState;
 use crate::wind::{Position, WindVector};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ThermalStateSnapshot {
     pub timestamp_ms: u64,
     pub state: FlightState,

@@ -20,6 +20,7 @@ import 'services/flight_storage_service.dart';
 import 'services/flight_tracking_service.dart';
 import 'services/maplibre_map_service.dart';
 import 'services/region_manager_service.dart';
+import 'services/screen_auto_switch_controller.dart';
 import 'services/screen_manager_service.dart';
 import 'services/telemetry/synthetic_telemetry_source.dart';
 import 'services/ui_persistence_service.dart';
@@ -30,6 +31,7 @@ import 'data/thermal/thermal_tile_store.dart';
 import 'widgets/flight/flight_summary_sheet.dart';
 import 'widgets/flight/flights_screen.dart';
 import 'widgets/flight/replay_control_overlay.dart';
+import 'widgets/flight/synthetic_flight_controls.dart';
 import 'widgets/layout/layout_strategy_container.dart';
 import 'widgets/navigation/top_nav_bar.dart';
 import 'widgets/settings/pre_flight_coverage_prompt.dart';
@@ -102,8 +104,6 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     glide: 7.5,
     hag: 280.0,
     climb: 1.2,
-    windDir: 180.0,
-    windSpeed: 12.0,
     history: [1200.0, 1220.0, 1235.0, 1250.0],
   );
   String? _platformVersion;
@@ -122,6 +122,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   late AirspaceService _airspaceService;
   StreamSubscription<AirspaceAlertLevel>? _airspaceAlertSub;
   late TelemetryRepository _telemetryRepository;
+  late ScreenAutoSwitchController _autoSwitch;
   LayoutRepository? _ownedLayoutRepository;
   ThermalPrefetchService? _thermalPrefetch;
   bool _ownsThermalPrefetch = false;
@@ -168,6 +169,10 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
           : _liveIdleTelemetry,
     );
     _screenManager.addListener(_syncReplayTelemetry);
+    _autoSwitch = ScreenAutoSwitchController(
+      screens: () => _screenManager,
+      telemetry: _telemetryRepository.telemetry,
+    )..start();
     _bootstrap();
   }
 
@@ -400,6 +405,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     _screenManager.removeListener(_syncReplayTelemetry);
     _screenManager.dispose();
     _ownedLayoutRepository?.dispose();
+    _autoSwitch.dispose();
     _telemetryRepository.dispose();
     _mockFrameTick.dispose();
     _trackingService.dispose();
@@ -545,6 +551,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                       replayService: _replayService,
                       onNext: _advanceMockFrame,
                       onReset: _resetMockFrame,
+                      synthetic: _syntheticTelemetry,
                     ),
                   ),
                 ),
@@ -703,7 +710,11 @@ class _SimulationControlOverlay extends StatefulWidget {
     required this.replayService,
     required this.onNext,
     required this.onReset,
+    this.synthetic,
   });
+
+  /// Synthetic telemetry source driven by the simulation controls.
+  final SyntheticTelemetrySource? synthetic;
 
   final MockFlightModeConfig config;
   final MockFlightReplay replay;
@@ -970,6 +981,10 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          if (widget.synthetic != null) ...[
+                            const SizedBox(height: 4),
+                            SyntheticFlightControls(source: widget.synthetic!),
+                          ],
                         ],
                       ),
                     ),

@@ -6,15 +6,28 @@ import '../../../../domain/models/ui_config.dart';
 class WindDirectionWidget extends StatelessWidget {
   const WindDirectionWidget({
     super.key,
-    required this.directionDegrees,
-    required this.speedKmH,
+    required double? directionDegrees,
+    required double? speedKmH,
     required this.style,
     this.tier,
-  });
+    this.isStale = false,
+  }) : _direction = directionDegrees,
+       _speed = speedKmH;
 
-  final double directionDegrees;
-  final double speedKmH;
+  final double? _direction;
+  final double? _speed;
   final WindWidgetStyle style;
+
+  /// Wind estimate older than the staleness limit; rendered greyed with a
+  /// STALE badge.
+  final bool isStale;
+
+  /// Whether a wind estimate is available. Wind is never fabricated: without
+  /// an estimate an explicit "no estimate" state is shown.
+  bool get hasEstimate => _direction != null && _speed != null;
+
+  double get directionDegrees => _direction ?? 0.0;
+  double get speedKmH => _speed ?? 0.0;
 
   /// Content tier; tiny renders the direction arrow only. Null keeps the full
   /// layout.
@@ -22,11 +35,115 @@ class WindDirectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!hasEstimate) {
+      return Semantics(
+        label: 'Wind: no estimate',
+        readOnly: true,
+        child: _buildNoEstimate(),
+      );
+    }
+    final styled = _buildStyledWind(context);
     return Semantics(
       label:
-          'Wind: ${speedKmH.toStringAsFixed(1)} km/h at ${directionDegrees.toInt()} degrees',
+          'Wind: ${speedKmH.toStringAsFixed(1)} km/h at ${directionDegrees.toInt()} degrees${isStale ? ', stale' : ''}',
       readOnly: true,
-      child: _buildStyledWind(context),
+      child: isStale ? _buildStale(styled) : styled,
+    );
+  }
+
+  /// Explicit absence of a wind estimate (all styles).
+  Widget _buildNoEstimate() {
+    final tiny = tier == SizeTier.tiny;
+    return SizedBox.expand(
+      key: const Key('wind_no_estimate'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.black.withAlpha(160),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white12, width: 1),
+        ),
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: tiny
+              ? const Text(
+                  '--',
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                )
+              : const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'WIND',
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '-- km/h',
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    Text(
+                      'NO ESTIMATE',
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// Greys out a stale estimate and adds a STALE badge.
+  Widget _buildStale(Widget child) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColorFiltered(
+          colorFilter: const ColorFilter.matrix(<double>[
+            0.2126, 0.7152, 0.0722, 0, 0, //
+            0.2126, 0.7152, 0.0722, 0, 0, //
+            0.2126, 0.7152, 0.0722, 0, 0, //
+            0, 0, 0, 0.6, 0, //
+          ]),
+          child: child,
+        ),
+        Positioned(
+          top: 1,
+          right: 1,
+          child: Container(
+            key: const Key('wind_stale_badge'),
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade800,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: const Text(
+              'STALE',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

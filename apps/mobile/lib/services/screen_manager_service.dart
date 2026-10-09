@@ -94,11 +94,24 @@ class ScreenManagerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setActiveScreen(String screenId) {
+  /// Number of screen changes made manually by the pilot (not by
+  /// auto-switching). Used to suppress automatic switching after an override.
+  int get manualScreenChangeCount => _manualScreenChangeCount;
+  int _manualScreenChangeCount = 0;
+
+  /// Activates [screenId]. [automatic] marks switches made by the screen
+  /// auto-switch controller; all other calls count as manual overrides.
+  void setActiveScreen(String screenId, {bool automatic = false}) {
     if (config.activeScreenId == screenId) return;
+    if (!automatic) _manualScreenChangeCount++;
     _editMode.batch(() {
       _editMode.clearSelectionSilently();
-      _repository.replace(config.copyWith(activeScreenId: screenId));
+      // Automatic switches are transient and do not change the persisted
+      // start screen.
+      _repository.replace(
+        config.copyWith(activeScreenId: screenId),
+        persist: !automatic,
+      );
     });
   }
 

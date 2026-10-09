@@ -13,6 +13,8 @@ class SyntheticTelemetrySource implements ITelemetrySource {
     this.initialLatitude = 47.5246,
     this.initialLongitude = 13.6917,
     this.initialHeading = 120.0,
+    this._windFromDeg = 0.0,
+    this._windSpeedKmh = 0.0,
   }) : _maneuver = initialManeuver {
     _resetState();
   }
@@ -25,6 +27,11 @@ class SyntheticTelemetrySource implements ITelemetrySource {
   final double initialHeading;
 
   FlightManeuver _maneuver;
+
+  /// Simulated wind (direction it blows FROM, speed). Applied to the ground
+  /// track only; it is never emitted as a wind value in telemetry.
+  double _windFromDeg;
+  double _windSpeedKmh;
   Timer? _timer;
   bool _isRunning = false;
   bool _isPaused = false;
@@ -62,6 +69,15 @@ class SyntheticTelemetrySource implements ITelemetrySource {
   double get currentLatitude => _latitude;
   double get currentLongitude => _longitude;
   double get currentHeading => _heading;
+
+  double get windFromDeg => _windFromDeg;
+  double get windSpeedKmh => _windSpeedKmh;
+
+  /// Sets the simulated wind drifting the ground track.
+  void setWind({required double fromDeg, required double speedKmh}) {
+    _windFromDeg = fromDeg % 360.0;
+    _windSpeedKmh = speedKmh < 0.0 ? 0.0 : speedKmh;
+  }
 
   void setManeuver(FlightManeuver maneuver) {
     _maneuver = maneuver;
@@ -157,12 +173,17 @@ class SyntheticTelemetrySource implements ITelemetrySource {
     _heading = (_heading + turnRateDegPerSec * dtSeconds) % 360.0;
     if (_heading < 0.0) _heading += 360.0;
 
-    final speedMps = speedKmh / 3.6;
-    final distMeters = speedMps * dtSeconds;
+    // Air velocity from heading/airspeed plus wind drift = ground velocity.
+    final airMps = speedKmh / 3.6;
     final bearingRad = _heading * math.pi / 180.0;
+    final windTowardRad = (_windFromDeg + 180.0) * math.pi / 180.0;
+    final windMps = _windSpeedKmh / 3.6;
+    final vEast = airMps * math.sin(bearingRad) + windMps * math.sin(windTowardRad);
+    final vNorth = airMps * math.cos(bearingRad) + windMps * math.cos(windTowardRad);
+    final groundSpeedKmh = math.sqrt(vEast * vEast + vNorth * vNorth) * 3.6;
 
-    final deltaLat = (distMeters * math.cos(bearingRad)) / 111139.0;
-    final deltaLon = (distMeters * math.sin(bearingRad)) /
+    final deltaLat = (vNorth * dtSeconds) / 111139.0;
+    final deltaLon = (vEast * dtSeconds) /
         (111139.0 * math.cos(_latitude * math.pi / 180.0).clamp(0.1, 1.0));
 
     _latitude += deltaLat;
@@ -176,14 +197,12 @@ class SyntheticTelemetrySource implements ITelemetrySource {
       altitude: (_altitude * 10).roundToDouble() / 10.0,
       pressureHpa: (pressureHpa * 100).roundToDouble() / 100.0,
       vario: (climbRate * 100).roundToDouble() / 100.0,
-      speed: (speedKmh * 10).roundToDouble() / 10.0,
+      speed: (groundSpeedKmh * 10).roundToDouble() / 10.0,
       heading: (_heading * 10).roundToDouble() / 10.0,
       latitude: _latitude,
       longitude: _longitude,
       gnssAltitude: ((_altitude + 5.0) * 10).roundToDouble() / 10.0,
       hag: (_altitude - 800.0).clamp(0.0, 9999.0),
-      windDirectionDeg: ((_heading + 180.0) % 360.0),
-      windSpeedKmh: 12.0,
       isStale: false,
       isValid: true,
     );

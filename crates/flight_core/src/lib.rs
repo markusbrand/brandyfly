@@ -9,6 +9,8 @@ pub mod durable_recorder;
 pub mod procedural_generator;
 pub mod replay_fixtures;
 pub mod thermal;
+pub mod thermal_assistant;
+pub mod thermal_fixtures;
 pub mod wind;
 
 pub use airspace::{
@@ -32,6 +34,9 @@ pub use procedural_generator::{ProceduralFlightGenerator, ProceduralManeuver, Te
 pub use replay_fixtures::{
     SkyDrop1ReplayGenerator, SkyDrop1ReplayScenario, SyntheticReplayGenerator,
     SyntheticReplayScenario, replay_skydrop1_sequence,
+};
+pub use thermal_assistant::{
+    INTERRUPTION_GAP_MS, ThermalAssistant, ThermalAssistantOutput, ThermalSample,
 };
 
 /// Version of the public flight-core contract.
