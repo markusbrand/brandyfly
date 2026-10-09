@@ -143,3 +143,14 @@ jobs:
           [ -f ~/brandyfly/deploy/.env ] && cp ~/brandyfly/deploy/.env .env || true
           docker compose pull
           docker compose up -d --remove-orphans
+      - name: Verify backend health
+        run: |
+          port=$(grep -E '^BRANDYFLY_HOST_PORT=' .env 2>/dev/null | cut -d= -f2)
+          port=${port:-8090}
+          for i in $(seq 1 15); do
+            if curl -fsS "http://127.0.0.1:${port}/healthz"; then echo; exit 0; fi
+            sleep 2
+          done
+          echo "::error::backend /healthz did not answer on port ${port} within 30 s"
+          docker compose logs --tail 50
+          exit 1
