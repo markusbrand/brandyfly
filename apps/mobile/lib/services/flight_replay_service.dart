@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import '../models/lat_lng.dart';
 import '../models/flight_model.dart';
@@ -20,6 +21,30 @@ class FlightReplayService extends ChangeNotifier {
 
   List<LatLng> _trackCache = [];
   List<FlightPoint> _flightPointsCache = [];
+
+  // Read-only views handed to consumers: replay ticks append in place (no
+  // per-tick copy of the whole track); load/seek replace the caches, which
+  // gives consumers a new list identity to detect the discontinuity.
+  List<LatLng>? _trackViewSource;
+  List<FlightPoint>? _flightPointsViewSource;
+  UnmodifiableListView<LatLng>? _trackView;
+  UnmodifiableListView<FlightPoint>? _flightPointsView;
+
+  List<LatLng> get _trackSnapshot {
+    final v = _trackView;
+    if (v != null && identical(_trackViewSource, _trackCache)) return v;
+    _trackViewSource = _trackCache;
+    return _trackView = UnmodifiableListView(_trackCache);
+  }
+
+  List<FlightPoint> get _flightPointsSnapshot {
+    final v = _flightPointsView;
+    if (v != null && identical(_flightPointsViewSource, _flightPointsCache)) {
+      return v;
+    }
+    _flightPointsViewSource = _flightPointsCache;
+    return _flightPointsView = UnmodifiableListView(_flightPointsCache);
+  }
 
   final List<double> _altitudeHistory = [];
 
@@ -72,8 +97,8 @@ class FlightReplayService extends ChangeNotifier {
       };
     }
 
-    final track = List<LatLng>.unmodifiable(_trackCache);
-    final fullFlightPoints = List<FlightPoint>.unmodifiable(_flightPointsCache);
+    final track = _trackSnapshot;
+    final fullFlightPoints = _flightPointsSnapshot;
 
     return {
       'altitude': pt.altitude,
@@ -95,8 +120,8 @@ class FlightReplayService extends ChangeNotifier {
     _flight = flight;
     _currentIndex = 0;
     _altitudeHistory.clear();
-    _trackCache.clear();
-    _flightPointsCache.clear();
+    _trackCache = [];
+    _flightPointsCache = [];
     if (flight.points.isNotEmpty) {
       _altitudeHistory.add(flight.points.first.altitude);
       _trackCache = [LatLng(flight.points.first.latitude, flight.points.first.longitude)];

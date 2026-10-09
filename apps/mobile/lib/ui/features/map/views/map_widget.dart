@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:maplibre/maplibre.dart' hide Marker;
 import 'package:provider/provider.dart';
 
+import '../../../../domain/map_motion/motion_smoother.dart';
+import '../../../../domain/models/cockpit_telemetry.dart';
 import '../../../../models/flight_model.dart';
 import '../../../../models/lat_lng.dart';
 import '../../../../domain/models/ui_config.dart';
@@ -14,13 +18,23 @@ import '../../../../services/airspace_service.dart';
 import '../../../../services/maplibre_map_service.dart';
 import '../../../../services/region_manager_service.dart';
 import '../../../../widgets/flight/airspace_map_layer.dart';
+import '../layers/map_flight_layers.dart';
+import '../layers/vario_track_palette.dart';
 import '../platform/map_renderer_availability.dart';
 import '../view_models/map_camera_view_model.dart';
+import '../view_models/map_motion_controller.dart';
 
 /// Paragliding Map Widget with MapLibre GL offline vector tile rendering,
 /// Copernicus DEM hillshade terrain relief, local PMTiles fallback detection,
 /// KK7 thermal probability heatmap, airspace polygons, breadcrumb tracks, and
 /// pilot position.
+///
+/// The camera follows a display-rate smoothed pilot position
+/// ([MapMotionController]); track, mock airspace and the free-floating pilot
+/// marker are native MapLibre layers ([MapFlightLayers]) so they stay locked
+/// to the base map. Telemetry can be supplied either as discrete constructor
+/// values or, without rebuilding the widget on every tick, as a [telemetry]
+/// listenable.
 class MapWidget extends StatefulWidget {
   const MapWidget({
     super.key,
@@ -39,6 +53,7 @@ class MapWidget extends StatefulWidget {
     this.pilotPosition,
     this.trackPoints,
     this.flightPoints,
+    this.telemetry,
     this.mapTrackHistoryMinutes = 10,
     this.mapTrackShowOlderTail = true,
     this.onZoomIn,
@@ -72,6 +87,11 @@ class MapWidget extends StatefulWidget {
   final LatLng? pilotPosition;
   final List<LatLng>? trackPoints;
   final List<FlightPoint>? flightPoints;
+
+  /// Live telemetry. When set it overrides [altitudeM], [speedKmh],
+  /// [headingDeg], [pilotPosition] and [flightPoints], and the widget
+  /// subscribes to it directly instead of being rebuilt on every tick.
+  final ValueListenable<CockpitTelemetry>? telemetry;
   final int mapTrackHistoryMinutes;
   final bool mapTrackShowOlderTail;
   final VoidCallback? onZoomIn;
@@ -110,37 +130,20 @@ class MapWidget extends StatefulWidget {
   /// Pilot displacement that forces an immediate variant re-evaluation.
   static const double thermalReevaluateDistanceKm = 50.0;
 
+  /// Max update rate of the native pilot symbol while the map is panned.
+  static const Duration pilotSymbolInterval = Duration(milliseconds: 66);
+
   /// Continuous piecewise color interpolation for the vario gradient flight
   /// track. Maps vertical speed (m/s) to a lift/sink colour stop.
-  static Color getVarioTrackColor(double vario) {
-    if (vario <= -3.0) return const Color(0xFF991B1B); // Deep Dark Red
-    if (vario < -1.5) {
-      final t = (vario - (-3.0)) / (-1.5 - (-3.0));
-      return Color.lerp(const Color(0xFF991B1B), const Color(0xFFEF4444), t)!;
-    }
-    if (vario < -0.5) {
-      final t = (vario - (-1.5)) / (-0.5 - (-1.5));
-      return Color.lerp(const Color(0xFFEF4444), const Color(0xFFFCA5A5), t)!;
-    }
-    if (vario <= 0.5) {
-      return const Color(0xFF94A3B8); // Neutral Slate Grey
-    }
-    if (vario < 1.5) {
-      final t = (vario - 0.5) / (1.5 - 0.5);
-      return Color.lerp(const Color(0xFF86EFAC), const Color(0xFF22C55E), t)!;
-    }
-    if (vario < 3.5) {
-      final t = (vario - 1.5) / (3.5 - 1.5);
-      return Color.lerp(const Color(0xFF22C55E), const Color(0xFF15803D), t)!;
-    }
-    return const Color(0xFF15803D); // Dark Emerald Green
-  }
+  static Color getVarioTrackColor(double vario) =>
+      VarioTrackPalette.colorFor(vario);
 
   @override
-  State<MapWidget> createState() => _MapWidgetState();
+  State<MapWidget> createState() => MapWidgetState();
 }
 
-class _MapWidgetState extends State<MapWidget> {
+/// State of [MapWidget]; public members are exposed for tests only.
+class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
   late MapLibreMapService _mapService;
   late MapCameraViewModel _camera;
   bool _ownsCamera = false;
@@ -149,10 +152,30 @@ class _MapWidgetState extends State<MapWidget> {
   late double _currentZoom;
   late bool _centerOnPilot;
   late int _seenRecenterRequests;
-  late LatLng _cameraCenter;
   String? _styleJson;
-  bool _isProgrammaticMove = false;
-  Timer? _programmaticMoveTimer;
+
+  late final MapMotionController _motion;
+  final MapFlightLayers _layers = MapFlightLayers();
+  final ValueNotifier<MotionFrame?> _frame = ValueNotifier(null);
+  final ValueNotifier<(int, int)> _hud = ValueNotifier((0, 0));
+  late final ValueNotifier<(LatLng, double)> _cameraView;
+
+  /// Camera center / bearing currently shown (follow or manual pan).
+  late LatLng _cameraCenter;
+  double _cameraBearing = 0;
+  double _viewportHeight = 0;
+
+  // Last camera written to the native map (dedupe).
+  LatLng? _writtenCenter;
+  double? _writtenZoom;
+  double? _writtenBearing;
+  double? _writtenPadding;
+  Duration? _lastPilotSymbolUpdate;
+
+  ValueListenable<CockpitTelemetry>? _subscribedTelemetry;
+  List<FlightPoint>? _lastFlightPoints;
+  LatLng? _mockAnchor;
+  List<FlightPoint> _mockPoints = const [];
 
   // KK7 thermal heatmap state
   ThermalLayerSpec? _thermalSpec;
@@ -163,29 +186,58 @@ class _MapWidgetState extends State<MapWidget> {
   // Default Alpine launch reference coordinates (Dachstein / Krippenstein)
   static const LatLng _defaultPilotPosition = LatLng(47.525, 13.685);
 
+  /// Camera center currently presented (tests).
+  @visibleForTesting
+  LatLng get cameraCenter => _cameraCenter;
+
+  /// Latest smoothed frame (tests).
+  @visibleForTesting
+  MotionFrame? get motionFrame => _frame.value;
+
+  /// Native overlay manager (tests).
+  @visibleForTesting
+  MapFlightLayers get flightLayers => _layers;
+
+  /// Motion controller (tests).
+  @visibleForTesting
+  MapMotionController get motion => _motion;
+
+  CockpitTelemetry? get _t => widget.telemetry?.value;
+
+  LatLng? get _rawPilotPosition =>
+      widget.telemetry != null ? _t?.pilotPosition : widget.pilotPosition;
+
   LatLng get _effectivePilotPosition =>
-      widget.pilotPosition ?? _defaultPilotPosition;
+      _rawPilotPosition ?? _defaultPilotPosition;
 
-  List<LatLng> get _effectiveTrackPoints {
-    if (widget.trackPoints != null && widget.trackPoints!.isNotEmpty) {
-      return widget.trackPoints!;
-    }
-    final p = _effectivePilotPosition;
-    return [
-      LatLng(p.latitude - 0.015, p.longitude - 0.018),
-      LatLng(p.latitude - 0.010, p.longitude - 0.012),
-      LatLng(p.latitude - 0.006, p.longitude - 0.008),
-      LatLng(p.latitude - 0.003, p.longitude - 0.003),
-      LatLng(p.latitude - 0.001, p.longitude - 0.001),
-      p,
-    ];
-  }
+  double get _heading =>
+      widget.telemetry != null ? _t!.effectiveHeading : widget.headingDeg;
 
+  double get _speed => widget.telemetry != null ? _t!.speed : widget.speedKmh;
+
+  double get _altitude =>
+      widget.telemetry != null ? _t!.altitude : widget.altitudeM;
+
+  bool get _stale => widget.telemetry != null && _t!.isStale;
+
+  List<FlightPoint>? get _rawFlightPoints =>
+      widget.telemetry != null ? _t?.flightPoints : widget.flightPoints;
+
+  bool get _trackUp => widget.orientation == MapOrientation.trackUp;
+
+  /// Recorded track, or a demo track around the pilot when there is no
+  /// telemetry source (previews, idle canvas). A live source without a
+  /// recorded track (pre-takeoff) shows no track rather than a fake one.
   List<FlightPoint> get _effectiveFlightPoints {
-    if (widget.flightPoints != null && widget.flightPoints!.isNotEmpty) {
-      return widget.flightPoints!;
+    final raw = _rawFlightPoints;
+    if (raw != null && raw.isNotEmpty) return raw;
+    if (widget.telemetry != null && _t!.hasSource) return const [];
+    final p = _effectivePilotPosition;
+    if (_mockAnchor != p) {
+      _mockAnchor = p;
+      _mockPoints = List.unmodifiable(_buildMockFlightPoints(p));
     }
-    return _buildMockFlightPoints(_effectivePilotPosition);
+    return _mockPoints;
   }
 
   @override
@@ -195,10 +247,65 @@ class _MapWidgetState extends State<MapWidget> {
     _mapService.addListener(_onMapServiceChanged);
     _attachCamera(widget.cameraViewModel);
     _cameraCenter = _effectivePilotPosition;
-    _lastKnownPilot = widget.pilotPosition;
+    _cameraBearing = _trackUp ? _heading : 0.0;
+    _cameraView = ValueNotifier((_cameraCenter, _currentZoom));
+    _motion = MapMotionController(
+      vsync: this,
+      onFrame: _applyFrame,
+      initialZoom: _currentZoom,
+      trackUp: _trackUp,
+    );
+    _layers.configure(
+      showTrack: widget.showTrack,
+      historyMinutes: widget.mapTrackHistoryMinutes,
+      showOlderTail: widget.mapTrackShowOlderTail,
+      showAirspace: widget.showAirspace,
+    );
+    _subscribeTelemetry();
+    _lastKnownPilot = _rawPilotPosition;
     _thermalSpec = _computeThermalSpec();
     _syncThermalTimer();
+    _syncInputs();
     _initMapStyle();
+  }
+
+  void _subscribeTelemetry() {
+    if (identical(_subscribedTelemetry, widget.telemetry)) return;
+    _subscribedTelemetry?.removeListener(_onTelemetry);
+    _subscribedTelemetry = widget.telemetry;
+    _subscribedTelemetry?.addListener(_onTelemetry);
+  }
+
+  void _onTelemetry() {
+    if (!mounted) return;
+    _syncInputs();
+    _checkThermalJump(rebuild: true);
+  }
+
+  /// Feeds the current telemetry into motion, overlay layers and HUD.
+  void _syncInputs() {
+    final pilot = _effectivePilotPosition;
+    final points = _effectiveFlightPoints;
+    // A replaced recorded track list (flight load, replay seek) is a
+    // discontinuity: jump instead of animating across it. Growing tracks keep
+    // their list identity (live recording, replay ticks).
+    final raw = _rawFlightPoints;
+    final last = _lastFlightPoints;
+    final snap = raw != null && last != null && !identical(last, raw);
+    _lastFlightPoints = raw;
+    _motion.pushFix(
+      MotionFix(
+        latitude: pilot.latitude,
+        longitude: pilot.longitude,
+        headingDeg: _heading,
+        speedKmh: _speed,
+        stale: _stale,
+      ),
+      snap: snap,
+    );
+    _layers.updateTrack(points);
+    _hud.value = (_altitude.round(), _speed.round());
+    if (_rawPilotPosition != null) _lastKnownPilot = _rawPilotPosition;
   }
 
   DateTime _now() => (widget.clock ?? DateTime.now)();
@@ -206,12 +313,12 @@ class _MapWidgetState extends State<MapWidget> {
   /// Resolves the desired heatmap layer, or null when thermals are hidden.
   ThermalLayerSpec? _computeThermalSpec() {
     if (!widget.showThermals) return null;
-    _thermalEvalPosition = widget.pilotPosition ?? _lastKnownPilot;
+    _thermalEvalPosition = _rawPilotPosition ?? _lastKnownPilot;
     final variant = ThermalVariantResolver.resolve(
       season: widget.thermalSeason,
       timeOfDay: widget.thermalTimeOfDay,
       now: _now(),
-      gpsFix: widget.pilotPosition,
+      gpsFix: _rawPilotPosition,
       lastKnownPosition: _lastKnownPilot,
       mapCenter: _cameraCenter,
     );
@@ -228,6 +335,26 @@ class _MapWidgetState extends State<MapWidget> {
     if (spec == _thermalSpec) return;
     setState(() => _thermalSpec = spec);
     _mapService.setThermalLayer(spec);
+  }
+
+  /// Re-evaluates the thermal variant immediately after a large jump.
+  void _checkThermalJump({required bool rebuild}) {
+    final pilot = _rawPilotPosition;
+    if (!widget.showThermals || pilot == null) return;
+    final evalPos = _thermalEvalPosition;
+    final jumped =
+        evalPos == null ||
+        _distanceKm(evalPos, pilot) > MapWidget.thermalReevaluateDistanceKm;
+    if (!jumped) return;
+    if (rebuild) {
+      _refreshThermal();
+    } else {
+      final spec = _computeThermalSpec();
+      if (spec != _thermalSpec) {
+        _thermalSpec = spec;
+        _mapService.setThermalLayer(spec);
+      }
+    }
   }
 
   bool get _thermalNeedsTimer =>
@@ -311,8 +438,10 @@ class _MapWidgetState extends State<MapWidget> {
     }
   }
 
+  bool _syncingGestureZoom = false;
+
   /// Applies camera view model changes (from built-in buttons, map control
-  /// widgets or the inactivity timer) to the native map camera.
+  /// widgets or the inactivity timer) to the motion controller.
   void _onCameraChanged() {
     if (!mounted) return;
     final oldZoom = _currentZoom;
@@ -320,21 +449,28 @@ class _MapWidgetState extends State<MapWidget> {
     final recenterRequested = _camera.recenterRequests != _seenRecenterRequests;
     _seenRecenterRequests = _camera.recenterRequests;
 
-    setState(() {
-      _currentZoom = newZoom;
-      _centerOnPilot = _camera.centerLocked;
-      if (recenterRequested) {
-        _cameraCenter = _effectivePilotPosition;
-      }
-    });
+    if (newZoom != oldZoom || _centerOnPilot != _camera.centerLocked) {
+      setState(() {
+        _currentZoom = newZoom;
+        _centerOnPilot = _camera.centerLocked;
+      });
+    }
 
+    if (!_camera.centerLocked && _motion.following) {
+      _motion.release();
+    }
     if (recenterRequested) {
-      _updateCamera(animate: true);
-    } else if (newZoom != oldZoom && !_syncingGestureZoom) {
-      _mapService.moveCamera(position: _cameraCenter, zoom: newZoom);
+      _motion.recenter(from: _cameraCenter, fromBearing: _cameraBearing);
     }
 
     if (newZoom != oldZoom) {
+      if (_syncingGestureZoom) {
+        // The native camera already shows this zoom.
+        _writtenZoom = newZoom;
+        _motion.setZoom(newZoom, animate: false);
+      } else {
+        _motion.setZoom(newZoom);
+      }
       widget.onZoomChanged?.call(newZoom);
       if (!_syncingGestureZoom) {
         if (newZoom > oldZoom) {
@@ -346,12 +482,64 @@ class _MapWidgetState extends State<MapWidget> {
     }
   }
 
-  bool _syncingGestureZoom = false;
+  /// Presents one smoothed frame: one camera write while following, the
+  /// native pilot symbol (throttled) while panned.
+  void _applyFrame(MotionFrame f) {
+    _frame.value = f;
+    if (f.following) {
+      _cameraCenter = f.cameraCenter;
+      _cameraBearing = f.bearing;
+      _writeCamera(f.cameraCenter, f.zoom, f.bearing, f.topPaddingFraction);
+      _layers.updatePilot(f.pilot, f.headingDeg, visible: false);
+    } else {
+      if (f.zoom != _writtenZoom) {
+        _writeCamera(
+          _cameraCenter,
+          f.zoom,
+          _cameraBearing,
+          _writtenPadding ?? f.topPaddingFraction,
+        );
+      }
+      final now = SchedulerBinding.instance.currentFrameTimeStamp;
+      final last = _lastPilotSymbolUpdate;
+      if (last == null ||
+          now < last ||
+          now - last >= MapWidget.pilotSymbolInterval) {
+        _lastPilotSymbolUpdate = now;
+        _layers.updatePilot(f.pilot, f.headingDeg, visible: true);
+      }
+    }
+    _cameraView.value = (_cameraCenter, f.zoom);
+  }
+
+  void _writeCamera(
+    LatLng center,
+    double zoom,
+    double bearing,
+    double topPaddingFraction,
+  ) {
+    if (center == _writtenCenter &&
+        zoom == _writtenZoom &&
+        bearing == _writtenBearing &&
+        topPaddingFraction == _writtenPadding) {
+      return;
+    }
+    _writtenCenter = center;
+    _writtenZoom = zoom;
+    _writtenBearing = bearing;
+    _writtenPadding = topPaddingFraction;
+    _mapService.moveCamera(
+      position: center,
+      zoom: zoom,
+      bearing: bearing,
+      padding: EdgeInsets.only(top: topPaddingFraction * _viewportHeight),
+    );
+  }
 
   Future<void> _initMapStyle() async {
     String? effectiveRegion = widget.regionId;
     if (effectiveRegion == null && widget.regionManager != null) {
-      final pos = widget.pilotPosition ?? _lastKnownPilot;
+      final pos = _rawPilotPosition ?? _lastKnownPilot;
       if (pos != null) {
         final downloaded = await widget.regionManager!.getDownloadedRegions();
         for (final r in downloaded) {
@@ -379,12 +567,36 @@ class _MapWidgetState extends State<MapWidget> {
     }
   }
 
+  void _onMapCreated(MapController controller) {
+    _mapService.onMapCreated(controller);
+    // Force the next frame to (re)write the camera to the new controller.
+    _writtenCenter = null;
+    _motion.requestFrame();
+  }
+
+  Future<void> _onStyleLoaded(StyleController style) async {
+    _mapService.onStyleLoaded(style);
+    _layers.detach();
+    await _layers.attach(style, belowLayerId: _mapService.thermalBelowLayerId);
+    if (!mounted) return;
+    if (_layers.isAttached) {
+      _mapService.overlayBottomLayerId = MapFlightLayers.bottomLayerId;
+    }
+    _layers.updateTrack(_effectiveFlightPoints);
+    _motion.requestFrame();
+  }
+
   @override
   void dispose() {
-    _programmaticMoveTimer?.cancel();
     _thermalTimer?.cancel();
+    _subscribedTelemetry?.removeListener(_onTelemetry);
     _mapService.removeListener(_onMapServiceChanged);
     _detachCamera();
+    _motion.dispose();
+    _layers.detach();
+    _frame.dispose();
+    _hud.dispose();
+    _cameraView.dispose();
     if (widget.mapService == null) {
       _mapService.dispose();
     }
@@ -401,6 +613,7 @@ class _MapWidgetState extends State<MapWidget> {
       }
       _mapService = widget.mapService ?? MapLibreMapService();
       _mapService.addListener(_onMapServiceChanged);
+      _layers.detach();
       _initMapStyle();
     } else if (widget.regionId != oldWidget.regionId) {
       _initMapStyle();
@@ -410,6 +623,7 @@ class _MapWidgetState extends State<MapWidget> {
       _detachCamera();
       _attachCamera(widget.cameraViewModel);
       _syncRegistration();
+      _motion.setZoom(_currentZoom, animate: false);
     } else if (widget.cameraId != oldWidget.cameraId) {
       _syncRegistration();
     }
@@ -417,10 +631,20 @@ class _MapWidgetState extends State<MapWidget> {
     if (widget.initialZoom != oldWidget.initialZoom) {
       _camera.resetZoom(widget.initialZoom);
       _currentZoom = _camera.zoom;
-      _updateCamera();
+      _motion.setZoom(_currentZoom, animate: false);
     }
 
-    if (widget.pilotPosition != null) _lastKnownPilot = widget.pilotPosition;
+    if (widget.orientation != oldWidget.orientation) {
+      _motion.setTrackUp(_trackUp);
+    }
+
+    _layers.configure(
+      showTrack: widget.showTrack,
+      historyMinutes: widget.mapTrackHistoryMinutes,
+      showOlderTail: widget.mapTrackShowOlderTail,
+      showAirspace: widget.showAirspace,
+    );
+
     final thermalSettingsChanged =
         widget.showThermals != oldWidget.showThermals ||
         widget.thermalSeason != oldWidget.thermalSeason ||
@@ -433,75 +657,22 @@ class _MapWidgetState extends State<MapWidget> {
       _thermalTimer = null;
       _syncThermalTimer();
     }
-    final evalPos = _thermalEvalPosition;
-    final jumped =
-        widget.pilotPosition != null &&
-        (evalPos == null ||
-            _distanceKm(evalPos, widget.pilotPosition!) >
-                MapWidget.thermalReevaluateDistanceKm);
-    if (thermalSettingsChanged || (widget.showThermals && jumped)) {
+
+    final telemetryChanged = !identical(widget.telemetry, oldWidget.telemetry);
+    _subscribeTelemetry();
+    if (widget.telemetry == null || telemetryChanged) {
+      _syncInputs();
+    }
+
+    if (thermalSettingsChanged) {
       // A rebuild follows didUpdateWidget, so plain assignment is enough.
       final spec = _computeThermalSpec();
       if (spec != _thermalSpec) {
         _thermalSpec = spec;
         _mapService.setThermalLayer(spec);
       }
-    }
-
-    final oldPilot = oldWidget.pilotPosition ?? _defaultPilotPosition;
-    final newPilot = _effectivePilotPosition;
-    if (_centerOnPilot && oldPilot != newPilot) {
-      _cameraCenter = newPilot;
-      _updateCamera();
-    }
-
-    if (widget.orientation != oldWidget.orientation ||
-        (widget.orientation == MapOrientation.trackUp &&
-            widget.headingDeg != oldWidget.headingDeg)) {
-      _updateCamera();
-    }
-  }
-
-  void _updateCamera({bool animate = false}) {
-    _programmaticMoveTimer?.cancel();
-    _isProgrammaticMove = true;
-    final bearing = widget.orientation == MapOrientation.trackUp
-        ? widget.headingDeg
-        : 0.0;
-    if (animate) {
-      _mapService
-          .animateCamera(
-            position: _cameraCenter,
-            zoom: _currentZoom,
-            bearing: bearing,
-          )
-          .whenComplete(() {
-            if (!mounted) return;
-            _programmaticMoveTimer?.cancel();
-            _programmaticMoveTimer = Timer(
-              const Duration(milliseconds: 300),
-              () {
-                if (mounted) _isProgrammaticMove = false;
-              },
-            );
-          });
     } else {
-      _mapService
-          .moveCamera(
-            position: _cameraCenter,
-            zoom: _currentZoom,
-            bearing: bearing,
-          )
-          .whenComplete(() {
-            if (!mounted) return;
-            _programmaticMoveTimer?.cancel();
-            _programmaticMoveTimer = Timer(
-              const Duration(milliseconds: 100),
-              () {
-                if (mounted) _isProgrammaticMove = false;
-              },
-            );
-          });
+      _checkThermalJump(rebuild: false);
     }
   }
 
@@ -511,12 +682,13 @@ class _MapWidgetState extends State<MapWidget> {
 
   void _onMapEvent(MapEvent event) {
     if (event is MapEventStartMoveCamera) {
-      if (event.reason == CameraChangeReason.apiGesture ||
-          !_isProgrammaticMove) {
+      // Only real user gestures release center-lock; our own per-frame
+      // camera writes report a developer/API reason.
+      if (event.reason == CameraChangeReason.apiGesture) {
         _camera.beginManualPan();
       }
     } else if (event is MapEventMoveCamera) {
-      if (_isProgrammaticMove) return;
+      if (_camera.centerLocked) return; // our own follow moves
       final cam = event.camera;
       final newCenter = LatLng(cam.center.lat, cam.center.lon);
       final latDiff = (_cameraCenter.latitude - newCenter.latitude).abs();
@@ -524,9 +696,11 @@ class _MapWidgetState extends State<MapWidget> {
       final zoomDiff = (_currentZoom - cam.zoom).abs();
 
       if (latDiff > 1e-6 || lngDiff > 1e-6 || zoomDiff > 0.01) {
-        setState(() {
-          _cameraCenter = newCenter;
-        });
+        _cameraCenter = newCenter;
+        _cameraBearing = cam.bearing;
+        _writtenCenter = newCenter;
+        _writtenBearing = cam.bearing;
+        _cameraView.value = (newCenter, cam.zoom);
         _camera.beginManualPan();
         _syncingGestureZoom = true;
         try {
@@ -544,9 +718,7 @@ class _MapWidgetState extends State<MapWidget> {
 
   void _onPanUpdate(DragUpdateDetails details) {
     final worldSize = 512.0 * math.pow(2.0, _currentZoom);
-    final bearing = widget.orientation == MapOrientation.trackUp
-        ? widget.headingDeg
-        : 0.0;
+    final bearing = _cameraBearing;
 
     double dx = details.delta.dx;
     double dy = details.delta.dy;
@@ -567,161 +739,139 @@ class _MapWidgetState extends State<MapWidget> {
     // Use O(1) arithmetic modulo to wrap longitude to [-180, 180] without branching or loop iterations
     final newLng = (_cameraCenter.longitude + dLng + 180.0) % 360.0 - 180.0;
 
-    final newCenter = LatLng(newLat, newLng);
-
-    setState(() {
-      _cameraCenter = newCenter;
-    });
+    _cameraCenter = LatLng(newLat, newLng);
     _camera.beginManualPan();
-
-    _updateCamera();
+    _writeCamera(
+      _cameraCenter,
+      _writtenZoom ?? _currentZoom,
+      bearing,
+      _writtenPadding ?? 0.0,
+    );
+    _cameraView.value = (_cameraCenter, _writtenZoom ?? _currentZoom);
   }
 
   @override
   Widget build(BuildContext context) {
-    final pilotPos = _effectivePilotPosition;
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Stack(
-        children: [
-          // 1. Map Canvas / MapLibre GL Base Map
-          Positioned.fill(
-            child: Semantics(
-              button: false,
-              label: 'Interactive map canvas',
-              child: GestureDetector(
-                key: const Key('map_gesture_detector'),
-                behavior: HitTestBehavior.opaque,
-                onPanStart: _onPanStart,
-                onPanUpdate: _onPanUpdate,
-                child: _buildMapBackground(_cameraCenter),
-              ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final h = constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : 0.0;
+          if (h != _viewportHeight) {
+            _viewportHeight = h;
+            _writtenPadding = null; // padding pixels changed
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _motion.requestFrame();
+            });
+          }
+          return _buildStack(context);
+        },
+      ),
+    );
+  }
+
+  Widget _buildStack(BuildContext context) {
+    return Stack(
+      children: [
+        // 1. Map Canvas / MapLibre GL Base Map (track, mock airspace and the
+        //    free-floating pilot symbol are native layers inside it).
+        Positioned.fill(
+          child: Semantics(
+            button: false,
+            label: 'Interactive map canvas',
+            child: GestureDetector(
+              key: const Key('map_gesture_detector'),
+              behavior: HitTestBehavior.opaque,
+              onPanStart: _onPanStart,
+              onPanUpdate: _onPanUpdate,
+              child: _buildMapBackground(),
             ),
           ),
+        ),
 
-          // 2. Airspace vector map layer
-          if (widget.showAirspace)
-            Consumer<AirspaceService?>(
-              builder: (context, airspace, _) {
-                if (airspace == null || airspace.loadedAirspaces.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return Positioned.fill(
-                  child: IgnorePointer(
-                    child: AirspaceMapLayer(
+        // 2. Airspace vector map layer (OpenAir, Flutter overlay)
+        if (widget.showAirspace)
+          Consumer<AirspaceService?>(
+            builder: (context, airspace, _) {
+              if (airspace == null || airspace.loadedAirspaces.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return Positioned.fill(
+                child: IgnorePointer(
+                  child: ValueListenableBuilder<(LatLng, double)>(
+                    valueListenable: _cameraView,
+                    builder: (context, view, _) => AirspaceMapLayer(
                       airspaces: airspace.loadedAirspaces,
-                      centerLat: _cameraCenter.latitude,
-                      centerLon: _cameraCenter.longitude,
-                      zoom: _currentZoom,
+                      centerLat: view.$1.latitude,
+                      centerLon: view.$1.longitude,
+                      zoom: view.$2,
                       activeAlertLevel: airspace.activeAlertLevel,
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          ),
 
-          // 2b. Flight Overlays (Airspace, Flight Track, Pilot Marker). The
-          //    KK7 thermal heatmap is a MapLibre raster layer below these.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: RepaintBoundary(
-                child: CustomPaint(
-                  painter: _FlightOverlayPainter(
-                    mapController: _mapService.controller,
-                    pilotPosition: pilotPos,
-                    cameraCenter: _cameraCenter,
-                    orientation: widget.orientation,
-                    headingDeg: widget.headingDeg,
-                    zoom: _currentZoom,
-                    showAirspace: widget.showAirspace,
-                    showTrack: widget.showTrack,
-                    flightPoints: _effectiveFlightPoints,
-                    trackPoints: _effectiveTrackPoints,
-                    climbRateMs: widget.climbRateMs,
-                    mapTrackHistoryMinutes: widget.mapTrackHistoryMinutes,
-                    mapTrackShowOlderTail: widget.mapTrackShowOlderTail,
-                  ),
+        // 2b. Screen-anchored pilot marker while center-locked. The camera
+        //     puts the smoothed pilot exactly on this anchor every frame.
+        Positioned.fill(
+          child: IgnorePointer(
+            child: RepaintBoundary(
+              child: CustomPaint(
+                key: const Key('map_pilot_marker'),
+                painter: PilotMarkerPainter(
+                  frame: _frame,
+                  fallbackRotationDeg: _trackUp ? 0.0 : _heading,
+                  fallbackTopPadding: _trackUp
+                      ? MapMotionController.trackUpTopPadding
+                      : 0.0,
                 ),
               ),
             ),
           ),
+        ),
 
-          // 3. Fallback Badge ("No offline data" / "Online preview")
-          if (_mapService.isFallbackActive)
-            Positioned(
-              top: 36,
-              left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: _mapService.isOnlinePreviewActive
-                      ? Colors.teal.shade900.withAlpha(220)
-                      : Colors.amber.shade900.withAlpha(220),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: _mapService.isOnlinePreviewActive
-                        ? Colors.tealAccent
-                        : Colors.amberAccent,
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _mapService.isOnlinePreviewActive
-                          ? Icons.cloud_queue_rounded
-                          : Icons.warning_amber_rounded,
-                      size: 12,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _mapService.isOnlinePreviewActive
-                          ? 'Online preview (No offline data)'
-                          : 'No offline data (Overview fallback)',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // 4. Map Header Badge
+        // 3. Fallback Badge ("No offline data" / "Online preview")
+        if (_mapService.isFallbackActive)
           Positioned(
-            top: 8,
+            top: 36,
             left: 8,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.black.withAlpha(180),
-                borderRadius: BorderRadius.circular(6),
+                color: _mapService.isOnlinePreviewActive
+                    ? Colors.teal.shade900.withAlpha(220)
+                    : Colors.amber.shade900.withAlpha(220),
+                borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: Colors.cyanAccent.withAlpha(100),
+                  color: _mapService.isOnlinePreviewActive
+                      ? Colors.tealAccent
+                      : Colors.amberAccent,
                   width: 1,
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.map_outlined,
+                  Icon(
+                    _mapService.isOnlinePreviewActive
+                        ? Icons.cloud_queue_rounded
+                        : Icons.warning_amber_rounded,
                     size: 12,
-                    color: Colors.cyanAccent,
+                    color: Colors.white,
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _getStyleTitle(widget.style),
+                    _mapService.isOnlinePreviewActive
+                        ? 'Online preview (No offline data)'
+                        : 'No offline data (Overview fallback)',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -729,96 +879,133 @@ class _MapWidgetState extends State<MapWidget> {
             ),
           ),
 
-          // 5. North / Orientation Compass Widget
-          Positioned(top: 8, right: 8, child: _buildCompassIndicator()),
-
-          // 6. In-flight Zoom Steppers & Recenter Toolbar
-          if (widget.showBuiltInControls)
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _mapActionButton(
-                    key: const Key('btn_map_recenter'),
-                    icon: Icons.my_location,
-                    tooltip: 'Center Pilot',
-                    active: _centerOnPilot,
-                    onPressed: _recenter,
-                  ),
-                  const SizedBox(height: 4),
-                  _mapActionButton(
-                    key: const Key('btn_map_zoom_in'),
-                    icon: Icons.add,
-                    tooltip: 'Zoom In',
-                    onPressed: _camera.canZoomIn
-                        ? () => _handleZoom(_camera.zoomStep)
-                        : null,
-                  ),
-                  const SizedBox(height: 4),
-                  _mapActionButton(
-                    key: const Key('btn_map_zoom_out'),
-                    icon: Icons.remove,
-                    tooltip: 'Zoom Out',
-                    onPressed: _camera.canZoomOut
-                        ? () => _handleZoom(-_camera.zoomStep)
-                        : null,
-                  ),
-                ],
+        // 4. Map Header Badge
+        Positioned(
+          top: 8,
+          left: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black.withAlpha(180),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: Colors.cyanAccent.withAlpha(100),
+                width: 1,
               ),
             ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.map_outlined,
+                  size: 12,
+                  color: Colors.cyanAccent,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _getStyleTitle(widget.style),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
 
-          // 7. Dynamic Scale Bar & Altitude / Speed HUD
-          Positioned(bottom: 8, left: 52, child: _buildScaleAndLegend()),
+        // 5. North / Orientation Compass Widget
+        Positioned(top: 8, right: 8, child: _buildCompassIndicator()),
 
-          // 8. KK7 thermal heatmap attribution (CC BY-NC-SA 4.0)
-          if (_thermalSpec != null)
-            Positioned(
-              bottom: 46,
-              left: 52,
-              right: 44,
-              child: IgnorePointer(
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Container(
-                    key: const Key('thermal_attribution'),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withAlpha(150),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: const Text(
-                      Kk7Provider.attributionText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.white70, fontSize: 8),
-                    ),
+        // 6. In-flight Zoom Steppers & Recenter Toolbar
+        if (widget.showBuiltInControls)
+          Positioned(
+            bottom: 8,
+            right: 8,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _mapActionButton(
+                  key: const Key('btn_map_recenter'),
+                  icon: Icons.my_location,
+                  tooltip: 'Center Pilot',
+                  active: _centerOnPilot,
+                  onPressed: _recenter,
+                ),
+                const SizedBox(height: 4),
+                _mapActionButton(
+                  key: const Key('btn_map_zoom_in'),
+                  icon: Icons.add,
+                  tooltip: 'Zoom In',
+                  onPressed: _camera.canZoomIn
+                      ? () => _handleZoom(_camera.zoomStep)
+                      : null,
+                ),
+                const SizedBox(height: 4),
+                _mapActionButton(
+                  key: const Key('btn_map_zoom_out'),
+                  icon: Icons.remove,
+                  tooltip: 'Zoom Out',
+                  onPressed: _camera.canZoomOut
+                      ? () => _handleZoom(-_camera.zoomStep)
+                      : null,
+                ),
+              ],
+            ),
+          ),
+
+        // 7. Dynamic Scale Bar & Altitude / Speed HUD
+        Positioned(bottom: 8, left: 52, child: _buildScaleAndLegend()),
+
+        // 8. KK7 thermal heatmap attribution (CC BY-NC-SA 4.0)
+        if (_thermalSpec != null)
+          Positioned(
+            bottom: 46,
+            left: 52,
+            right: 44,
+            child: IgnorePointer(
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Container(
+                  key: const Key('thermal_attribution'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(150),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: const Text(
+                    Kk7Provider.attributionText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white70, fontSize: 8),
                   ),
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
-  Widget _buildMapBackground(LatLng cameraPos) {
+  Widget _buildMapBackground() {
     if (_styleJson != null && isMapRendererAvailable) {
       return MapLibreMap(
         options: MapOptions(
           initCenter: Geographic(
-            lon: cameraPos.longitude,
-            lat: cameraPos.latitude,
+            lon: _cameraCenter.longitude,
+            lat: _cameraCenter.latitude,
           ),
           initZoom: _currentZoom,
+          initBearing: _cameraBearing,
           initStyle: _styleJson!,
         ),
-        onMapCreated: _mapService.onMapCreated,
-        onStyleLoaded: _mapService.onStyleLoaded,
+        onMapCreated: _onMapCreated,
+        onStyleLoaded: _onStyleLoaded,
         onEvent: _onMapEvent,
       );
     }
@@ -841,10 +1028,6 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   Widget _buildCompassIndicator() {
-    final rotation = widget.orientation == MapOrientation.trackUp
-        ? -widget.headingDeg * math.pi / 180
-        : 0.0;
-
     return Container(
       width: 32,
       height: 32,
@@ -853,8 +1036,15 @@ class _MapWidgetState extends State<MapWidget> {
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white24, width: 1),
       ),
-      child: Transform.rotate(
-        angle: rotation,
+      child: ValueListenableBuilder<MotionFrame?>(
+        valueListenable: _frame,
+        builder: (context, frame, child) {
+          final bearing = frame?.bearing ?? (_trackUp ? _heading : 0.0);
+          return Transform.rotate(
+            angle: -bearing * math.pi / 180,
+            child: child,
+          );
+        },
         child: const Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -904,12 +1094,15 @@ class _MapWidgetState extends State<MapWidget> {
             ],
           ),
           const SizedBox(height: 2),
-          Text(
-            'ALT: ${widget.altitudeM.toStringAsFixed(0)}m  SPD: ${widget.speedKmh.toStringAsFixed(0)}km/h',
-            style: const TextStyle(
-              color: Colors.cyanAccent,
-              fontSize: 8,
-              fontWeight: FontWeight.w600,
+          ValueListenableBuilder<(int, int)>(
+            valueListenable: _hud,
+            builder: (context, v, _) => Text(
+              'ALT: ${v.$1}m  SPD: ${v.$2}km/h',
+              style: const TextStyle(
+                color: Colors.cyanAccent,
+                fontSize: 8,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -988,209 +1181,68 @@ class _MapWidgetState extends State<MapWidget> {
   }
 }
 
-/// Flight overlay painter that renders airspace polygons, vario flight track
-/// and pilot position marker.
-class _FlightOverlayPainter extends CustomPainter {
-  const _FlightOverlayPainter({
-    this.mapController,
-    required this.pilotPosition,
-    required this.cameraCenter,
-    required this.orientation,
-    required this.headingDeg,
-    required this.zoom,
-    required this.showAirspace,
-    required this.showTrack,
-    required this.flightPoints,
-    required this.trackPoints,
-    required this.climbRateMs,
-    required this.mapTrackHistoryMinutes,
-    required this.mapTrackShowOlderTail,
-  });
+/// Paints the glider marker at the camera's pilot anchor (true center in
+/// north-up, 60 % from the top in track-up) while the map is center-locked.
+/// Repaints from [frame] without rebuilding any widget.
+class PilotMarkerPainter extends CustomPainter {
+  PilotMarkerPainter({
+    required this.frame,
+    required this.fallbackRotationDeg,
+    required this.fallbackTopPadding,
+  }) : super(repaint: frame);
 
-  final MapController? mapController;
-  final LatLng pilotPosition;
-  final LatLng cameraCenter;
-  final MapOrientation orientation;
-  final double headingDeg;
-  final double zoom;
-  final bool showAirspace;
-  final bool showTrack;
-  final List<FlightPoint> flightPoints;
-  final List<LatLng> trackPoints;
-  final double climbRateMs;
-  final int mapTrackHistoryMinutes;
-  final bool mapTrackShowOlderTail;
+  final ValueListenable<MotionFrame?> frame;
+  final double fallbackRotationDeg;
+  final double fallbackTopPadding;
 
-  // ⚡ Bolt: Cache Paint and Path objects statically to avoid per-frame allocations
-  static final Paint _airspaceFillPaint = Paint()
-    ..color = const Color(0xFFEF4444).withAlpha(35)
-    ..style = PaintingStyle.fill;
-  static final Paint _airspaceBorderPaint = Paint()
-    ..color = const Color(0xFFEF4444).withAlpha(180)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.5;
-
-  static final Paint _trackPaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 3.5
-    ..strokeCap = StrokeCap.round;
-
-  static final Paint _pilotHaloPaint = Paint()
+  static final Paint _haloPaint = Paint()
     ..color = Colors.cyanAccent.withAlpha(45)
     ..style = PaintingStyle.fill;
-  static final Paint _pilotOutlinePaint = Paint()
+  static final Paint _outlinePaint = Paint()
     ..color = Colors.black87
     ..style = PaintingStyle.stroke
     ..strokeWidth = 2.5;
-  static final Paint _pilotBodyPaint = Paint()
+  static final Paint _bodyPaint = Paint()
     ..color = Colors.cyanAccent
     ..style = PaintingStyle.fill;
-  static final Path _pilotArrowPath = Path()
+  static final Path _arrowPath = Path()
     ..moveTo(0, -11)
     ..lineTo(-8, 8)
     ..lineTo(0, 3)
     ..lineTo(8, 8)
     ..close();
 
-  Offset _toScreen(LatLng point, Size size) {
-    if (mapController != null) {
-      try {
-        final loc = mapController!.toScreenLocation(
-          Geographic(lat: point.latitude, lon: point.longitude),
-        );
-        if (loc.dx != 0 || loc.dy != 0) {
-          return loc;
-        }
-      } catch (_) {}
-    }
-
-    final worldSize = 512.0 * math.pow(2.0, zoom);
-    final centerLngX = (cameraCenter.longitude + 180.0) / 360.0 * worldSize;
-    final pointLngX = (point.longitude + 180.0) / 360.0 * worldSize;
-
-    double latToMercatorY(double lat) {
-      final clamped = lat.clamp(-85.05112878, 85.05112878);
-      final sinLat = math.sin(clamped * math.pi / 180.0);
-      return (0.5 -
-              math.log((1.0 + sinLat) / (1.0 - sinLat)) / (4.0 * math.pi)) *
-          worldSize;
-    }
-
-    final centerLatY = latToMercatorY(cameraCenter.latitude);
-    final pointLatY = latToMercatorY(point.latitude);
-
-    var dx = pointLngX - centerLngX;
-    var dy = pointLatY - centerLatY;
-
-    if (orientation == MapOrientation.trackUp) {
-      final rad = -headingDeg * math.pi / 180;
-      final rotX = dx * math.cos(rad) - dy * math.sin(rad);
-      final rotY = dx * math.sin(rad) + dy * math.cos(rad);
-      dx = rotX;
-      dy = rotY;
-    }
-
-    return Offset(size.width / 2 + dx, size.height / 2 + dy);
+  /// Marker anchor for a viewport of [size] (tests).
+  Offset anchorFor(Size size) {
+    final f = frame.value;
+    final padding = f?.topPaddingFraction ?? fallbackTopPadding;
+    return Offset(size.width / 2, size.height * (1 + padding) / 2);
   }
+
+  /// Marker rotation in degrees relative to the screen (tests).
+  double get rotationDeg =>
+      frame.value?.markerRotationDeg ?? fallbackRotationDeg;
+
+  /// Whether the marker is drawn (hidden while the map is panned; the
+  /// native symbol then shows the pilot).
+  bool get visible => frame.value?.following ?? true;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Airspace
-    if (showAirspace) {
-      _paintAirspace(canvas, size);
-    }
-
-    // 2. Flight track
-    if (showTrack) {
-      _paintFlightTrack(canvas, size);
-    }
-
-    // 3. Pilot Position Marker
-    _paintPilotMarker(canvas, size);
-  }
-
-  /// Static geographic boundary coordinates for the mock airspace restriction polygon
-  /// centered in the Dachstein / Krippenstein Alpine flight area (47.525°N, 13.685°E).
-  static const List<LatLng> defaultMockAirspacePolygon = [
-    LatLng(47.550, 13.650),
-    LatLng(47.560, 13.710),
-    LatLng(47.535, 13.725),
-    LatLng(47.510, 13.675),
-  ];
-
-  void _paintAirspace(Canvas canvas, Size size) {
-    if (defaultMockAirspacePolygon.isEmpty) return;
-
-    // ⚡ Bolt: Avoid list allocation in hot path by computing points within loop
-    final path = Path();
-    for (int i = 0; i < defaultMockAirspacePolygon.length; i++) {
-      final pt = _toScreen(defaultMockAirspacePolygon[i], size);
-      if (i == 0) {
-        path.moveTo(pt.dx, pt.dy);
-      } else {
-        path.lineTo(pt.dx, pt.dy);
-      }
-    }
-    path.close();
-
-    canvas.drawPath(path, _airspaceFillPaint);
-    canvas.drawPath(path, _airspaceBorderPaint);
-  }
-
-  void _paintFlightTrack(Canvas canvas, Size size) {
-    final points = flightPoints;
-    if (points.length < 2) return;
-
-    // ⚡ Bolt: Calculate the first point outside the loop and reuse p2 as p1 in the next iteration
-    // to avoid redundant coordinate transformations on the 60Hz rendering hot-path.
-    var p1 = _toScreen(LatLng(points[0].latitude, points[0].longitude), size);
-
-    for (int i = 1; i < points.length; i++) {
-      final p2 = _toScreen(
-        LatLng(points[i].latitude, points[i].longitude),
-        size,
-      );
-      final color = MapWidget.getVarioTrackColor(points[i].vario);
-
-      _trackPaint.color = color;
-      canvas.drawLine(p1, p2, _trackPaint);
-
-      p1 = p2;
-    }
-  }
-
-  void _paintPilotMarker(Canvas canvas, Size size) {
-    final pos = _toScreen(pilotPosition, size);
-    final rotate = orientation == MapOrientation.trackUp
-        ? 0.0
-        : headingDeg * math.pi / 180;
-
+    if (size.isEmpty || !visible) return;
+    final pos = anchorFor(size);
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
-    canvas.rotate(rotate);
-
-    // Halo
-    canvas.drawCircle(Offset.zero, 18, _pilotHaloPaint);
-
-    // Glider Arrow
-    canvas.drawPath(_pilotArrowPath, _pilotOutlinePaint);
-    canvas.drawPath(_pilotArrowPath, _pilotBodyPaint);
+    canvas.rotate(rotationDeg * math.pi / 180);
+    canvas.drawCircle(Offset.zero, 18, _haloPaint);
+    canvas.drawPath(_arrowPath, _outlinePaint);
+    canvas.drawPath(_arrowPath, _bodyPaint);
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_FlightOverlayPainter old) {
-    return old.pilotPosition != pilotPosition ||
-        old.cameraCenter != cameraCenter ||
-        old.orientation != orientation ||
-        old.headingDeg != headingDeg ||
-        old.zoom != zoom ||
-        old.showAirspace != showAirspace ||
-        old.showTrack != showTrack ||
-        old.flightPoints != flightPoints ||
-        old.trackPoints != trackPoints ||
-        old.climbRateMs != climbRateMs ||
-        old.mapTrackHistoryMinutes != mapTrackHistoryMinutes ||
-        old.mapTrackShowOlderTail != mapTrackShowOlderTail;
-  }
+  bool shouldRepaint(PilotMarkerPainter old) =>
+      !identical(old.frame, frame) ||
+      old.fallbackRotationDeg != fallbackRotationDeg ||
+      old.fallbackTopPadding != fallbackTopPadding;
 }

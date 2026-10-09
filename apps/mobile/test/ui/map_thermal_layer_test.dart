@@ -35,6 +35,7 @@ class _FakeMapService extends MapLibreMapService {
     double? zoom,
     double? bearing,
     double? pitch,
+    EdgeInsets padding = EdgeInsets.zero,
   }) async => cameraMoves++;
 
   @override

@@ -145,36 +145,26 @@ class FlightWidgetContent extends StatelessWidget {
           },
         );
       case WidgetType.map:
-        return ValueListenableBuilder<CockpitTelemetry>(
-          valueListenable: telemetry,
-          builder: (context, t, _) {
-            RebuildProbe.tick(_probeKey);
-            return MapWidget(
-              key: ValueKey('map_widget_${model.id}'),
-              cameraId: model.id,
-              showBuiltInControls: showBuiltInMapControls,
-              style: model.effectiveMapStyle,
-              orientation: model.effectiveMapOrientation,
-              showAirspace: model.effectiveMapShowAirspace,
-              showThermals: model.effectiveMapShowThermals,
-              thermalSeason: model.effectiveMapThermalSeason,
-              thermalTimeOfDay: model.effectiveMapThermalTimeOfDay,
-              thermalOpacity: model.effectiveMapThermalOpacity,
-              showTrack: model.effectiveMapShowTrack,
-              showContours: model.effectiveMapShowContours,
-              initialZoom: model.effectiveMapZoomLevel,
-              altitudeM: t.altitude,
-              speedKmh: t.speed,
-              climbRateMs: t.climb,
-              headingDeg: t.effectiveHeading,
-              altitudeHistory: t.history,
-              pilotPosition: t.pilotPosition,
-              trackPoints: t.trackPoints,
-              flightPoints: t.flightPoints,
-              mapTrackHistoryMinutes: model.effectiveMapTrackHistoryMinutes,
-              mapTrackShowOlderTail: model.effectiveMapTrackShowOlderTail,
-            );
-          },
+        // The map subscribes to telemetry itself (motion loop, native track
+        // layers, HUD text); it is not rebuilt on every telemetry tick.
+        RebuildProbe.tick(_probeKey);
+        return MapWidget(
+          key: ValueKey('map_widget_${model.id}'),
+          cameraId: model.id,
+          showBuiltInControls: showBuiltInMapControls,
+          style: model.effectiveMapStyle,
+          orientation: model.effectiveMapOrientation,
+          showAirspace: model.effectiveMapShowAirspace,
+          showThermals: model.effectiveMapShowThermals,
+          thermalSeason: model.effectiveMapThermalSeason,
+          thermalTimeOfDay: model.effectiveMapThermalTimeOfDay,
+          thermalOpacity: model.effectiveMapThermalOpacity,
+          showTrack: model.effectiveMapShowTrack,
+          showContours: model.effectiveMapShowContours,
+          initialZoom: model.effectiveMapZoomLevel,
+          telemetry: telemetry,
+          mapTrackHistoryMinutes: model.effectiveMapTrackHistoryMinutes,
+          mapTrackShowOlderTail: model.effectiveMapTrackShowOlderTail,
         );
       case WidgetType.thermalMap:
         return ValueSelector<CockpitTelemetry, (int, int, int, int, int, bool)>(

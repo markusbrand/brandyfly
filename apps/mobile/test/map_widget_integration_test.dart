@@ -10,7 +10,10 @@ import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/widgets/flight/map_widget.dart';
 import 'package:brandyfly/widgets/layout/layout_strategy_container.dart';
 import 'package:brandyfly/widgets/layout/widget_picker_sheet.dart';
+import 'package:brandyfly/ui/features/map/layers/map_flight_layers.dart';
 import 'package:maplibre/maplibre.dart' hide Marker;
+
+import 'support/recording_style_controller.dart';
 
 void main() {
   group('Map View Autonomous Integration & Behavior Test Suite', () {
@@ -850,16 +853,11 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        dynamic painter = tester
-            .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere(
-              (cp) =>
-                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
-            )
-            .painter;
+        MapWidgetState state() =>
+            tester.state<MapWidgetState>(find.byType(MapWidget));
 
-        expect(painter.cameraCenter, equals(pilot));
-        expect(painter.pilotPosition, equals(pilot));
+        expect(state().cameraCenter, equals(pilot));
+        expect(state().motionFrame!.pilot, equals(pilot));
 
         // Drag 100 pixels right (+X) and 50 pixels up (-Y) on map_gesture_detector
         await tester.drag(
@@ -868,43 +866,38 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        painter = tester
-            .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere(
-              (cp) =>
-                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
-            )
-            .painter;
-
+        final panned = state().cameraCenter;
         // Camera center has translated in geographic space
-        expect(painter.cameraCenter, isNot(equals(pilot)));
+        expect(panned, isNot(equals(pilot)));
         // Dragging right translates camera west (lower longitude)
-        expect(painter.cameraCenter.longitude, lessThan(pilot.longitude));
+        expect(panned.longitude, lessThan(pilot.longitude));
         // Dragging up translates camera south (lower latitude)
-        expect(painter.cameraCenter.latitude, lessThan(pilot.latitude));
+        expect(panned.latitude, lessThan(pilot.latitude));
         // Pilot GPS position remains unchanged
-        expect(painter.pilotPosition, equals(pilot));
+        expect(state().motionFrame!.pilot, equals(pilot));
+        expect(state().motionFrame!.following, isFalse);
 
-        // MapLibre camera move was dispatched to the tracking service with the new cameraCenter
+        // MapLibre camera move was dispatched with the new camera center
         expect(trackingService.moveCameraCallCount, greaterThan(0));
-        expect(trackingService.lastMovePosition, equals(painter.cameraCenter));
+        expect(trackingService.lastMovePosition, equals(panned));
 
-        // Tap recenter button
+        // Tap recenter: the follow loop eases the camera back (no native
+        // animateCamera, one moveCamera per frame).
         await tester.tap(find.byKey(const Key('btn_map_recenter')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        final midway = trackingService.lastMovePosition!;
+        expect(midway.latitude, greaterThan(panned.latitude));
+        expect(midway.latitude, lessThan(pilot.latitude));
         await tester.pumpAndSettle();
 
-        painter = tester
-            .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere(
-              (cp) =>
-                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
-            )
-            .painter;
-
-        // Camera center is restored to pilot position
-        expect(painter.cameraCenter, equals(pilot));
-        expect(trackingService.animateCameraCallCount, greaterThan(0));
-        expect(trackingService.lastAnimatePosition, equals(pilot));
+        expect(state().cameraCenter.latitude, closeTo(pilot.latitude, 1e-9));
+        expect(state().cameraCenter.longitude, closeTo(pilot.longitude, 1e-9));
+        expect(
+          trackingService.lastMovePosition!.latitude,
+          closeTo(pilot.latitude, 1e-9),
+        );
+        expect(trackingService.animateCameraCallCount, 0);
       },
     );
 
@@ -935,6 +928,17 @@ void main() {
         final mapLibreFinder = find.byType(MapLibreMap);
         expect(mapLibreFinder, findsOneWidget);
         final mapLibre = tester.widget<MapLibreMap>(mapLibreFinder);
+        MapWidgetState state() =>
+            tester.state<MapWidgetState>(find.byType(MapWidget));
+
+        // Programmatic camera moves never release center-lock.
+        mapLibre.onEvent?.call(
+          const MapEventStartMoveCamera(
+            reason: CameraChangeReason.developerAnimation,
+          ),
+        );
+        await tester.pump();
+        expect(state().motionFrame!.following, isTrue);
 
         // Simulate native gesture start
         mapLibre.onEvent?.call(
@@ -957,30 +961,15 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        dynamic painter = tester
-            .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere(
-              (cp) =>
-                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
-            )
-            .painter;
-
-        expect(painter.cameraCenter.latitude, closeTo(newLat, 1e-5));
-        expect(painter.cameraCenter.longitude, closeTo(newLon, 1e-5));
+        expect(state().cameraCenter.latitude, closeTo(newLat, 1e-5));
+        expect(state().cameraCenter.longitude, closeTo(newLon, 1e-5));
 
         // Advance 7 seconds to trigger auto-recenter
         await tester.pump(const Duration(seconds: 7));
         await tester.pumpAndSettle();
 
-        painter = tester
-            .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere(
-              (cp) =>
-                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
-            )
-            .painter;
-
-        expect(painter.cameraCenter, equals(pilot));
+        expect(state().cameraCenter.latitude, closeTo(pilot.latitude, 1e-9));
+        expect(state().cameraCenter.longitude, closeTo(pilot.longitude, 1e-9));
       },
     );
 
@@ -988,75 +977,53 @@ void main() {
       'TC-MAP-018: Verifies mock airspace stays anchored and no mock thermal markers are painted as pilot flies',
       (tester) async {
         final mockService = _TrackingMapLibreMapService();
+        addTearDown(mockService.dispose);
         const initialPilot = LatLng(47.525, 13.685);
         const movedPilot = LatLng(47.538, 13.712);
+        final style = RecordingStyleController();
 
-        // 1. Mount with initial pilot position
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 480,
-                height: 480,
-                child: MapWidget(
-                  mapService: mockService,
-                  pilotPosition: initialPilot,
-                  showAirspace: true,
-                  showThermals: true,
-                ),
+        Widget host(LatLng pilot) => MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 480,
+              height: 480,
+              child: MapWidget(
+                mapService: mockService,
+                pilotPosition: pilot,
+                showAirspace: true,
+                showThermals: true,
               ),
             ),
           ),
         );
+
+        // 1. Mount with initial pilot position and load the native style
+        await tester.pumpWidget(host(initialPilot));
         await tester.pumpAndSettle();
-
-        dynamic painter1 = tester
-            .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere(
-              (cp) =>
-                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
-            )
-            .painter;
-
-        expect(painter1.pilotPosition, equals(initialPilot));
+        tester.widget<MapLibreMap>(find.byType(MapLibreMap)).onStyleLoaded!(
+          style,
+        );
+        await tester.pumpAndSettle();
+        final airspaceData =
+            style.sourceData[MapFlightLayers.airspaceSourceId]!;
+        expect(airspaceData, contains('Polygon'));
 
         // 2. Move pilot across the map (pilot flies away)
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 480,
-                height: 480,
-                child: MapWidget(
-                  mapService: mockService,
-                  pilotPosition: movedPilot,
-                  showAirspace: true,
-                  showThermals: true,
-                ),
-              ),
-            ),
-          ),
-        );
+        await tester.pumpWidget(host(movedPilot));
         await tester.pumpAndSettle();
+        final state = tester.state<MapWidgetState>(find.byType(MapWidget));
+        expect(state.motionFrame!.pilot, equals(movedPilot));
 
-        dynamic painter2 = tester
-            .widgetList<CustomPaint>(find.byType(CustomPaint))
-            .firstWhere(
-              (cp) =>
-                  cp.painter.runtimeType.toString() == '_FlightOverlayPainter',
-            )
-            .painter;
-
-        expect(painter2.pilotPosition, equals(movedPilot));
-
-        // Verify that the static mock airspace coordinates in the painter
-        // definition do not shift with the pilot.
-        final fixedAirspace = painter2.runtimeType.toString();
-        expect(fixedAirspace, equals('_FlightOverlayPainter'));
-
-        // Thermal information now comes from the KK7 raster layer; the
-        // overlay painter no longer knows about (mock) thermals at all.
-        expect(() => painter2.showThermals, throwsNoSuchMethodError);
+        // The static mock airspace is native geography: never re-sent or
+        // shifted with the pilot.
+        expect(style.updatesFor(MapFlightLayers.airspaceSourceId), 0);
+        expect(
+          style.sourceData[MapFlightLayers.airspaceSourceId],
+          airspaceData,
+        );
+        // Thermal information comes from the KK7 raster layer; no thermal
+        // marker layers or sources are created.
+        expect(style.layerIds.where((id) => id.contains('thermal')), isEmpty);
       },
     );
   });
@@ -1066,6 +1033,7 @@ class _TrackingMapLibreMapService extends MapLibreMapService {
   LatLng? lastMovePosition;
   double? lastMoveZoom;
   double? lastMoveBearing;
+  EdgeInsets? lastMovePadding;
   LatLng? lastAnimatePosition;
   int moveCameraCallCount = 0;
   int animateCameraCallCount = 0;
@@ -1085,16 +1053,19 @@ class _TrackingMapLibreMapService extends MapLibreMapService {
     double? zoom,
     double? bearing,
     double? pitch,
+    EdgeInsets padding = EdgeInsets.zero,
   }) async {
     lastMovePosition = position;
     lastMoveZoom = zoom;
     lastMoveBearing = bearing;
+    lastMovePadding = padding;
     moveCameraCallCount++;
     await super.moveCamera(
       position: position,
       zoom: zoom,
       bearing: bearing,
       pitch: pitch,
+      padding: padding,
     );
   }
 
