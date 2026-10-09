@@ -30,3 +30,6 @@ __pycache__/
 services/backend/brandyfly-backend
 
 node_modules/
+
+# GitHub Actions runner (service component, lives in-repo)
+/actions-runner-brandyfly/
