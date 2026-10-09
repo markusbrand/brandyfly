@@ -3,7 +3,8 @@ schema: spec-driven
 context: |
   BrandyFly is an MIT-licensed, local-first paragliding vario app.
   Stack: Flutter/Dart UI, Rust flight core, Kotlin/Swift native adapters,
-  MapLibre/PMTiles, and a lightweight Go backend for Raspberry Pi ARM64.
+  MapLibre/PMTiles, and a lightweight Go backend for a self-hosted Linux home
+  server (Ubuntu x86_64; images are multi-arch incl. ARM64).
   Targets: Android 10+, iOS 16+, phones and tablets, portrait and landscape.
   Safety-critical flight functions must remain available offline.
   Use conventional commits. Never commit secrets or private flight data.

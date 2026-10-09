@@ -115,7 +115,9 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: services/backend
-          platforms: linux/arm64
+          # Multi-arch: the deployment server (Bosgame, Ubuntu) is x86_64;
+          # arm64 is kept so the image still runs on a Raspberry Pi.
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/brandyfly-backend:latest
           cache-from: type=gha
@@ -124,7 +126,8 @@ jobs:
   deploy:
     needs: build-and-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: [self-hosted, raspberry-pi]
+    # Self-hosted runner on the Bosgame home server (Ubuntu, x86_64).
+    runs-on: [self-hosted, Linux, X64]
     defaults:
       run:
         working-directory: deploy
