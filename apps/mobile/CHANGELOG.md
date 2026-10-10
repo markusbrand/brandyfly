@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.14.0...brandyfly-v0.15.0) (2026-10-10)
+
+
+### Features
+
+* **map:** smooth display-rate camera follow and native flight track layers ([#261](https://github.com/markusbrand/brandyfly/issues/261)) ([e6625cf](https://github.com/markusbrand/brandyfly/commit/e6625cf11995ffc5b4f81ceb6be8f572ab92deb1))
+
 ## [0.14.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.13.0...brandyfly-v0.14.0) (2026-10-09)
 
 
