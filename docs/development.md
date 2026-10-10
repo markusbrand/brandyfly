@@ -129,10 +129,19 @@ emulator (or a physical device) is the required environment for those checks.
 - **Sessions started with `-no-snapshot-save` from a snapshot discard their
   disk changes on shutdown** (installed debug APK, cached map/thermal tiles,
   settings). Reinstall with `flutter run` after such a session.
-- **Starting from scripts or agents:** launch the emulator detached
-  (`setsid nohup ~/Android/Sdk/emulator/emulator ... > /tmp/emu.log 2>&1 < /dev/null &`),
-  otherwise it is killed when the launching shell exits. Wait for
-  `adb shell getprop sys.boot_completed` to return `1`.
+- **Starting from scripts or agents (headless server):** launch using the helper script
+  `~/bin/start-emulator.sh`, or manually detached with Xvfb:
+  (`setsid nohup xvfb-run -a ~/Android/Sdk/emulator/emulator -avd brandyfly_test_device -gpu host -no-snapshot -no-window > /tmp/emu.log 2>&1 < /dev/null &`),
+  otherwise it is killed when the launching shell exits or crashes without an X11 display context.
+  Wait for `adb shell getprop sys.boot_completed` to return `1`.
+  The helper script also starts the `socat` bridge on LAN IP `192.168.0.152:5555`, enabling seamless
+  streaming to the desktop machine via `scrcpy -s 192.168.0.152:5555`.
+- **Autonomous visual testing and screenshots:**
+  Capture app screenshots anytime with:
+  `adb -s emulator-5554 exec-out screencap -p > /tmp/screen.png`
+  Agents can inspect the UI visually by reading the PNG file.
+  Interact autonomously with `adb shell input tap <X> <Y>`, `adb shell input swipe ...`,
+  or dump the UI accessibility hierarchy with `adb exec-out uiautomator dump /dev/tty`.
 
 ### Checking the KK7 thermal heatmap
 
