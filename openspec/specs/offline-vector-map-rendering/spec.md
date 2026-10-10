@@ -80,7 +80,7 @@ The application SHALL render maps using a custom "Alpine Relief" MapLibre style 
 - **THEN** the text SHALL be loaded from the compatible OpenFreeMap glyphs endpoint and correctly paint without falling back to pink/red missing glyph error boxes or dropping vector layers due to protobuf exceptions.
 
 ### Requirement: Flight overlay preservation
-The application SHALL render all existing flight overlays (airspace polygons, flight track, pilot marker, compass, HUD controls) with the MapLibre base map. The flight track and mock airspace polygons SHALL be rendered within the MapLibre render frame so they stay locked to the base map during camera motion; HUD elements (compass, controls, scale bar, badges) remain on top of the map. Thermal information SHALL be provided by the KK7 thermal heatmap layer (see `kk7-thermal-heatmap-layer`) instead of mock thermal updraft markers. Mock airspace restriction polygons SHALL be anchored to static geographical coordinates on the map rather than following the pilot's position during flight.
+The application SHALL render all existing flight overlays (airspace polygons, flight track, pilot marker, compass, HUD controls) with the MapLibre base map, drawing the flight track and mock airspace inside the MapLibre render frame and keeping HUD elements on top. Thermal information SHALL come from the KK7 heatmap layer (`kk7-thermal-heatmap-layer`), and mock airspace SHALL stay anchored to static geographic coordinates.
 
 #### Scenario: Overlay rendering on MapLibre
 - **WHEN** the map is displayed during flight or replay
