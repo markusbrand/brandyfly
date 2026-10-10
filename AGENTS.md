@@ -7,25 +7,28 @@ BrandyFly is an open-source, local-first paragliding vario and flight computer a
 ## Running the App & Target Conventions
 
 1. **"run the app" (Default run command)**:
-   - **Environment check first**: Verify whether running on the headless `bosgame` server (hostname `bosgame`) or a workstation (desktop Linux / macOS).
-   - **On `bosgame` server**: The default target is the server emulator `brandyfly_test_device`.
-     - Ensure the emulator is started with `~/bin/start-emulator.sh` (which handles Xvfb, host GPU, `-no-snapshot -no-window`, and the `socat` LAN bridge on `192.168.0.152:5555`).
-     - Deploy with `cd apps/mobile && flutter run -d emulator-5554`.
-     - Can be streamed on Garuda PC at any time with `~/bin/stream-server-emulator.sh` or `scrcpy -s 192.168.0.152:5555`.
-     - Take autonomous screenshots with `adb -s emulator-5554 exec-out screencap -p > /tmp/screen.png` and inspect with the `read` tool.
-   - **On local desktop workstation (Linux / macOS)**: Use the local emulator or desktop target directly as before.
+   - **Environment check first**: Check whether running on the headless `bosgame` server (hostname `bosgame`) or a workstation (desktop Linux on Garuda PC / macOS laptop from Red Bull).
+   - **On `bosgame` server (Default workflow)**:
+     - The default target is the GPU-accelerated Android emulator running directly on the user's Garuda PC workstation (`brandyfly_test_device`).
+     - Deploy with `~/bin/deploy-garuda-emulator.sh` (or `~/bin/run-app.sh`), which builds the APK on Bosgame, ensures the Garuda emulator is running via `~/bin/start-emulator.sh` (`ssh garuda ~/bin/start-local-emulator.sh`), transfers the APK, and launches the app on the Garuda desktop.
+     - Take autonomous screenshots from Bosgame via:
+       `ssh garuda "export PATH=\$HOME/Android/Sdk/platform-tools:\$PATH; adb exec-out screencap -p" > /tmp/screen.png` and inspect with the `read` tool.
+   - **On local workstation (Garuda PC)**:
+     - Launch the local emulator with `~/bin/start-local-emulator.sh` and run `cd apps/mobile && flutter run -d emulator-5554` (or target Linux desktop directly with `flutter run -d linux`).
+   - **On Red Bull Mac laptop (macOS)**:
+     - Use the local iOS Simulator or Android emulator (`flutter run -d <simulator/emulator-id>`) or macOS desktop target (`flutter run -d macos`).
 
 2. **"run the app on my connected android"**:
    - Targets the physical Android device.
-   - **Environment check first**: Same prerequisite—verify development is on the `bosgame` server.
-   - **Default: Option B (USB plugged directly into Bosgame Server)**:
-     - The default workflow expects the phone to be plugged into a USB port on the Bosgame server.
-     - Execute `~/bin/run-android-device.sh` (or detect with `adb devices`, filtering out emulators, and run `flutter run -d <usb-serial>`).
-     - If unauthorized, prompt to unlock screen and tap "Always allow from this computer".
-     - If not detected, check `lsusb` / remind to plug via USB to Bosgame and enable USB Debugging.
-   - **Alternative: Option A (Phone plugged into Garuda PC / Wi-Fi)**:
-     - If preferred, the phone can stay on Garuda via Wi-Fi: enable TCP with `ssh garuda "adb tcpip 5555"`, connect from Bosgame via `~/bin/connect-android.sh <phone-ip>`, and deploy with `flutter run -d <phone-ip>:5555`.
-   - **On local workstation (Garuda / Mac)**: Detect local USB/Wi-Fi Android device directly with `flutter run -d <device-id>`.
+   - **On `bosgame` server**:
+     - **Default: Option B (USB plugged directly into Bosgame Server)**:
+       - Plug phone into USB on Bosgame server.
+       - Execute `~/bin/run-android-device.sh` (or detect with `adb devices`, filtering out emulators, and run `flutter run -d <usb-serial>`).
+       - If unauthorized, prompt to unlock screen and tap "Always allow from this computer".
+       - If not detected, check `lsusb` / remind to plug via USB to Bosgame and enable USB Debugging.
+     - **Alternative: Option A (Phone plugged into Garuda PC / Wi-Fi)**:
+       - If preferred, the phone can stay on Garuda via Wi-Fi: enable TCP with `ssh garuda "adb tcpip 5555"`, connect from Bosgame via `~/bin/connect-android.sh <phone-ip>`, and deploy with `flutter run -d <phone-ip>:5555`.
+   - **On local workstation (Garuda / Red Bull Mac)**: Detect local USB/Wi-Fi Android device directly with `flutter run -d <device-id>`.
 
 ---
 
