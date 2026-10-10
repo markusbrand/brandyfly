@@ -4,7 +4,28 @@
 BrandyFly is an open-source, local-first paragliding vario and flight computer application.
 - **Tech Stack**: Flutter/Dart UI (`apps/mobile`), Rust flight core (`crates/`), Kotlin/Swift native platform adapters, MapLibre/PMTiles, Go backend (`services/`).
 - **Core Principles**: Safety-critical flight telemetry, offline-first reliability, low latency, deterministic replay support.
-- **Android emulator**: Start `brandyfly_test_device` with `~/Android/Sdk/emulator/emulator -avd brandyfly_test_device -gpu host -no-snapshot` (detached). Never use `-gpu swiftshader_indirect`: MapLibre map labels then render pink/green/red or not at all. Restoring the quick-boot snapshot with host GPU crashes the emulator. Details: `docs/development.md` → "Emulator GPU and snapshot pitfalls".
+## Running the App & Target Conventions
+
+1. **"run the app" (Default run command)**:
+   - **Environment check first**: Verify whether running on the headless `bosgame` server (hostname `bosgame`) or a workstation (desktop Linux / macOS).
+   - **On `bosgame` server**: The default target is the server emulator `brandyfly_test_device`.
+     - Ensure the emulator is started with `~/bin/start-emulator.sh` (which handles Xvfb, host GPU, `-no-snapshot -no-window`, and the `socat` LAN bridge on `192.168.0.152:5555`).
+     - Deploy with `cd apps/mobile && flutter run -d emulator-5554`.
+     - Can be streamed on Garuda PC at any time with `~/bin/stream-server-emulator.sh` or `scrcpy -s 192.168.0.152:5555`.
+     - Take autonomous screenshots with `adb -s emulator-5554 exec-out screencap -p > /tmp/screen.png` and inspect with the `read` tool.
+   - **On local desktop workstation (Linux / macOS)**: Use the local emulator or desktop target directly as before.
+
+2. **"run the app on my connected android"**:
+   - Targets the physical Android device.
+   - **Environment check first**: Same prerequisite—verify development is on the `bosgame` server.
+   - **Default: Option B (USB plugged directly into Bosgame Server)**:
+     - The default workflow expects the phone to be plugged into a USB port on the Bosgame server.
+     - Execute `~/bin/run-android-device.sh` (or detect with `adb devices`, filtering out emulators, and run `flutter run -d <usb-serial>`).
+     - If unauthorized, prompt to unlock screen and tap "Always allow from this computer".
+     - If not detected, check `lsusb` / remind to plug via USB to Bosgame and enable USB Debugging.
+   - **Alternative: Option A (Phone plugged into Garuda PC / Wi-Fi)**:
+     - If preferred, the phone can stay on Garuda via Wi-Fi: enable TCP with `ssh garuda "adb tcpip 5555"`, connect from Bosgame via `~/bin/connect-android.sh <phone-ip>`, and deploy with `flutter run -d <phone-ip>:5555`.
+   - **On local workstation (Garuda / Mac)**: Detect local USB/Wi-Fi Android device directly with `flutter run -d <device-id>`.
 
 ---
 

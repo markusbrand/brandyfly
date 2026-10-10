@@ -129,10 +129,35 @@ emulator (or a physical device) is the required environment for those checks.
 - **Sessions started with `-no-snapshot-save` from a snapshot discard their
   disk changes on shutdown** (installed debug APK, cached map/thermal tiles,
   settings). Reinstall with `flutter run` after such a session.
-- **Starting from scripts or agents:** launch the emulator detached
-  (`setsid nohup ~/Android/Sdk/emulator/emulator ... > /tmp/emu.log 2>&1 < /dev/null &`),
-  otherwise it is killed when the launching shell exits. Wait for
-  `adb shell getprop sys.boot_completed` to return `1`.
+- **Starting from scripts or agents (headless server):** launch using the helper script
+  `~/bin/start-emulator.sh`, or manually detached with Xvfb:
+  (`setsid nohup xvfb-run -a ~/Android/Sdk/emulator/emulator -avd brandyfly_test_device -gpu host -no-snapshot -no-window > /tmp/emu.log 2>&1 < /dev/null &`),
+  otherwise it is killed when the launching shell exits or crashes without an X11 display context.
+  Wait for `adb shell getprop sys.boot_completed` to return `1`.
+  The helper script also starts the `socat` bridge on LAN IP `192.168.0.152:5555`, enabling seamless
+  streaming to the desktop machine via `scrcpy -s 192.168.0.152:5555`.
+- **Autonomous visual testing and screenshots:**
+  Capture app screenshots anytime with:
+  `adb -s emulator-5554 exec-out screencap -p > /tmp/screen.png`
+  Agents can inspect the UI visually by reading the PNG file.
+  Interact autonomously with `adb shell input tap <X> <Y>`, `adb shell input swipe ...`,
+  or dump the UI accessibility hierarchy with `adb exec-out uiautomator dump /dev/tty`.
+
+### Physical Android Device Workflow
+
+When testing on a physical phone with development hosted on the Bosgame server:
+- **Default (Option B): Phone plugged directly into Bosgame PC via USB:**
+  Works plug-and-play. Connect via USB cable, ensure USB Debugging is ON in Developer Options, and run:
+  `~/bin/run-android-device.sh`
+  (or `cd apps/mobile && flutter run -d <device_serial>`).
+- **Alternative (Option A): Phone plugged into Garuda PC via USB over LAN:**
+  Keep it at your desk plugged into Garuda:
+  `ssh garuda "adb tcpip 5555"`
+  Then from Bosgame server, connect over Wi-Fi:
+  `~/bin/connect-android.sh <phone-ip>`
+- **Wireless Debugging (Android 11+ over Wi-Fi):**
+  Turn on Wireless Debugging in developer options and connect directly:
+  `~/bin/connect-android.sh <phone-ip>:<dynamic_port>`
 
 ### Checking the KK7 thermal heatmap
 
