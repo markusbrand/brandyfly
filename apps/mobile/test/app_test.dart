@@ -106,7 +106,7 @@ void main() {
     final minimizeButton = find.byKey(const Key('btn_minimize_mock_session'));
     expect(minimizeButton, findsOneWidget);
     await tester.tap(minimizeButton);
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
 
     // The detailed replay hash should now be hidden in minimized state
     expect(find.textContaining('Replay hash:'), findsNothing);
@@ -115,7 +115,7 @@ void main() {
     // Expand mock flight session section
     final expandButton = find.byKey(const Key('btn_expand_mock_session'));
     await tester.tap(expandButton);
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
 
     // Expanded details are visible again
     expect(find.textContaining('Replay hash:'), findsOneWidget);
@@ -152,7 +152,7 @@ void main() {
       const Offset(-120, 80),
       const Duration(milliseconds: 300),
     );
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
 
     final draggedRect = tester.getRect(overlayFinder);
     expect(draggedRect.left, lessThan(initialRect.left));
@@ -161,7 +161,7 @@ void main() {
     // Advancing scenario tick preserves position
     final preTickRect = tester.getRect(overlayFinder);
     await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
     final postTickRect = tester.getRect(overlayFinder);
     expect(postTickRect.topLeft, equals(preTickRect.topLeft));
 
@@ -169,7 +169,7 @@ void main() {
     final advanceButton = find.byTooltip('Advance scenario');
     expect(advanceButton, findsOneWidget);
     await tester.tap(advanceButton);
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
     final postTapRect = tester.getRect(overlayFinder);
     expect(postTapRect.topLeft, equals(preTickRect.topLeft));
 
@@ -179,7 +179,7 @@ void main() {
       const Offset(-2000, -2000),
       const Duration(milliseconds: 300),
     );
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
     final clampedTopLeft = tester.getRect(overlayFinder);
     expect(clampedTopLeft.left, greaterThanOrEqualTo(0));
     expect(clampedTopLeft.top, greaterThanOrEqualTo(0));
@@ -190,7 +190,7 @@ void main() {
       const Offset(3000, 3000),
       const Duration(milliseconds: 300),
     );
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
     final clampedBottomRight = tester.getRect(overlayFinder);
     expect(clampedBottomRight.right, lessThanOrEqualTo(800));
     expect(clampedBottomRight.bottom, lessThanOrEqualTo(600));
@@ -198,14 +198,14 @@ void main() {
     // Toggle minimize and expand at boundary
     final minimizeButton = find.byKey(const Key('btn_minimize_mock_session'));
     await tester.tap(minimizeButton);
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
     final minimizedRect = tester.getRect(overlayFinder);
     expect(minimizedRect.right, lessThanOrEqualTo(800));
     expect(minimizedRect.bottom, lessThanOrEqualTo(600));
 
     final expandButton = find.byKey(const Key('btn_expand_mock_session'));
     await tester.tap(expandButton);
-    await tester.pumpAndSettle();
+    await _settleWhileFlying(tester);
     final expandedRect = tester.getRect(overlayFinder);
     expect(expandedRect.right, lessThanOrEqualTo(800));
     expect(expandedRect.bottom, lessThanOrEqualTo(600));
@@ -238,4 +238,13 @@ void main() {
       throwsStateError,
     );
   });
+}
+
+/// The synthetic source keeps the pilot moving, so the map animates
+/// continuously (display-rate camera follow) and never "settles"; pump a
+/// fixed span instead of [WidgetTester.pumpAndSettle].
+Future<void> _settleWhileFlying(WidgetTester tester) async {
+  for (var i = 0; i < 5; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }

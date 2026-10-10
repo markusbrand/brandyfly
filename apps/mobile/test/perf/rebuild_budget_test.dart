@@ -33,7 +33,6 @@ const _instrumentIds = [
   'vario',
   'chart',
   'thermal',
-  'map',
 ];
 
 Future<(ScreenManagerService, ValueNotifier<CockpitTelemetry>)> _pump(
@@ -119,8 +118,8 @@ void main() {
       for (final id in ['spd', 'glide', 'hag', 'wind', 'vario', 'chart']) {
         expect(RebuildProbe.count('instrument:$id'), 0, reason: id);
       }
-      // Map legend and thermal map display altitude and may rebuild once.
-      expect(RebuildProbe.count('instrument:map'), lessThanOrEqualTo(1));
+      // The map subscribes to telemetry itself and never rebuilds per tick.
+      expect(RebuildProbe.count('instrument:map'), 0);
       expect(RebuildProbe.count('instrument:thermal'), lessThanOrEqualTo(1));
     });
 
@@ -133,6 +132,7 @@ void main() {
       final initial = {
         for (final id in _instrumentIds) id: RebuildProbe.count('instrument:$id'),
       };
+      final initialMapBuilds = RebuildProbe.count('instrument:map');
 
       for (var i = 1; i <= 100; i++) {
         telemetry.value = CockpitTelemetry(
@@ -160,6 +160,9 @@ void main() {
         expect(builds, lessThanOrEqualTo(101), reason: id);
         expect(builds, greaterThan(0), reason: '$id must update');
       }
+      // The map widget is not rebuilt per tick; its HUD still updates.
+      expect(RebuildProbe.count('instrument:map'), initialMapBuilds);
+      expect(find.textContaining('ALT: 1750m'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

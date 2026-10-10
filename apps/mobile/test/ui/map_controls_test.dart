@@ -18,6 +18,7 @@ class _FakeMapService extends MapLibreMapService {
   int moveCalls = 0;
   int animateCalls = 0;
   double? lastZoom;
+  LatLng? lastMovePosition;
   LatLng? lastAnimatePosition;
 
   @override
@@ -33,9 +34,11 @@ class _FakeMapService extends MapLibreMapService {
     double? zoom,
     double? bearing,
     double? pitch,
+    EdgeInsets padding = EdgeInsets.zero,
   }) async {
     moveCalls++;
     lastZoom = zoom;
+    lastMovePosition = position;
   }
 
   @override
@@ -264,6 +267,8 @@ void main() {
       );
       await tester.pump();
       expect(camera.zoom, start + 0.5);
+      // Zoom is eased by the follow loop (one camera write per frame).
+      await tester.pump(const Duration(milliseconds: 300));
       expect(service.lastZoom, start + 0.5);
       expect(camera.centerLocked, isTrue, reason: 'zoom keeps glider anchor');
 
@@ -309,8 +314,11 @@ void main() {
       await tester.pump();
       expect(camera.centerLocked, isTrue);
       expect(camera.recenterPending, isFalse);
-      expect(service.animateCalls, animateBefore + 1);
-      expect(service.lastAnimatePosition, const LatLng(47.5, 13.6));
+      // Recenter eases back inside the follow loop, not via animateCamera.
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(service.animateCalls, animateBefore);
+      expect(service.lastMovePosition!.latitude, closeTo(47.5, 1e-9));
+      expect(service.lastMovePosition!.longitude, closeTo(13.6, 1e-9));
       expect(recenter().lit, isTrue);
       await tester.pump(const Duration(seconds: 7));
     });

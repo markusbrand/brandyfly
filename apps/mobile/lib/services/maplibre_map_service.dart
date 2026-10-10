@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show EdgeInsets;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:maplibre/maplibre.dart';
 import 'package:path_provider/path_provider.dart';
@@ -74,6 +75,8 @@ class MapLibreMapService extends ChangeNotifier {
   /// Sets or updates the active StyleController when the style has loaded.
   void onStyleLoaded(StyleController style) {
     _styleController = style;
+    // A (re)loaded style contains no flight overlay layers yet.
+    overlayBottomLayerId = null;
     _isStyleLoaded = true;
     // The freshly loaded style contains the thermal layer it was built with.
     _appliedThermal = _styleThermal;
@@ -102,6 +105,11 @@ class MapLibreMapService extends ChangeNotifier {
 
   ThermalLayerSpec? get thermalLayer => _desiredThermal;
   String? get thermalBelowLayerId => _thermalBelowLayerId;
+
+  /// Lowest flight overlay layer currently in the style (set by the flight
+  /// overlay layers). A swapped thermal raster is inserted below it so it
+  /// never covers the track.
+  String? overlayBottomLayerId;
 
   /// Tile URL template for [variant]: the loopback server on mobile (offline
   /// capable), KK7 directly on the web.
@@ -153,7 +161,7 @@ class MapLibreMapService extends ChangeNotifier {
               'raster-fade-duration': 0,
             },
           ),
-          belowLayerId: _thermalBelowLayerId,
+          belowLayerId: overlayBottomLayerId ?? _thermalBelowLayerId,
         );
         _appliedThermal = desired;
       }
@@ -404,12 +412,15 @@ class MapLibreMapService extends ChangeNotifier {
     return _lastLoadedStyleJson!;
   }
 
-  /// Moves camera to center on given coordinates with optional zoom, bearing, pitch.
+  /// Moves camera to center on given coordinates with optional zoom, bearing,
+  /// pitch and viewport [padding] (logical pixels; shifts the focal point,
+  /// e.g. track-up look-ahead). All values are applied in one native call.
   Future<void> moveCamera({
     required LatLng position,
     double? zoom,
     double? bearing,
     double? pitch,
+    EdgeInsets padding = EdgeInsets.zero,
   }) async {
     final c = _controller;
     if (c == null) return;
@@ -419,6 +430,7 @@ class MapLibreMapService extends ChangeNotifier {
         zoom: zoom,
         bearing: bearing,
         pitch: pitch,
+        padding: padding,
       );
     } catch (e) {
       debugPrint('[MapLibreMapService] moveCamera error: $e');

@@ -1,7 +1,16 @@
+import 'dart:convert';
+
+import 'package:brandyfly/domain/thermal/thermal_layer_spec.dart';
 import 'package:brandyfly/models/flight_model.dart';
+import 'package:brandyfly/services/maplibre_map_service.dart';
+import 'package:brandyfly/ui/features/map/layers/map_flight_layers.dart';
+import 'package:brandyfly/ui/features/map/layers/vario_track_palette.dart';
 import 'package:brandyfly/widgets/flight/map_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:maplibre/maplibre.dart' hide Marker;
+
+import 'support/recording_style_controller.dart';
 
 void main() {
   group('getVarioTrackColor piecewise gradient', () {
@@ -71,26 +80,27 @@ void main() {
   });
 
   group('MapWidget vario flight track rendering', () {
-    (DateTime, FlightPoint, List<FlightPoint>) buildWindow(double windowMinutes) {
+    List<FlightPoint> buildFlight() {
       final now = DateTime.now();
-      final points = <FlightPoint>[];
-      for (var i = 0; i < 30; i++) {
-        points.add(
+      return [
+        for (var i = 0; i < 30; i++)
           FlightPoint(
             timestamp: now.subtract(Duration(minutes: 30 - i)),
             latitude: 47.0 + (i * 0.001),
             longitude: 13.0 + (i * 0.001),
             altitude: 1500.0 + (i * 10),
-            vario: 2.0,
+            vario: i.isEven ? 2.0 : -2.0,
           ),
-        );
-      }
-      return (DateTime.now(), points.first, points);
+      ];
     }
 
-    testWidgets('renders flight track with time window and tail enabled', (tester) async {
-      final (_, _, points) = buildWindow(10.0);
-
+    Future<RecordingStyleController> pumpWithStyle(
+      WidgetTester tester, {
+      required int minutes,
+      required bool tail,
+    }) async {
+      final service = _StaticStyleMapService();
+      addTearDown(service.dispose);
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -98,42 +108,51 @@ void main() {
               width: 400,
               height: 400,
               child: MapWidget(
-                flightPoints: points,
-                mapTrackHistoryMinutes: 10,
-                mapTrackShowOlderTail: true,
+                mapService: service,
+                flightPoints: buildFlight(),
+                mapTrackHistoryMinutes: minutes,
+                mapTrackShowOlderTail: tail,
               ),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
+      final style = RecordingStyleController();
+      tester.widget<MapLibreMap>(find.byType(MapLibreMap)).onStyleLoaded!(style);
+      await tester.pumpAndSettle();
+      return style;
+    }
 
-      expect(find.byType(MapWidget), findsOneWidget);
-      expect(find.byType(CustomPaint), findsWidgets);
+    List<dynamic> features(RecordingStyleController style, String id) =>
+        (jsonDecode(style.sourceData[id]!) as Map)['features'] as List;
+
+    testWidgets('renders flight track with time window and tail enabled', (tester) async {
+      final style = await pumpWithStyle(tester, minutes: 10, tail: true);
+      final window = features(style, MapFlightLayers.windowSourceId);
+      // Alternating lift/sink segments colored by the vario gradient.
+      expect(window.map((f) => f['properties']['c']).toSet(), {
+        VarioTrackPalette.toHex(MapWidget.getVarioTrackColor(2.0)),
+        VarioTrackPalette.toHex(MapWidget.getVarioTrackColor(-2.0)),
+      });
+      // 10-minute window over 1-minute fixes = 10 segments.
+      expect(window, hasLength(10));
+      expect(features(style, MapFlightLayers.tailSourceId), hasLength(1));
     });
 
     testWidgets('renders full-flight mode (0 minutes)', (tester) async {
-      final (_, _, points) = buildWindow(0.0);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 400,
-              height: 400,
-              child: MapWidget(
-                flightPoints: points,
-                mapTrackHistoryMinutes: 0,
-                mapTrackShowOlderTail: false,
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.byType(MapWidget), findsOneWidget);
-      expect(find.byType(CustomPaint), findsWidgets);
+      final style = await pumpWithStyle(tester, minutes: 0, tail: false);
+      expect(features(style, MapFlightLayers.windowSourceId), hasLength(29));
+      expect(features(style, MapFlightLayers.tailSourceId), isEmpty);
     });
   });
+}
+
+class _StaticStyleMapService extends MapLibreMapService {
+  @override
+  Future<String> buildStyleJson({
+    String? regionId,
+    String? baseTemplateJson,
+    ThermalLayerSpec? thermal,
+  }) async => '{"version": 8, "sources": {}, "layers": []}';
 }
