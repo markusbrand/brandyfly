@@ -48,7 +48,7 @@
 
 ## Verification notes
 
-- 6.1: `flutter analyze` clean; `flutter test` 652 passed.
+- 6.1: `flutter analyze` clean; `flutter test` 653 passed.
 - 6.2 (emulator `brandyfly_test_device`, `-gpu host -no-snapshot`, profile build):
   - Synthetic mock flight: glide drifts at a steady 6.3 px/s with 0.11 px RMS deviation from straight-line motion; circling rotates ~0.36 deg/frame with no 1.8 deg steps at the 10 Hz ticks.
   - IGC replay via `tool/map_perf/map_perf_main.dart` (Krippenstein-Aussee forward/backward/forward, 10,578 fixes, 176 min): 60 camera writes/s in every scenario. Steady-state per-frame camera step at zoom 13.5 (~4.6 m per logical px): 1x track-up median 0.16 m / max 1.3 m, 1x north-up median 0.19 m / max 1.6 m, 4x north-up median 0.73 m / max 0.97 m, 4x track-up median 0.71 m / max 2.4 m, i.e. at most ~0.5 logical px per frame, no per-fix steps. Track-up rotation median 0.05-0.18 deg/frame, max 0.73 deg.

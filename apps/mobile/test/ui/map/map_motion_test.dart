@@ -336,6 +336,21 @@ void main() {
       expect(service.overlayBottomLayerId, MapFlightLayers.bottomLayerId);
     });
 
+    testWidgets('detached telemetry stops the frame loop at the last shown '
+        'position', (tester) async {
+      final (service, telemetry) = await _pumpMap(tester);
+      telemetry.value = _fix(10);
+      await tester.pump(const Duration(milliseconds: 300));
+      // Source detached: idle telemetry without a position.
+      telemetry.value = const CockpitTelemetry();
+      await tester.pumpAndSettle();
+      expect(_state(tester).motion.isTicking, isFalse);
+      final writes = service.moves.length;
+      await tester.pump(const Duration(seconds: 2));
+      expect(service.moves.length, writes, reason: 'no motion without data');
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('without a native renderer the HUD and marker still render', (
       tester,
     ) async {
