@@ -17,7 +17,6 @@ import '../../../../domain/thermal/thermal_variant_resolver.dart';
 import '../../../../services/airspace_service.dart';
 import '../../../../services/maplibre_map_service.dart';
 import '../../../../services/region_manager_service.dart';
-import '../../../../widgets/flight/airspace_map_layer.dart';
 import '../layers/map_flight_layers.dart';
 import '../layers/vario_track_palette.dart';
 import '../platform/map_renderer_availability.dart';
@@ -158,7 +157,8 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
   final MapFlightLayers _layers = MapFlightLayers();
   final ValueNotifier<MotionFrame?> _frame = ValueNotifier(null);
   final ValueNotifier<(int, int)> _hud = ValueNotifier((0, 0));
-  late final ValueNotifier<(LatLng, double)> _cameraView;
+
+  AirspaceService? _airspaceService;
 
   /// Camera center / bearing currently shown (follow or manual pan).
   late LatLng _cameraCenter;
@@ -244,12 +244,13 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _airspaceService = context.read<AirspaceService?>();
+    _airspaceService?.addListener(_updateAirspaceLayers);
     _mapService = widget.mapService ?? MapLibreMapService();
     _mapService.addListener(_onMapServiceChanged);
     _attachCamera(widget.cameraViewModel);
     _cameraCenter = _effectivePilotPosition;
     _cameraBearing = _trackUp ? _heading : 0.0;
-    _cameraView = ValueNotifier((_cameraCenter, _currentZoom));
     _motion = MapMotionController(
       vsync: this,
       onFrame: _applyFrame,
@@ -262,12 +263,25 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
       showOlderTail: widget.mapTrackShowOlderTail,
       showAirspace: widget.showAirspace,
     );
+    _updateAirspaceLayers();
     _subscribeTelemetry();
     _lastKnownPilot = _rawPilotPosition;
     _thermalSpec = _computeThermalSpec();
     _syncThermalTimer();
     _syncInputs();
     _initMapStyle();
+  }
+
+  void _updateAirspaceLayers() {
+    if (!mounted) return;
+    final svc = _airspaceService;
+    if (svc != null) {
+      _layers.updateAirspaces(
+        svc.loadedAirspaces,
+        svc.latestProximity.airspaceName,
+        svc.latestProximity.alertLevel.severity,
+      );
+    }
   }
 
   void _subscribeTelemetry() {
@@ -510,7 +524,6 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
         _layers.updatePilot(f.pilot, f.headingDeg, visible: true);
       }
     }
-    _cameraView.value = (_cameraCenter, f.zoom);
   }
 
   void _writeCamera(
@@ -583,12 +596,14 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
     if (_layers.isAttached) {
       _mapService.overlayBottomLayerId = MapFlightLayers.bottomLayerId;
     }
+    _updateAirspaceLayers();
     _layers.updateTrack(_effectiveFlightPoints);
     _motion.requestFrame();
   }
 
   @override
   void dispose() {
+    _airspaceService?.removeListener(_updateAirspaceLayers);
     _thermalTimer?.cancel();
     _subscribedTelemetry?.removeListener(_onTelemetry);
     _mapService.removeListener(_onMapServiceChanged);
@@ -597,7 +612,6 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
     _layers.detach();
     _frame.dispose();
     _hud.dispose();
-    _cameraView.dispose();
     if (widget.mapService == null) {
       _mapService.dispose();
     }
@@ -701,7 +715,6 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
         _cameraBearing = cam.bearing;
         _writtenCenter = newCenter;
         _writtenBearing = cam.bearing;
-        _cameraView.value = (newCenter, cam.zoom);
         _camera.beginManualPan();
         _syncingGestureZoom = true;
         try {
@@ -748,7 +761,6 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
       bearing,
       _writtenPadding ?? 0.0,
     );
-    _cameraView.value = (_cameraCenter, _writtenZoom ?? _currentZoom);
   }
 
   @override
@@ -779,7 +791,7 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. Map Canvas / MapLibre GL Base Map (track, mock airspace and the
+        // 1. Map Canvas / MapLibre GL Base Map (track, airspace and the
         //    free-floating pilot symbol are native layers inside it).
         Positioned.fill(
           child: Semantics(
@@ -794,30 +806,6 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
             ),
           ),
         ),
-
-        // 2. Airspace vector map layer (OpenAir, Flutter overlay)
-        if (widget.showAirspace)
-          Consumer<AirspaceService?>(
-            builder: (context, airspace, _) {
-              if (airspace == null || airspace.loadedAirspaces.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return Positioned.fill(
-                child: IgnorePointer(
-                  child: ValueListenableBuilder<(LatLng, double)>(
-                    valueListenable: _cameraView,
-                    builder: (context, view, _) => AirspaceMapLayer(
-                      airspaces: airspace.loadedAirspaces,
-                      centerLat: view.$1.latitude,
-                      centerLon: view.$1.longitude,
-                      zoom: view.$2,
-                      activeAlertLevel: airspace.activeAlertLevel,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
 
         // 2b. Screen-anchored pilot marker while center-locked. The camera
         //     puts the smoothed pilot exactly on this anchor every frame.

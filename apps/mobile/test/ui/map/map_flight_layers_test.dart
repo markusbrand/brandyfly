@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:brandyfly/models/flight_model.dart';
 import 'package:brandyfly/models/lat_lng.dart';
+import 'package:brandyfly/services/airspace_service.dart';
 import 'package:brandyfly/ui/features/map/layers/map_flight_layers.dart';
 import 'package:brandyfly/ui/features/map/layers/track_geojson.dart';
 import 'package:brandyfly/ui/features/map/layers/vario_track_palette.dart';
@@ -82,6 +83,54 @@ void main() {
       expect(VarioTrackPalette.hexFor(4.0), '#15803d');
       expect(VarioTrackPalette.hexFor(-4.0), '#991b1b');
     });
+
+    test('airspaceCollection serializes correctly with highlighting', () {
+      final airspaces = [
+        AirspaceModel(
+          id: '1',
+          name: 'LOWS',
+          airspaceClass: 'CTR',
+          floorLabel: 'GND',
+          ceilingLabel: 'FL 100',
+          floorMslM: 0,
+          ceilingMslM: 3048,
+          polygon: const [(lat: 47.5, lon: 13.0), (lat: 47.6, lon: 13.0), (lat: 47.6, lon: 13.1), (lat: 47.5, lon: 13.1)],
+        ),
+        AirspaceModel(
+          id: '2',
+          name: 'ED-R',
+          airspaceClass: 'RESTRICTED',
+          floorLabel: 'GND',
+          ceilingLabel: '5000FT',
+          floorMslM: 0,
+          ceilingMslM: 1500,
+          polygon: const [(lat: 48.0, lon: 11.0), (lat: 48.1, lon: 11.0), (lat: 48.1, lon: 11.1), (lat: 48.0, lon: 11.1)],
+        ),
+      ];
+
+      // Default
+      var f = _features(TrackGeoJson.airspaceCollection(airspaces, null, 0));
+      expect(f, hasLength(2));
+      expect(f[0]['properties']['color'], '#00bcd4'); // CTR
+      expect(f[0]['properties']['label'], 'LOWS\n[CTR]');
+      expect(f[0]['properties']['isHighlighted'], false);
+      expect((f[0]['geometry']['coordinates'][0] as List).length, 5); // polygon closed
+
+      expect(f[1]['properties']['color'], '#ffab40'); // RESTRICTED
+      expect(f[1]['properties']['isHighlighted'], false);
+
+      // Highlighted explicitly by name
+      f = _features(TrackGeoJson.airspaceCollection(airspaces, 'LOWS', 0));
+      expect(f[0]['properties']['color'], '#ff5252'); // Highlighted red
+      expect(f[0]['properties']['isHighlighted'], true);
+      expect(f[1]['properties']['color'], '#ffab40'); // Unchanged
+      expect(f[1]['properties']['isHighlighted'], false);
+
+      // Highlighted via partial match and high alert level
+      f = _features(TrackGeoJson.airspaceCollection(airspaces, 'LOW', 2));
+      expect(f[0]['properties']['isHighlighted'], true);
+      expect(f[1]['properties']['isHighlighted'], false);
+    });
   });
 
   group('MapFlightLayers', () {
@@ -111,6 +160,7 @@ void main() {
       for (final id in [
         MapFlightLayers.airspaceFillLayerId,
         MapFlightLayers.airspaceLineLayerId,
+        MapFlightLayers.airspaceSymbolLayerId,
         MapFlightLayers.tailSourceId,
         MapFlightLayers.windowSourceId,
         MapFlightLayers.headSourceId,
@@ -122,17 +172,13 @@ void main() {
       expect(style.layerIds, [
         MapFlightLayers.airspaceFillLayerId,
         MapFlightLayers.airspaceLineLayerId,
+        MapFlightLayers.airspaceSymbolLayerId,
         MapFlightLayers.tailSourceId,
         MapFlightLayers.windowSourceId,
         MapFlightLayers.headSourceId,
         MapFlightLayers.pilotSourceId,
       ]);
       expect(style.images, contains(MapFlightLayers.pilotImageId));
-      // Mock airspace polygon is static geography.
-      final poly = _features(
-        style.sourceData[MapFlightLayers.airspaceSourceId]!,
-      );
-      expect(poly.single['geometry']['type'], 'Polygon');
     });
 
     test(
