@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.15.0...brandyfly-v0.16.0) (2026-10-10)
+
+
+### Features
+
+* **map:** implement native airspace map layer ([#266](https://github.com/markusbrand/brandyfly/issues/266)) ([58a5c29](https://github.com/markusbrand/brandyfly/commit/58a5c29e9da72461505b0f1ca4b5d748279193de))
+
 ## [0.15.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.14.0...brandyfly-v0.15.0) (2026-10-10)
 
 
