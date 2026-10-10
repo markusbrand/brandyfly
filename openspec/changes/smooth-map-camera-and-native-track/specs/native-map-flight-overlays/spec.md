@@ -51,7 +51,7 @@ Appending a new fix to the displayed track SHALL cost work proportional to the r
 
 #### Scenario: Long flight
 - **WHEN** a 3-hour flight with 1 Hz fixes (≈10,800 points) is displayed and a new fix arrives
-- **THEN** only the recent-track data is resent to the map for that fix, and full track data is rebuilt no more often than every 10 seconds
+- **THEN** only the recent-track data is resent to the map for that fix, and full track data is rebuilt no more often than every 10 seconds, and only when the history window start moved or the recent part exceeds its size limit
 
 #### Scenario: No per-point projection
 - **WHEN** the map renders a frame during flight

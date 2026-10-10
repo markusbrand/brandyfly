@@ -66,6 +66,8 @@ class MapFlightLayers {
   // Track state.
   List<FlightPoint> _points = const [];
   int _committed = 0; // points covered by window/tail sources
+  int _committedStart = 0; // window start index of the last full rebuild
+  final TrackEncodingCache _encoding = TrackEncodingCache();
   int _sentHeadLength = 0;
   DateTime? _firstTs;
   DateTime? _lastTs;
@@ -82,6 +84,22 @@ class MapFlightLayers {
 
   /// Number of head-only updates (diagnostics / tests).
   int headUpdates = 0;
+
+  /// Longest GeoJSON build (UI thread) of a full rebuild / head update in
+  /// microseconds since the last [resetDiagnostics] (profiling).
+  int maxFullBuildMicros = 0;
+  int maxHeadBuildMicros = 0;
+
+  /// Longest synchronous part of a native source update (microseconds).
+  int maxSendMicros = 0;
+
+  void resetDiagnostics() {
+    fullRebuilds = 0;
+    headUpdates = 0;
+    maxFullBuildMicros = 0;
+    maxHeadBuildMicros = 0;
+    maxSendMicros = 0;
+  }
 
   bool get isAttached => _attached;
   int get committedPoints => _committed;
@@ -241,9 +259,15 @@ class MapFlightLayers {
     }
     final now = _clock();
     final lastRebuild = _lastRebuild;
+    // The window/tail only change when the history window start moved; with
+    // "full flight" (0 min) they never do, so long tracks are only re-sent
+    // when the head grows too large.
+    final windowMoved =
+        TrackGeoJson.windowStartIndex(points, _historyMinutes) !=
+        _committedStart;
     if (len - _committed > headRebuildThreshold ||
         lastRebuild == null ||
-        now.difference(lastRebuild) >= rebuildInterval) {
+        (windowMoved && now.difference(lastRebuild) >= rebuildInterval)) {
       _fullRebuild();
       return;
     }
@@ -270,6 +294,15 @@ class MapFlightLayers {
   }
 
   ({String tail, String window, String head}) _buildFull() {
+    final sw = Stopwatch()..start();
+    final data = _buildFullData();
+    if (sw.elapsedMicroseconds > maxFullBuildMicros) {
+      maxFullBuildMicros = sw.elapsedMicroseconds;
+    }
+    return data;
+  }
+
+  ({String tail, String window, String head}) _buildFullData() {
     final pts = _points;
     _committed = pts.length;
     _sentHeadLength = 0;
@@ -283,11 +316,12 @@ class MapFlightLayers {
       );
     }
     final start = TrackGeoJson.windowStartIndex(pts, _historyMinutes);
+    _committedStart = start;
     return (
       tail: _showOlderTail && start > 0
-          ? TrackGeoJson.tail(pts, start)
+          ? TrackGeoJson.tail(pts, start, cache: _encoding)
           : TrackGeoJson.empty,
-      window: TrackGeoJson.segments(pts, start, pts.length),
+      window: TrackGeoJson.segments(pts, start, pts.length, cache: _encoding),
       head: TrackGeoJson.empty,
     );
   }
@@ -308,9 +342,18 @@ class MapFlightLayers {
     final pts = _points;
     if (pts.length == _sentHeadLength) return;
     headUpdates++;
+    final sw = Stopwatch()..start();
     final data = _showTrack
-        ? TrackGeoJson.segments(pts, math.max(0, _committed - 1), pts.length)
+        ? TrackGeoJson.segments(
+            pts,
+            math.max(0, _committed - 1),
+            pts.length,
+            cache: _encoding,
+          )
         : TrackGeoJson.empty;
+    if (sw.elapsedMicroseconds > maxHeadBuildMicros) {
+      maxHeadBuildMicros = sw.elapsedMicroseconds;
+    }
     if (_send(headSourceId, data)) {
       _sentHeadLength = pts.length;
     } else {
@@ -327,8 +370,13 @@ class MapFlightLayers {
       return false;
     }
     try {
+      final sw = Stopwatch()..start();
+      final pending = style.updateGeoJsonSource(id: sourceId, data: data);
+      if (sw.elapsedMicroseconds > maxSendMicros) {
+        maxSendMicros = sw.elapsedMicroseconds;
+      }
       unawaited(
-        style.updateGeoJsonSource(id: sourceId, data: data).catchError((
+        pending.catchError((
           Object e,
         ) {
           debugPrint('[MapFlightLayers] update $sourceId failed: $e');

@@ -146,6 +146,30 @@ Cached tiles live on the device under
 `/data/data/rocks.brandstaetter.brandyfly/files/thermal_cache/` (inspect with
 `adb shell run-as rocks.brandstaetter.brandyfly ls files/thermal_cache`).
 
+## Map smoothness and frame-budget harness
+
+`apps/mobile/tool/map_perf/map_perf_main.dart` is a standalone profiling app
+(not shipped) that replays the bundled Krippenstein-Aussee IGC
+forward/backward/forward (~3 h, ~10.5k fixes) through the real replay ->
+telemetry -> `MapWidget` pipeline with the native MapLibre renderer:
+
+```sh
+cd apps/mobile
+flutter run --profile -t tool/map_perf/map_perf_main.dart -d <device>
+# only the long-track scenarios:
+flutter run --profile -t tool/map_perf/map_perf_main.dart -d <device> \
+  --dart-define=MAP_PERF_ONLY_LONG=true
+```
+
+It prints one `MAP_PERF_RESULT <key> <json>` log line per metric: Flutter
+frame build/raster times per scenario, camera smoothness (camera writes per
+second, per-frame step and rotation), native track layer work (full rebuilds,
+head updates, GeoJSON build and native hand-off time) and an anchor check
+comparing the native projection of the pilot with the screen marker.
+`MAP_PERF_START` / `MAP_PERF_MARKER` lines can trigger host-side
+`adb screenrecord` / `screencap`. Use the host-GPU emulator (see above) or a
+real device; numbers from the emulator are indicative only.
+
 ## Local mock flight mode
 
 Run the mobile app with deterministic synthetic flight data and mocked

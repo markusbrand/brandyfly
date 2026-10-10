@@ -4,6 +4,42 @@ import '../../../../models/flight_model.dart';
 import '../../../../models/lat_lng.dart';
 import 'vario_track_palette.dart';
 
+/// Per-point encoded coordinates and colors of one (growing) track, so full
+/// GeoJSON rebuilds of long tracks only join cached strings instead of
+/// formatting every number again.
+class TrackEncodingCache {
+  final List<String> _coords = [];
+  final List<String> _colors = [];
+  List<FlightPoint>? _source;
+  DateTime? _firstTs;
+
+  int get length => _coords.length;
+
+  /// Encodes points added since the last call; starts over when [points] is
+  /// a different or reset track.
+  void sync(List<FlightPoint> points) {
+    final first = points.isEmpty ? null : points.first.timestamp;
+    if (!identical(points, _source) ||
+        first != _firstTs ||
+        points.length < _coords.length) {
+      _coords.clear();
+      _colors.clear();
+      _source = points;
+      _firstTs = first;
+    }
+    for (var i = _coords.length; i < points.length; i++) {
+      final p = points[i];
+      _coords.add(
+        '[${p.longitude.toStringAsFixed(6)},${p.latitude.toStringAsFixed(6)}]',
+      );
+      _colors.add(VarioTrackPalette.hexFor(p.vario));
+    }
+  }
+
+  String coord(int i) => _coords[i];
+  String color(int i) => _colors[i];
+}
+
 /// Pure GeoJSON builders for the native flight overlay layers.
 abstract final class TrackGeoJson {
   static const String empty = '{"type":"FeatureCollection","features":[]}';
@@ -42,10 +78,19 @@ abstract final class TrackGeoJson {
   /// `points[i-1]` and `points[i]` and takes the color of `points[i].vario`.
   /// Consecutive segments with the same quantized color are merged into one
   /// LineString feature with property `c` (`#rrggbb`).
-  static String segments(List<FlightPoint> points, int from, int to) {
+  static String segments(
+    List<FlightPoint> points,
+    int from,
+    int to, {
+    TrackEncodingCache? cache,
+  }) {
     final start = from < 0 ? 0 : from;
     final end = to > points.length ? points.length : to;
     if (end - start < 2) return empty;
+    if (cache != null) {
+      cache.sync(points);
+      return _segmentsCached(cache, start, end);
+    }
     final b = StringBuffer('{"type":"FeatureCollection","features":[');
     var first = true;
     String? color;
@@ -75,10 +120,50 @@ abstract final class TrackGeoJson {
     return b.toString();
   }
 
+  static String _segmentsCached(TrackEncodingCache c, int start, int end) {
+    final b = StringBuffer('{"type":"FeatureCollection","features":[');
+    String? color;
+    for (var i = start + 1; i < end; i++) {
+      final col = c.color(i);
+      if (col != color) {
+        if (color != null) b.write(']}},');
+        color = col;
+        b
+          ..write('{"type":"Feature","properties":{"c":"')
+          ..write(col)
+          ..write('"},"geometry":{"type":"LineString","coordinates":[')
+          ..write(c.coord(i - 1));
+      }
+      b
+        ..write(',')
+        ..write(c.coord(i));
+    }
+    if (color != null) b.write(']}}');
+    b.write(']}');
+    return b.toString();
+  }
+
   /// One muted LineString through points `[0, toInclusive]`.
-  static String tail(List<FlightPoint> points, int toInclusive) {
+  static String tail(
+    List<FlightPoint> points,
+    int toInclusive, {
+    TrackEncodingCache? cache,
+  }) {
     final end = toInclusive >= points.length ? points.length - 1 : toInclusive;
     if (end < 1) return empty;
+    if (cache != null) {
+      cache.sync(points);
+      final b = StringBuffer(
+        '{"type":"FeatureCollection","features":[{"type":"Feature",'
+        '"properties":{},"geometry":{"type":"LineString","coordinates":[',
+      );
+      for (var i = 0; i <= end; i++) {
+        if (i > 0) b.write(',');
+        b.write(cache.coord(i));
+      }
+      b.write(']}}]}');
+      return b.toString();
+    }
     final b = StringBuffer(
       '{"type":"FeatureCollection","features":[{"type":"Feature",'
       '"properties":{},"geometry":{"type":"LineString","coordinates":[',

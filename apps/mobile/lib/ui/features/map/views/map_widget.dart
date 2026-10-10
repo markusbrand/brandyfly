@@ -190,17 +190,18 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
   @visibleForTesting
   LatLng get cameraCenter => _cameraCenter;
 
-  /// Latest smoothed frame (tests).
-  @visibleForTesting
+  /// Latest smoothed frame (diagnostics, profiling harness and tests).
   MotionFrame? get motionFrame => _frame.value;
 
-  /// Native overlay manager (tests).
-  @visibleForTesting
+  /// Native overlay manager (diagnostics, profiling harness and tests).
   MapFlightLayers get flightLayers => _layers;
 
   /// Motion controller (tests).
   @visibleForTesting
   MapMotionController get motion => _motion;
+
+  /// Camera state driving this map (zoom, center-lock, recenter).
+  MapCameraViewModel get camera => _camera;
 
   CockpitTelemetry? get _t => widget.telemetry?.value;
 
@@ -773,7 +774,10 @@ class MapWidgetState extends State<MapWidget> with TickerProviderStateMixin {
   }
 
   Widget _buildStack(BuildContext context) {
+    // Expand: all layers are positioned, so a loosely constrained map would
+    // otherwise collapse to 0x0 and the native map would never become ready.
     return Stack(
+      fit: StackFit.expand,
       children: [
         // 1. Map Canvas / MapLibre GL Base Map (track, mock airspace and the
         //    free-floating pilot symbol are native layers inside it).

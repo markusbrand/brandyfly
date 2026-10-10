@@ -31,7 +31,7 @@ See proposal.md (Why). Current pipeline (`map_widget.dart`, `widget_slot.dart`):
 
 ### D2. Position: velocity extrapolation with exponential convergence
 - Velocity is estimated from the newest fix and the most recent earlier fix at least 0.5 s older (the previous fix at 1 Hz, a few fixes back for 10 Hz sources to suppress frame-quantization noise), divided by their **wall-clock arrival delta** (fixes are stamped with the next vsync time) (works for live 1–10 Hz and any replay multiplier without knowing the multiplier). The first fix has zero velocity (no fabricated motion from speed/heading).
-- Predicted target `p(t) = fix + v·min(t − receivedAt, 2.0 s)` (horizon from the spec).
+- Predicted target `p(t) = fix + v·min(t − receivedAt, h)` with an adaptive horizon `h = min(2.0 s, 1.5 × smoothed fix interval)`. On-device profiling showed a fixed 2 s horizon overshoots by up to 88 m when a 4x replay pauses (or GNSS drops out), and the next fix then pulls the map back by ~9 m in a frame; the adaptive horizon bounds the overshoot to half a fix interval past the expected next fix.
 - The display state is an offset `e` from the target that decays exponentially (`e *= exp(−dt/τ)`, τ ≈ 0.12 s → <5 % residual after 0.5 s). On a new fix, `e` is set to `displayed − newTarget`, so there is no visual jump; this yields a C0-continuous path with a short blend instead of a snap.
 - Snap rule: if `|displayed − newFix| > 300 m`, or a replay seek / flight load / source switch is signalled, set `e = 0` and reset velocity.
 - Stale/invalid fix: velocity → 0, hold the display; no extrapolation.
@@ -61,7 +61,7 @@ See proposal.md (Why). Current pipeline (`map_widget.dart`, `widget_slot.dart`):
   - `bf-track-window` (line, `line-color: ["get","c"]`) – in-window segments, consecutive segments with the same quantized vario color (0.1 m/s buckets via `MapWidget.getVarioTrackColor`) merged into one LineString feature to keep feature count low.
   - `bf-track-head` (same style as window) – points since the last window rebuild, updated on every new fix (O(recent points)).
   - `bf-pilot` (symbol, icon from `addImageFromCanvas`, `icon-rotate` from feature property, `icon-rotation-alignment: map`) – only visible while center-lock is released.
-- Window rebuild cadence: every 10 s or when the head exceeds 120 points, whichever comes first; also on setting changes and flight reset. GeoJSON encoding is done in Dart on the UI thread but limited to that cadence; if profiling shows >4 ms for very long flights, move encoding to `compute()` (isolate) — the API stays the same.
+- Window rebuild cadence: when the head exceeds 120 points, every 10 s only if the history-window start index moved (never for "full flight"), and on setting changes / flight reset. Per-point coordinate and color strings are cached (`TrackEncodingCache`), so a full rebuild only joins strings: profiled on the emulator, a 9,000-point rebuild dropped from 8.5 ms to 1.4-2.3 ms of Dart work plus ~7-9 ms native hand-off, and it now occurs about every 120 fixes instead of every 10 s. Isolate encoding was therefore not needed.
 - Track vertices are recorded fixes only (spec: presentation-only). The head's last vertex is the last fix; the small gap to the predicted marker (≤ one fix interval of travel) is accepted.
 - Live tracking reuses the same mutable `UnmodifiableListView` instance; change detection uses `length` + last timestamp, not list identity.
 - **Alternative considered:** `MapLibreMap.layers` declarative API. Rejected: it re-serializes the full FeatureCollection whenever a layer changes (O(n) per fix) and offers no control over layer ordering below labels.
@@ -77,6 +77,9 @@ See proposal.md (Why). Current pipeline (`map_widget.dart`, `widget_slot.dart`):
 - `FlightReplayService` exposes the growing track as a view (`UnmodifiableListView` over the cache, same pattern as `FlightTrackingService`) instead of copying per tick; a `trackRevision`/seek signal lets the layer manager rebuild on seek and the motion controller snap.
 - Without a live source (previews/idle canvas) the demo track around the pilot is kept; with a live source but no recorded track (pre-takeoff) no track is drawn. Only replacement of the recorded track list triggers a snap.
 - The legacy `trackPoints`/`flightPoints`/`pilotPosition` constructor parameters stay supported for tests and screenshots (static data path → same layer manager).
+
+### D9a. Layout robustness
+- The map's `Stack` uses `StackFit.expand`: all of its layers are positioned, so a loosely constrained map (found by the profiling harness inside a plain `Scaffold`) would collapse to 0x0 and the native map would never become ready.
 
 ### D9. Fallback without a native renderer
 - When `controller`/`styleController` is absent (headless tests, unsupported platform), layers are not added and the camera is not moved; the widget still builds HUD and Flutter marker. Tests assert source/layer data through a recording `StyleController` in `test/support/headless_maplibre.dart`.

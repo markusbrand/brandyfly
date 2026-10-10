@@ -102,17 +102,44 @@ void main() {
       expect(maxStep, lessThan(0.25 * simSpeed));
     });
 
-    test('prediction stops after the 2.0 s horizon', () {
+    test('prediction stops after 1.5 fix intervals (max 2.0 s)', () {
       final s = MotionSmoother();
       s.addFix(_fix(0, 0), 0);
       s.addFix(_fix(0, 10), 1);
-      final atHorizon = s.sample(3.0)!;
+      expect(s.horizon, closeTo(1.5, 1e-9));
+      final atHorizon = s.sample(2.5)!;
       final later = s.sample(10.0)!;
       expect(_dist(atHorizon, later), lessThan(0.01));
-      // Extrapolated 2 s * 10 m/s past the last fix.
-      expect(_distToFix(later, _fix(0, 30)), lessThan(0.5));
-      expect(s.isSettled(3.5), isTrue);
+      // Extrapolated 1.5 s * 10 m/s past the last fix.
+      expect(_distToFix(later, _fix(0, 25)), lessThan(0.5));
+      expect(s.isSettled(3.0), isTrue);
       expect(s.isSettled(2.0), isFalse);
+    });
+
+    test('slow fix streams are capped at the 2.0 s horizon', () {
+      final s = MotionSmoother();
+      s.addFix(_fix(0, 0), 0);
+      s.addFix(_fix(0, 20), 2);
+      expect(s.horizon, 2.0);
+    });
+
+    test('a paused 4 Hz stream overshoots by at most half an interval '
+        'beyond the expected next fix', () {
+      final s = MotionSmoother();
+      // 44 m/s on screen (4x replay), fixes every 0.25 s.
+      for (var k = 0; k <= 8; k++) {
+        s.addFix(_fix(0, 11.0 * k), k * 0.25);
+      }
+      final last = _fix(0, 88);
+      // Stream pauses: the display holds 1.5 intervals (0.375 s * 44 m/s)
+      // past the last fix, i.e. 5.5 m beyond where the next fix was due -
+      // instead of 2 s * 44 m/s = 88 m with a fixed horizon.
+      final held = s.sample(5)!;
+      expect(_distToFix(held, last), closeTo(16.5, 0.5));
+      // Resuming does not pull the display back by tens of meters.
+      s.addFix(_fix(0, 99), 5);
+      final next = s.sample(5 + _frame)!;
+      expect(_dist(held, next), lessThan(2.0));
     });
 
     test('a 15 m correction converges within 0.5 s without a jump', () {

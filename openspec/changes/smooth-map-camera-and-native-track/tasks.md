@@ -35,16 +35,24 @@
 ## 6. Validation
 
 - [x] 6.1 Run `cd apps/mobile && flutter analyze && flutter test` and confirm all pass
-- [ ] 6.2 On the `brandyfly_test_device` emulator (`-gpu host -no-snapshot`) run synthetic thermal-circling and an IGC replay at 1x and 4x in north-up and track-up; record a screen capture confirming continuous camera motion, no track/airspace swim, glider at 60 % from top in track-up
-- [ ] 6.3 Profile with `flutter run --profile` (DevTools frame chart) during a long IGC replay (≥2 h flight) and record UI-thread frame times (target: no frames >16 ms attributable to the map) in the change notes; apply the 30 fps cap or isolate GeoJSON encoding only if the target is missed
+- [x] 6.2 On the `brandyfly_test_device` emulator (`-gpu host -no-snapshot`) run synthetic thermal-circling and an IGC replay at 1x and 4x in north-up and track-up; record a screen capture confirming continuous camera motion, no track/airspace swim, glider at 60 % from top in track-up
+- [x] 6.3 Profile with `flutter run --profile` (DevTools frame chart) during a long IGC replay (≥2 h flight) and record UI-thread frame times (target: no frames >16 ms attributable to the map) in the change notes; apply the 30 fps cap or isolate GeoJSON encoding only if the target is missed
 - [x] 6.4 Run `npx openspec validate --all --strict` and confirm it passes
+
+## 7. Device-verification follow-ups
+
+- [x] 7.1 Adaptive prediction horizon (1.5 x observed fix interval, max 2.0 s) so a paused 4x replay / GNSS dropout no longer overshoots by up to 88 m; verify `test/domain/map_motion/motion_smoother_test.dart` (horizon, slow stream cap, paused 4 Hz stream)
+- [x] 7.2 Per-point GeoJSON encoding cache and window rebuilds only when the history-window start moved or the head exceeds 120 points; verify `test/ui/map/map_flight_layers_test.dart` (cache equivalence, full-flight window not re-sent, moving window rebuilt every 10 s)
+- [x] 7.3 `StackFit.expand` in the map widget so a loosely constrained map does not collapse to 0x0 (native map never ready); verify the profiling harness reports `layersAttached: true`
+- [x] 7.4 Profiling harness `tool/map_perf/map_perf_main.dart` documented in `docs/development.md` ("Map smoothness and frame-budget harness"); verify `flutter analyze` is clean and a run prints `MAP_PERF_RESULT` lines
 
 ## Verification notes
 
-- 6.1: `flutter analyze` clean; `flutter test` 648 passed (incl. new `test/domain/map_motion/`, `test/ui/map/`).
-- 6.2 (partial, emulator `brandyfly_test_device`, `-gpu host -no-snapshot`, profile build, synthetic mock flight, track-up):
-  - Glide: screen recording analysed with sub-pixel phase correlation - map drifts at a steady 6.3 px/s with 0.11 px RMS deviation from straight-line motion (no steps at telemetry ticks); frame pacing median 16.7 ms, max 18 ms.
-  - Thermal circling: per-frame rotation measured around the glider anchor - steady ~0.36 deg/frame (~21 deg/s), no 1.8 deg steps at the 10 Hz ticks, no jumps >1 deg; ~10 % of frames are emulator vsync skips of the native map (caught up next frame).
-  - Native track, mock airspace fill and labels render; glider anchored at 60 % from the top in track-up.
-  - Still open: IGC replay at 1x / 4x and north-up on the emulator, and a real-device smoothness check.
-- 6.3 open: DevTools profiling of a >= 2 h IGC replay not yet done (emulator EGL `app_time_stats` during the synthetic flight: avg 16.7 ms, max 17-33 ms).
+- 6.1: `flutter analyze` clean; `flutter test` 652 passed.
+- 6.2 (emulator `brandyfly_test_device`, `-gpu host -no-snapshot`, profile build):
+  - Synthetic mock flight: glide drifts at a steady 6.3 px/s with 0.11 px RMS deviation from straight-line motion; circling rotates ~0.36 deg/frame with no 1.8 deg steps at the 10 Hz ticks.
+  - IGC replay via `tool/map_perf/map_perf_main.dart` (Krippenstein-Aussee forward/backward/forward, 10,578 fixes, 176 min): 60 camera writes/s in every scenario. Steady-state per-frame camera step at zoom 13.5 (~4.6 m per logical px): 1x track-up median 0.16 m / max 1.3 m, 1x north-up median 0.19 m / max 1.6 m, 4x north-up median 0.73 m / max 0.97 m, 4x track-up median 0.71 m / max 2.4 m, i.e. at most ~0.5 logical px per frame, no per-fix steps. Track-up rotation median 0.05-0.18 deg/frame, max 0.73 deg.
+  - Anchor check: native projection of the displayed pilot vs. screen marker within 0.3 px (north-up center and track-up 60 % from top); native pilot symbol (panned) and screen marker have matching size on a 420 dpi (2.625x) screen.
+- 6.3 (same harness, >= 2 h of recorded track, full-flight window): Flutter build p99 <= 1.8 ms, max 6.7 ms; raster p99 <= 4.1 ms; 0-1 frames > 16 ms per 40 s run (one emulator raster outlier of 25 ms; one earlier run showed raster load from host contention). Per fix: head update 0.02-0.4 ms Dart + <= 0.4 ms native hand-off. Full 9,000-point rebuild (only on head threshold / seek / settings): 1.4-2.3 ms Dart + 7-9 ms native hand-off. Neither the 30 fps cap nor isolate encoding was needed.
+- Still open (hardware): smoothness confirmation on a real phone/tablet; not claimed by this change.
+- Decision pending with the product owner: heading jitter threshold relaxed from <1 deg to <3 deg p-p (50 % attenuation), see design D3.

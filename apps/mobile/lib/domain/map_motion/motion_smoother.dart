@@ -68,7 +68,9 @@ class _HistoryEntry {
 ///
 /// Position: velocity is estimated from the observed fix motion (wall-clock
 /// arrival time, so replay multipliers work automatically) and the target is
-/// extrapolated for at most [predictionHorizon] seconds. When a new fix
+/// extrapolated for at most [horizonIntervals] observed fix intervals and
+/// never longer than [predictionHorizon] seconds (so a paused replay or a GNSS
+/// dropout overshoots by at most half a fix interval). When a new fix
 /// arrives, the difference between the displayed and the new position decays
 /// exponentially ([convergenceTau]) so there is no visible jump. Fixes more
 /// than [snapDistanceM] away snap immediately.
@@ -79,6 +81,7 @@ class _HistoryEntry {
 class MotionSmoother {
   MotionSmoother({
     this.predictionHorizon = 2.0,
+    this.horizonIntervals = 1.5,
     this.convergenceTau = 0.12,
     this.snapDistanceM = 300.0,
     this.velocityBaseline = 0.5,
@@ -93,6 +96,9 @@ class MotionSmoother {
 
   /// Max seconds a position/heading is extrapolated after the last fix.
   final double predictionHorizon;
+
+  /// Prediction horizon in multiples of the observed fix interval.
+  final double horizonIntervals;
 
   /// Time constant (s) of the blend from displayed to new fix trajectory.
   final double convergenceTau;
@@ -143,6 +149,14 @@ class MotionSmoother {
 
   bool _stale = false;
 
+  // Smoothed interval between fixes (s) and the resulting horizon.
+  double? _fixInterval;
+  late double _horizon = predictionHorizon;
+  double? _lastFixT;
+
+  /// Effective prediction horizon (s) for the current fix stream.
+  double get horizon => _horizon;
+
   /// Whether at least one valid fix was received.
   bool get hasFix => _t0 != null;
 
@@ -160,6 +174,9 @@ class MotionSmoother {
     _hA = _hR = _hOff = 0;
     _stale = false;
     _history.clear();
+    _fixInterval = null;
+    _lastFixT = null;
+    _horizon = predictionHorizon;
   }
 
   /// Adds a fix received at time [t] (seconds, monotonic).
@@ -192,7 +209,11 @@ class MotionSmoother {
     final resumedFromStale = _stale;
     _stale = false;
 
-    if (doSnap) _history.clear();
+    if (doSnap) {
+      _history.clear();
+      _fixInterval = null;
+      _lastFixT = null;
+    }
     _history.add(_HistoryEntry(t, fix.latitude, fix.longitude));
     _estimateVelocity(t);
 
@@ -219,6 +240,24 @@ class MotionSmoother {
       snap: (doSnap && !resumedFromStale) || displayed == null,
       displayedHeading: displayed?.headingDeg,
     );
+    // Last: the new horizon only applies to the trajectory after this fix.
+    _updateFixInterval(t);
+  }
+
+  void _updateFixInterval(double t) {
+    final last = _lastFixT;
+    _lastFixT = t;
+    if (last != null) {
+      final dt = t - last;
+      if (dt > 0.02 && dt <= maxVelocityGap) {
+        final prev = _fixInterval;
+        _fixInterval = prev == null ? dt : prev + 0.3 * (dt - prev);
+      }
+    }
+    final interval = _fixInterval;
+    _horizon = interval == null
+        ? predictionHorizon
+        : math.min(predictionHorizon, interval * horizonIntervals);
   }
 
   void _freezeAt(MotionSample s, double t) {
@@ -316,7 +355,7 @@ class MotionSmoother {
       _ht = t;
       return;
     }
-    final predicted = _hA + _hR * math.min(dt, predictionHorizon);
+    final predicted = _hA + _hR * math.min(dt, _horizon);
     final measured = _unwrapNear(m, predicted);
     final residual = measured - predicted;
     final alpha = 1.0 - math.pow(1.0 - headingAlpha, dt).toDouble();
@@ -332,7 +371,7 @@ class MotionSmoother {
     if (ht == null) return 0;
     final dt = math.max(0.0, t - ht);
     return _hA +
-        _hR * math.min(dt, predictionHorizon) +
+        _hR * math.min(dt, _horizon) +
         _hOff * math.exp(-dt / headingTau);
   }
 
@@ -341,7 +380,7 @@ class MotionSmoother {
     final t0 = _t0;
     if (t0 == null) return null;
     final dt = math.max(0.0, t - t0);
-    final p = math.min(dt, predictionHorizon);
+    final p = math.min(dt, _horizon);
     final decay = math.exp(-dt / convergenceTau);
     final east = _vE * p + _eE * decay;
     final north = _vN * p + _eN * decay;
@@ -357,14 +396,14 @@ class MotionSmoother {
     final t0 = _t0;
     if (t0 == null) return true;
     final dt = t - t0;
-    final moving = (_vE != 0 || _vN != 0) && dt < predictionHorizon;
+    final moving = (_vE != 0 || _vN != 0) && dt < _horizon;
     if (moving) return false;
     final decay = math.exp(-math.max(0.0, dt) / convergenceTau);
     if ((_eE.abs() + _eN.abs()) * decay > 0.05) return false;
     final ht = _ht;
     if (ht != null) {
       final hdt = t - ht;
-      if (_hR != 0 && hdt < predictionHorizon) return false;
+      if (_hR != 0 && hdt < _horizon) return false;
       if (_hOff.abs() * math.exp(-math.max(0.0, hdt) / headingTau) > 0.05) {
         return false;
       }

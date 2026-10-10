@@ -17,7 +17,7 @@ While center-locked, the map SHALL move its camera continuously at the display f
 - **THEN** the map issues at most one combined camera update (center, bearing, zoom) per rendered frame
 
 ### Requirement: Bounded position prediction between fixes
-The displayed pilot position SHALL be extrapolated from the observed motion of the most recent fixes, measured against wall-clock arrival time, and SHALL NOT be extrapolated beyond a bounded horizon of 2.0 seconds after the last fix.
+The displayed pilot position SHALL be extrapolated from the observed motion of the most recent fixes, measured against wall-clock arrival time, and SHALL NOT be extrapolated beyond 1.5 observed fix intervals after the last fix, and never beyond 2.0 seconds.
 
 #### Scenario: Prediction follows observed motion
 - **WHEN** consecutive fixes show the pilot moving north-east at a steady rate
@@ -28,8 +28,12 @@ The displayed pilot position SHALL be extrapolated from the observed motion of t
 - **THEN** the displayed position moves continuously at the replay's effective on-screen speed without stepping
 
 #### Scenario: Prediction horizon reached
-- **WHEN** no new fix arrives for longer than 2.0 seconds
-- **THEN** the displayed position stops advancing and holds at the last predicted position
+- **WHEN** fixes arrive at 1 Hz and then stop
+- **THEN** the displayed position stops advancing 1.5 seconds after the last fix and holds at the last predicted position
+
+#### Scenario: Paused high-rate stream
+- **WHEN** replay at 4x (fixes every 0.25 s) is paused
+- **THEN** the display stops within 0.375 seconds of travel past the last fix, so resuming does not visibly pull the map back
 
 ### Requirement: Smooth convergence onto new fixes
 When a new fix arrives, the displayed position SHALL converge onto the new fix trajectory within 0.5 seconds without a visible jump, unless the new fix is more than 300 m from the displayed position, in which case the display SHALL snap to the fix immediately.

@@ -58,6 +58,25 @@ void main() {
       expect(TrackGeoJson.windowStartIndex(pts, 60), 0);
     });
 
+    test('cached encoding produces identical GeoJSON', () {
+      final pts = _flight(300, vario: (i) => (i % 17 - 8) / 2);
+      final cache = TrackEncodingCache();
+      expect(
+        TrackGeoJson.segments(pts, 40, 250, cache: cache),
+        TrackGeoJson.segments(pts, 40, 250),
+      );
+      expect(
+        TrackGeoJson.tail(pts, 120, cache: cache),
+        TrackGeoJson.tail(pts, 120),
+      );
+      // A different track resets the cache.
+      final other = _flight(50, vario: (i) => -1);
+      expect(
+        TrackGeoJson.segments(other, 0, 50, cache: cache),
+        TrackGeoJson.segments(other, 0, 50),
+      );
+    });
+
     test('hex colors match the vario palette', () {
       expect(VarioTrackPalette.hexFor(0.0), '#94a3b8');
       expect(VarioTrackPalette.hexFor(4.0), '#15803d');
@@ -224,22 +243,54 @@ void main() {
         // Head only carries the recent points, not the whole flight.
         expect(_vertexCount(style.updates.last.$2), 10);
 
-        // After 10 s the window is rebuilt and the head cleared.
+        // Full-flight window: its start never moves, so the long window is
+        // not re-sent periodically - only the head keeps growing.
         live.add(all[10809]);
         now = now.add(const Duration(seconds: 1));
         layers.updateTrack(live);
         await Future<void>.delayed(Duration.zero);
-        expect(layers.fullRebuilds, rebuildsBefore + 1);
-        expect(
-          _features(style.sourceData[MapFlightLayers.headSourceId]!),
-          isEmpty,
-        );
-        expect(
-          _vertexCount(style.sourceData[MapFlightLayers.windowSourceId]!),
-          10810,
-        );
+        expect(layers.fullRebuilds, rebuildsBefore);
+        expect(_vertexCount(style.updates.last.$2), 11);
       },
     );
+
+    test('a moving history window is rebuilt every 10 s', () async {
+      final all = _flight(400);
+      final live = all.sublist(0, 200);
+      layers.configure(
+        showTrack: true,
+        historyMinutes: 1,
+        showOlderTail: true,
+        showAirspace: true,
+      );
+      layers.updateTrack(live);
+      await layers.attach(style);
+      final before = layers.fullRebuilds;
+      for (var i = 0; i < 9; i++) {
+        live.add(all[200 + i]);
+        now = now.add(const Duration(seconds: 1));
+        layers.updateTrack(live);
+      }
+      expect(layers.fullRebuilds, before);
+      live.add(all[209]);
+      now = now.add(const Duration(seconds: 1));
+      layers.updateTrack(live);
+      await Future<void>.delayed(Duration.zero);
+      expect(layers.fullRebuilds, before + 1);
+      expect(
+        _features(style.sourceData[MapFlightLayers.headSourceId]!),
+        isEmpty,
+      );
+      // 1 min window at 1 Hz = 61 vertices; the rest went to the tail.
+      expect(
+        _vertexCount(style.sourceData[MapFlightLayers.windowSourceId]!),
+        61,
+      );
+      expect(
+        _vertexCount(style.sourceData[MapFlightLayers.tailSourceId]!),
+        150,
+      );
+    });
 
     test('head exceeding the threshold forces a rebuild', () async {
       final all = _flight(400);
