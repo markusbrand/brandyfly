@@ -246,7 +246,9 @@ class MapFlightLayers {
 
   /// Updates the native MapLibre GeoJSON for loaded airspaces and active alerts.
   void updateAirspaces(List<AirspaceModel> airspaces, String? highlightedName, int activeAlertLevel) {
-    _airspaceData = TrackGeoJson.airspaceCollection(airspaces, highlightedName, activeAlertLevel);
+    final newData = TrackGeoJson.airspaceCollection(airspaces, highlightedName, activeAlertLevel);
+    if (newData == _airspaceData) return;
+    _airspaceData = newData;
     if (_showAirspace) {
       _send(airspaceSourceId, _airspaceData);
     }

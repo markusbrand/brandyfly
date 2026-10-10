@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:brandyfly/domain/thermal/thermal_layer_spec.dart';
 import 'package:brandyfly/models/flight_model.dart';
 import 'package:brandyfly/models/lat_lng.dart';
 import 'package:brandyfly/models/ui_config.dart';
+import 'package:brandyfly/services/airspace_service.dart';
 import 'package:brandyfly/services/local_tile_server.dart';
 import 'package:brandyfly/services/maplibre_map_service.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
@@ -14,6 +16,22 @@ import 'package:brandyfly/ui/features/map/layers/map_flight_layers.dart';
 import 'package:maplibre/maplibre.dart' hide Marker;
 
 import 'support/recording_style_controller.dart';
+
+class MockAirspaceService extends AirspaceService {
+  @override
+  List<AirspaceModel> get loadedAirspaces => const [
+        AirspaceModel(
+          id: 'test',
+          name: 'TEST',
+          airspaceClass: 'CTR',
+          floorLabel: 'GND',
+          ceilingLabel: 'UNL',
+          floorMslM: 0,
+          ceilingMslM: 9999,
+          polygon: [(lat: 0.0, lon: 0.0), (lat: 1.0, lon: 0.0), (lat: 1.0, lon: 1.0), (lat: 0.0, lon: 1.0)],
+        )
+      ];
+}
 
 void main() {
   group('Map View Autonomous Integration & Behavior Test Suite', () {
@@ -982,16 +1000,21 @@ void main() {
         const movedPilot = LatLng(47.538, 13.712);
         final style = RecordingStyleController();
 
+        final mockAirspaceSvc = MockAirspaceService();
+
         Widget host(LatLng pilot) => MaterialApp(
           home: Scaffold(
             body: SizedBox(
               width: 480,
               height: 480,
-              child: MapWidget(
-                mapService: mockService,
-                pilotPosition: pilot,
-                showAirspace: true,
-                showThermals: true,
+              child: ChangeNotifierProvider<AirspaceService>.value(
+                value: mockAirspaceSvc,
+                child: MapWidget(
+                  mapService: mockService,
+                  pilotPosition: pilot,
+                  showAirspace: true,
+                  showThermals: true,
+                ),
               ),
             ),
           ),
@@ -1010,7 +1033,7 @@ void main() {
 
         // 2. Move pilot across the map (pilot flies away)
         await tester.pumpWidget(host(movedPilot));
-        await tester.pumpAndSettle();
+        await tester.pump();
         final state = tester.state<MapWidgetState>(find.byType(MapWidget));
         expect(state.motionFrame!.pilot, equals(movedPilot));
 
