@@ -145,15 +145,17 @@ emulator (or a physical device) is the required environment for those checks.
 
 ### Physical Android Device Workflow
 
-When testing on a physical phone:
-- **Phone plugged into Garuda PC via USB:**
-  You don't need to move the cable to the server! When plugged into Garuda PC, run:
+When testing on a physical phone with development hosted on the Bosgame server:
+- **Default (Option B): Phone plugged directly into Bosgame PC via USB:**
+  Works plug-and-play. Connect via USB cable, ensure USB Debugging is ON in Developer Options, and run:
+  `~/bin/run-android-device.sh`
+  (or `cd apps/mobile && flutter run -d <device_serial>`).
+- **Alternative (Option A): Phone plugged into Garuda PC via USB over LAN:**
+  Keep it at your desk plugged into Garuda:
   `ssh garuda "adb tcpip 5555"`
   Then from Bosgame server, connect over Wi-Fi:
   `~/bin/connect-android.sh <phone-ip>`
-- **Phone plugged directly into Bosgame PC:**
-  Works plug-and-play. `adb devices` on the server will list the USB device directly.
-- **Wireless Debugging (Android 11+):**
+- **Wireless Debugging (Android 11+ over Wi-Fi):**
   Turn on Wireless Debugging in developer options and connect directly:
   `~/bin/connect-android.sh <phone-ip>:<dynamic_port>`
 

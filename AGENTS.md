@@ -17,12 +17,15 @@ BrandyFly is an open-source, local-first paragliding vario and flight computer a
 
 2. **"run the app on my connected android"**:
    - Targets the physical Android device.
-   - **If phone is plugged via USB into Garuda PC**:
-     - Keep it plugged into Garuda! Run `ssh garuda "adb tcpip 5555"` (or enable Wireless Debugging).
-     - Bosgame connects over LAN using `~/bin/connect-android.sh <phone-ip>[:port]`.
-     - Alternatively, plugging the phone via USB directly into the Bosgame server also works natively.
-   - If not yet connected, check `adb devices`, prompt for IP/connection via `connect-android.sh`, or give clear instructions (wake screen, allow USB debugging RSA fingerprint).
-   - Deploy with `flutter run -d <phone-device-id>`.
+   - **Environment check first**: Same prerequisite—verify development is on the `bosgame` server.
+   - **Default: Option B (USB plugged directly into Bosgame Server)**:
+     - The default workflow expects the phone to be plugged into a USB port on the Bosgame server.
+     - Execute `~/bin/run-android-device.sh` (or detect with `adb devices`, filtering out emulators, and run `flutter run -d <usb-serial>`).
+     - If unauthorized, prompt to unlock screen and tap "Always allow from this computer".
+     - If not detected, check `lsusb` / remind to plug via USB to Bosgame and enable USB Debugging.
+   - **Alternative: Option A (Phone plugged into Garuda PC / Wi-Fi)**:
+     - If preferred, the phone can stay on Garuda via Wi-Fi: enable TCP with `ssh garuda "adb tcpip 5555"`, connect from Bosgame via `~/bin/connect-android.sh <phone-ip>`, and deploy with `flutter run -d <phone-ip>:5555`.
+   - **On local workstation (Garuda / Mac)**: Detect local USB/Wi-Fi Android device directly with `flutter run -d <device-id>`.
 
 ---
 
