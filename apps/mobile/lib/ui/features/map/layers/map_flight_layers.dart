@@ -7,6 +7,7 @@ import 'package:maplibre/maplibre.dart';
 
 import '../../../../models/flight_model.dart';
 import '../../../../models/lat_lng.dart';
+import '../../../../services/airspace_service.dart';
 import 'track_geojson.dart';
 import 'vario_track_palette.dart';
 
@@ -22,12 +23,12 @@ class MapFlightLayers {
     this.rebuildInterval = const Duration(seconds: 10),
     this.headRebuildThreshold = 120,
     DateTime Function()? clock,
-    this.airspacePolygon = defaultMockAirspacePolygon,
   }) : _clock = clock ?? DateTime.now;
 
   static const String airspaceSourceId = 'bf-airspace';
   static const String airspaceFillLayerId = 'bf-airspace-fill';
   static const String airspaceLineLayerId = 'bf-airspace-line';
+  static const String airspaceSymbolLayerId = 'bf-airspace-symbol';
   static const String tailSourceId = 'bf-track-tail';
   static const String windowSourceId = 'bf-track-window';
   static const String headSourceId = 'bf-track-head';
@@ -37,21 +38,12 @@ class MapFlightLayers {
   /// Lowest overlay layer (thermal raster swaps go below it).
   static const String bottomLayerId = airspaceFillLayerId;
 
-  /// Static mock airspace restriction polygon (Dachstein / Krippenstein).
-  static const List<LatLng> defaultMockAirspacePolygon = [
-    LatLng(47.550, 13.650),
-    LatLng(47.560, 13.710),
-    LatLng(47.535, 13.725),
-    LatLng(47.510, 13.675),
-  ];
-
   /// Max time between full window/tail rebuilds while new fixes arrive.
   final Duration rebuildInterval;
 
   /// Head size (points) that forces a full rebuild.
   final int headRebuildThreshold;
 
-  final List<LatLng> airspacePolygon;
   final DateTime Function() _clock;
 
   StyleController? _style;
@@ -78,6 +70,9 @@ class MapFlightLayers {
   // Pilot state.
   String _pilotData = TrackGeoJson.empty;
   String? _sentPilotData;
+
+  // Airspace state.
+  String _airspaceData = TrackGeoJson.empty;
 
   /// Number of full window/tail rebuilds (diagnostics / tests).
   int fullRebuilds = 0;
@@ -113,10 +108,7 @@ class MapFlightLayers {
     _dirty = true;
     try {
       final data = _buildFull();
-      final polygon = _showAirspace
-          ? TrackGeoJson.polygon(airspacePolygon)
-          : TrackGeoJson.empty;
-      await style.addSource(GeoJsonSource(id: airspaceSourceId, data: polygon));
+      await style.addSource(GeoJsonSource(id: airspaceSourceId, data: _airspaceData));
       await style.addSource(GeoJsonSource(id: tailSourceId, data: data.tail));
       await style.addSource(
         GeoJsonSource(id: windowSourceId, data: data.window),
@@ -137,15 +129,35 @@ class MapFlightLayers {
         const FillStyleLayer(
           id: airspaceFillLayerId,
           sourceId: airspaceSourceId,
-          paint: {'fill-color': '#ef4444', 'fill-opacity': 0.14},
+          paint: {
+            'fill-color': ['get', 'color'],
+            'fill-opacity': ['case', ['get', 'isHighlighted'], 0.35, 0.12]
+          },
         ),
         const LineStyleLayer(
           id: airspaceLineLayerId,
           sourceId: airspaceSourceId,
           paint: {
-            'line-color': '#ef4444',
+            'line-color': ['get', 'color'],
             'line-opacity': 0.7,
-            'line-width': 1.5,
+            'line-width': ['case', ['get', 'isHighlighted'], 2.5, 1.2],
+          },
+        ),
+        const SymbolStyleLayer(
+          id: airspaceSymbolLayerId,
+          sourceId: airspaceSourceId,
+          layout: {
+            'text-field': ['get', 'label'],
+            'text-size': 11.0,
+            'symbol-placement': 'point',
+            'text-ignore-placement': false,
+            'text-allow-overlap': false,
+          },
+          paint: {
+            'text-color': ['get', 'color'],
+            'text-halo-color': '#000000',
+            'text-halo-width': 1.0,
+            'text-halo-blur': 1.0,
           },
         ),
         LineStyleLayer(
@@ -227,10 +239,18 @@ class MapFlightLayers {
     if (airspaceChanged) {
       _send(
         airspaceSourceId,
-        showAirspace
-            ? TrackGeoJson.polygon(airspacePolygon)
-            : TrackGeoJson.empty,
+        showAirspace ? _airspaceData : TrackGeoJson.empty,
       );
+    }
+  }
+
+  /// Updates the native MapLibre GeoJSON for loaded airspaces and active alerts.
+  void updateAirspaces(List<AirspaceModel> airspaces, String? highlightedName, int activeAlertLevel) {
+    final newData = TrackGeoJson.airspaceCollection(airspaces, highlightedName, activeAlertLevel);
+    if (newData == _airspaceData) return;
+    _airspaceData = newData;
+    if (_showAirspace) {
+      _send(airspaceSourceId, _airspaceData);
     }
   }
 

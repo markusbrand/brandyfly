@@ -6,7 +6,6 @@ import 'package:brandyfly/domain/models/size_tier.dart';
 import 'package:brandyfly/domain/models/ui_config.dart';
 import 'package:brandyfly/services/airspace_service.dart';
 import 'package:brandyfly/ui/features/flight_canvas/views/widget_slot.dart';
-import 'package:brandyfly/widgets/flight/airspace_map_layer.dart';
 import 'package:brandyfly/widgets/flight/airspace_side_cut_widget.dart';
 import 'package:brandyfly/widgets/flight/airspace_warning_banner_hud.dart';
 
@@ -82,46 +81,6 @@ void main() {
       );
 
       expect(find.text('PENETRATION'), findsOneWidget);
-    });
-
-    testWidgets('AirspaceMapLayer paints vector boundary without error', (tester) async {
-      const airspace = AirspaceModel(
-        id: 'test-ctr',
-        name: 'INNSBRUCK CTR',
-        airspaceClass: 'CTR',
-        floorLabel: 'GND',
-        ceilingLabel: '5000ft MSL',
-        floorMslM: 600.0,
-        ceilingMslM: 1524.0,
-        polygon: [
-          (lat: 47.2, lon: 11.2),
-          (lat: 47.3, lon: 11.2),
-          (lat: 47.3, lon: 11.4),
-          (lat: 47.2, lon: 11.4),
-        ],
-      );
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 400,
-              height: 400,
-              child: AirspaceMapLayer(
-                airspaces: [airspace],
-                centerLat: 47.25,
-                centerLon: 11.30,
-                zoom: 11.0,
-                activeAlertLevel: AirspaceAlertLevel.warning,
-                highlightedAirspaceId: 'test-ctr',
-              ),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.byType(AirspaceMapLayer), findsOneWidget);
-      expect(find.byType(CustomPaint), findsWidgets);
     });
 
     testWidgets('AirspaceWarningBannerHUD renders advisory, warning, and violation states', (tester) async {
@@ -238,29 +197,6 @@ void main() {
       expect(find.text('ADVISORY'), findsNothing);
       expect(find.text('WARNING'), findsNothing);
       expect(find.text('VIOLATION'), findsNothing);
-    });
-
-    testWidgets('AirspaceMapLayer returns empty when airspaces list is empty', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: AirspaceMapLayer(
-              airspaces: [],
-              centerLat: 47.0,
-              centerLon: 13.0,
-              zoom: 10.0,
-            ),
-          ),
-        ),
-      );
-
-      expect(
-        find.descendant(
-          of: find.byType(AirspaceMapLayer),
-          matching: find.byType(CustomPaint),
-        ),
-        findsNothing,
-      );
     });
 
     testWidgets('FlightWidgetContent renders AirspaceSideCutWidget for airspaceSideCut slot', (tester) async {

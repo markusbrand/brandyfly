@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../../models/flight_model.dart';
 import '../../../../models/lat_lng.dart';
+import '../../../../services/airspace_service.dart';
 import 'vario_track_palette.dart';
 
 /// Per-point encoded coordinates and colors of one (growing) track, so full
@@ -208,5 +209,77 @@ abstract final class TrackGeoJson {
     _coord(b, p.longitude, p.latitude);
     b.write('}}]}');
     return b.toString();
+  }
+
+  static String _getAirspaceColorHex(String cls, bool isHighlighted) {
+    if (isHighlighted) return '#ff5252'; // Colors.redAccent
+    switch (cls.toUpperCase()) {
+      case 'CTR':
+        return '#00bcd4'; // Colors.cyan
+      case 'R':
+      case 'RESTRICTED':
+        return '#ffab40'; // Colors.orangeAccent
+      case 'P':
+      case 'PROHIBITED':
+        return '#f44336'; // Colors.red
+      case 'Q':
+      case 'D':
+      case 'DANGER':
+        return '#ffc107'; // Colors.amber
+      case 'GP':
+      case 'GLIDER':
+        return '#69f0ae'; // Colors.greenAccent
+      case 'TMZ':
+      case 'RMZ':
+        return '#e040fb'; // Colors.purpleAccent
+      default:
+        return '#40c4ff'; // Colors.lightBlueAccent
+    }
+  }
+
+  /// Feature collection of airspace polygons.
+  static String airspaceCollection(
+    List<AirspaceModel> airspaces,
+    String? highlightedName,
+    int activeAlertLevel,
+  ) {
+    if (airspaces.isEmpty) return empty;
+
+    final features = <Map<String, dynamic>>[];
+    for (final airspace in airspaces) {
+      if (airspace.polygon.length < 3) continue;
+
+      final isHighlighted = (highlightedName == airspace.name) ||
+          (activeAlertLevel >= 2 &&
+              highlightedName != null &&
+              airspace.name.contains(highlightedName));
+
+      final colorHex = _getAirspaceColorHex(airspace.airspaceClass, isHighlighted);
+
+      final coords = [
+        for (final p in airspace.polygon) [p.lon, p.lat],
+        [airspace.polygon.first.lon, airspace.polygon.first.lat],
+      ];
+
+      features.add({
+        'type': 'Feature',
+        'properties': {
+          'color': colorHex,
+          'label': '${airspace.name}\n[${airspace.airspaceClass}]',
+          'isHighlighted': isHighlighted,
+        },
+        'geometry': {
+          'type': 'Polygon',
+          'coordinates': [coords],
+        },
+      });
+    }
+
+    if (features.isEmpty) return empty;
+
+    return jsonEncode({
+      'type': 'FeatureCollection',
+      'features': features,
+    });
   }
 }
