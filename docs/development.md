@@ -143,6 +143,20 @@ emulator (or a physical device) is the required environment for those checks.
   Interact autonomously with `adb shell input tap <X> <Y>`, `adb shell input swipe ...`,
   or dump the UI accessibility hierarchy with `adb exec-out uiautomator dump /dev/tty`.
 
+### Physical Android Device Workflow
+
+When testing on a physical phone:
+- **Phone plugged into Garuda PC via USB:**
+  You don't need to move the cable to the server! When plugged into Garuda PC, run:
+  `ssh garuda "adb tcpip 5555"`
+  Then from Bosgame server, connect over Wi-Fi:
+  `~/bin/connect-android.sh <phone-ip>`
+- **Phone plugged directly into Bosgame PC:**
+  Works plug-and-play. `adb devices` on the server will list the USB device directly.
+- **Wireless Debugging (Android 11+):**
+  Turn on Wireless Debugging in developer options and connect directly:
+  `~/bin/connect-android.sh <phone-ip>:<dynamic_port>`
+
 ### Checking the KK7 thermal heatmap
 
 The heatmap is shown when the map widget's "Thermal Updraft Hotspots" setting
