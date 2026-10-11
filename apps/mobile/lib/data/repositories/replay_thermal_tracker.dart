@@ -74,6 +74,7 @@ class ReplayThermalTracker {
           position: GeoPosition(p.latitude, p.longitude),
           headingDeg: p.heading,
           climbRateMs: p.vario,
+          altitudeM: p.altitude,
         ),
       );
       lastFedCount++;

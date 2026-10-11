@@ -6,11 +6,14 @@
 library;
 
 import 'dart:collection';
+import 'dart:math' as math;
 
 import 'thermal_assistant.dart';
+import 'thermal_session_stats.dart';
 import 'thermal_types.dart';
 
 export 'thermal_assistant.dart' show ThermalSample, interruptionGapMs;
+export 'thermal_session_stats.dart';
 export 'thermal_types.dart';
 
 /// Wind estimate published to the cockpit.
@@ -69,6 +72,7 @@ class ThermalAssistantState {
     this.core,
     this.track = const [],
     this.revision = 0,
+    this.session,
   });
 
   static const ThermalAssistantState idle = ThermalAssistantState(
@@ -87,6 +91,9 @@ class ThermalAssistantState {
 
   /// Incremented whenever published content changes.
   final int revision;
+
+  /// Performance statistics of the live circling thermal or frozen last thermal.
+  final ThermalSessionStats? session;
 
   bool get isCircling => mode.isCircling;
 }
@@ -112,6 +119,14 @@ class ThermalAssistantEngine {
   ThermalAssistantState _state = ThermalAssistantState.idle;
   List<ThermalTrackSample> _publishedTrack = const [];
 
+  double? _sessionEntryAlt;
+  int? _sessionStartMs;
+  double _sessionPeakClimb = 0.0;
+  double _sessionAccumTurnDeg = 0.0;
+  double? _prevHeadingDeg;
+  ThermalSessionStats? _currentSession;
+  ThermalSessionStats? _lastCompletedSession;
+
   ThermalAssistantState get state => _state;
 
   /// Independent deep copy of the full engine state (used for replay
@@ -123,7 +138,14 @@ class ThermalAssistantEngine {
     .._lastTrackMs = _lastTrackMs
     .._revision = _revision
     .._state = _state
-    .._publishedTrack = _publishedTrack;
+    .._publishedTrack = _publishedTrack
+    .._sessionEntryAlt = _sessionEntryAlt
+    .._sessionStartMs = _sessionStartMs
+    .._sessionPeakClimb = _sessionPeakClimb
+    .._sessionAccumTurnDeg = _sessionAccumTurnDeg
+    .._prevHeadingDeg = _prevHeadingDeg
+    .._currentSession = _currentSession
+    .._lastCompletedSession = _lastCompletedSession;
 
   /// Ensures the next published revision is greater than [revision], so UI
   /// selectors rebuild after the engine is replaced by a restored copy.
@@ -136,6 +158,7 @@ class ThermalAssistantEngine {
       wind: _state.wind,
       core: _state.core,
       track: _state.track,
+      session: _state.session,
       revision: _revision,
     );
   }
@@ -153,6 +176,13 @@ class ThermalAssistantEngine {
     _lastValidMs = null;
     _lastTrackMs = null;
     _publishedTrack = const [];
+    _sessionEntryAlt = null;
+    _sessionStartMs = null;
+    _sessionPeakClimb = 0.0;
+    _sessionAccumTurnDeg = 0.0;
+    _prevHeadingDeg = null;
+    _currentSession = null;
+    _lastCompletedSession = null;
     _revision++;
     _state = ThermalAssistantState(
       mode: const FlightModeState.gliding(),
@@ -163,19 +193,80 @@ class ThermalAssistantEngine {
   ThermalAssistantState update(ThermalSample sample) {
     if (sample.stale) return _state;
 
+    final wasCircling = _state.isCircling;
     final t = sample.timestampMs;
     final last = _lastValidMs;
     if (last != null && t - last > interruptionGapMs) {
       _track.clear();
       _lastTrackMs = null;
+      if (wasCircling && _currentSession != null) {
+        _lastCompletedSession = _currentSession!.copyWith(isLive: false);
+      }
+      _currentSession = null;
+      _sessionEntryAlt = null;
+      _sessionStartMs = null;
+      _prevHeadingDeg = null;
     }
     _lastValidMs = t;
 
-    final wasCircling = _state.isCircling;
     final out = _assistant.update(sample);
     if (wasCircling && !out.state.isCircling) {
       _track.clear();
       _lastTrackMs = null;
+      if (_currentSession != null) {
+        _lastCompletedSession = _currentSession!.copyWith(isLive: false);
+      }
+      _currentSession = null;
+      _sessionEntryAlt = null;
+      _sessionStartMs = null;
+      _prevHeadingDeg = null;
+    }
+
+    if (!wasCircling && out.state.isCircling) {
+      _sessionEntryAlt = sample.altitudeM;
+      _sessionStartMs = t;
+      _sessionPeakClimb = sample.climbRateMs;
+      _sessionAccumTurnDeg = 270.0;
+      _prevHeadingDeg = sample.headingDeg;
+      _currentSession = ThermalSessionStats(
+        entryAltitudeM: sample.altitudeM,
+        currentAltitudeM: sample.altitudeM,
+        altitudeGainM: 0.0,
+        averageClimbMs: sample.climbRateMs,
+        duration: Duration.zero,
+        turnCount: 1,
+        peakClimbMs: sample.climbRateMs,
+        isLive: true,
+      );
+    } else if (out.state.isCircling) {
+      if (_prevHeadingDeg != null) {
+        var diff = (sample.headingDeg - _prevHeadingDeg!).remainder(360.0);
+        if (diff > 180.0) diff -= 360.0;
+        if (diff < -180.0) diff += 360.0;
+        _sessionAccumTurnDeg += diff.abs();
+      }
+      _prevHeadingDeg = sample.headingDeg;
+      if (sample.climbRateMs > _sessionPeakClimb) {
+        _sessionPeakClimb = sample.climbRateMs;
+      }
+      final entryAlt = _sessionEntryAlt ?? sample.altitudeM;
+      final startMs = _sessionStartMs ?? t;
+      final durationMs = t - startMs;
+      final gain = sample.altitudeM - entryAlt;
+      final avg = durationMs >= 1000
+          ? gain / (durationMs / 1000.0)
+          : sample.climbRateMs;
+      final turns = (_sessionAccumTurnDeg / 360.0).floor().clamp(1, 999);
+      _currentSession = ThermalSessionStats(
+        entryAltitudeM: entryAlt,
+        currentAltitudeM: sample.altitudeM,
+        altitudeGainM: gain,
+        averageClimbMs: avg,
+        duration: Duration(milliseconds: durationMs),
+        turnCount: turns,
+        peakClimbMs: _sessionPeakClimb,
+        isLive: true,
+      );
     }
 
     var trackChanged = false;
@@ -224,10 +315,12 @@ class ThermalAssistantEngine {
       track = _publishedTrack;
     }
 
+    final session = _currentSession ?? _lastCompletedSession;
     final changed =
         !identical(track, _publishedTrack) ||
         out.state != _state.mode ||
-        wind != _state.wind;
+        wind != _state.wind ||
+        session != _state.session;
     _publishedTrack = track;
     if (changed) _revision++;
 
@@ -238,6 +331,7 @@ class ThermalAssistantEngine {
       core: out.core?.center,
       track: track,
       revision: _revision,
+      session: session,
     );
     return _state;
   }

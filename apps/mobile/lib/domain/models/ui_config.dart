@@ -106,6 +106,8 @@ class WidgetPlacementModel {
     this.numericStyle,
     this.windStyle,
     this.varioStyle,
+    this.varioShowAverager,
+    this.varioAveragerSeconds,
     this.altitudeChartStyle,
     this.mapStyle,
     this.mapOrientation,
@@ -140,6 +142,8 @@ class WidgetPlacementModel {
   final NumericWidgetStyle? numericStyle;
   final WindWidgetStyle? windStyle;
   final LiftSinkBarStyle? varioStyle;
+  final bool? varioShowAverager;
+  final int? varioAveragerSeconds;
   final AltitudeChartStyle? altitudeChartStyle;
   final MapWidgetStyle? mapStyle;
   final MapOrientation? mapOrientation;
@@ -176,6 +180,8 @@ class WidgetPlacementModel {
       windStyle ?? WindWidgetStyle.relativeArrow;
   LiftSinkBarStyle get effectiveVarioStyle =>
       varioStyle ?? LiftSinkBarStyle.verticalEdgeBar;
+  bool get effectiveVarioShowAverager => varioShowAverager ?? true;
+  int get effectiveVarioAveragerSeconds => varioAveragerSeconds ?? 20;
   AltitudeChartStyle get effectiveAltitudeChartStyle =>
       altitudeChartStyle ?? AltitudeChartStyle.minimalSparkline;
   MapWidgetStyle get effectiveMapStyle =>
@@ -214,6 +220,8 @@ class WidgetPlacementModel {
     NumericWidgetStyle? numericStyle,
     WindWidgetStyle? windStyle,
     LiftSinkBarStyle? varioStyle,
+    bool? varioShowAverager,
+    int? varioAveragerSeconds,
     AltitudeChartStyle? altitudeChartStyle,
     MapWidgetStyle? mapStyle,
     MapOrientation? mapOrientation,
@@ -243,6 +251,8 @@ class WidgetPlacementModel {
       numericStyle: numericStyle ?? this.numericStyle,
       windStyle: windStyle ?? this.windStyle,
       varioStyle: varioStyle ?? this.varioStyle,
+      varioShowAverager: varioShowAverager ?? this.varioShowAverager,
+      varioAveragerSeconds: varioAveragerSeconds ?? this.varioAveragerSeconds,
       altitudeChartStyle: altitudeChartStyle ?? this.altitudeChartStyle,
       mapStyle: mapStyle ?? this.mapStyle,
       mapOrientation: mapOrientation ?? this.mapOrientation,
@@ -277,6 +287,8 @@ class WidgetPlacementModel {
     if (numericStyle != null) 'numericStyle': numericStyle!.name,
     if (windStyle != null) 'windStyle': windStyle!.name,
     if (varioStyle != null) 'varioStyle': varioStyle!.name,
+    if (varioShowAverager != null) 'varioShowAverager': varioShowAverager,
+    if (varioAveragerSeconds != null) 'varioAveragerSeconds': varioAveragerSeconds,
     if (altitudeChartStyle != null)
       'altitudeChartStyle': altitudeChartStyle!.name,
     if (mapStyle != null) 'mapStyle': mapStyle!.name,
@@ -316,6 +328,8 @@ class WidgetPlacementModel {
         other.numericStyle == numericStyle &&
         other.windStyle == windStyle &&
         other.varioStyle == varioStyle &&
+        other.varioShowAverager == varioShowAverager &&
+        other.varioAveragerSeconds == varioAveragerSeconds &&
         other.altitudeChartStyle == altitudeChartStyle &&
         other.mapStyle == mapStyle &&
         other.mapOrientation == mapOrientation &&
@@ -347,6 +361,8 @@ class WidgetPlacementModel {
     numericStyle,
     windStyle,
     varioStyle,
+    varioShowAverager,
+    varioAveragerSeconds,
     altitudeChartStyle,
     mapStyle,
     mapOrientation,
@@ -470,6 +486,8 @@ class WidgetPlacementModel {
       numericStyle: numStyle,
       windStyle: wStyle,
       varioStyle: vStyle,
+      varioShowAverager: json['varioShowAverager'] as bool?,
+      varioAveragerSeconds: json['varioAveragerSeconds'] as int?,
       altitudeChartStyle: altStyle,
       mapStyle: mStyle,
       mapOrientation: mOrientation,
