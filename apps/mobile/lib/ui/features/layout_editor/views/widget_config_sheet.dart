@@ -18,6 +18,8 @@ void showWidgetConfigDialog(
   NumericWidgetStyle curNumericStyle = model.effectiveNumericStyle;
   WindWidgetStyle curWindStyle = model.effectiveWindStyle;
   LiftSinkBarStyle curVarioStyle = model.effectiveVarioStyle;
+  bool curVarioShowAverager = model.effectiveVarioShowAverager;
+  int curVarioAveragerSeconds = model.effectiveVarioAveragerSeconds;
   AltitudeChartStyle curAltitudeChartStyle = model.effectiveAltitudeChartStyle;
   MapWidgetStyle curMapStyle = model.effectiveMapStyle;
   MapOrientation curMapOrientation = model.effectiveMapOrientation;
@@ -382,6 +384,68 @@ void showWidgetConfigDialog(
                                 onSelected: (val) =>
                                     setDialogState(() => curVarioStyle = val),
                               ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      buildSectionTitle('Climb Averager'),
+                      Card(
+                        color: Colors.black38,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text(
+                                  'Show Averager Needle',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                value: curVarioShowAverager,
+                                activeThumbColor: Colors.amberAccent,
+                                onChanged: (val) => setDialogState(
+                                  () => curVarioShowAverager = val,
+                                ),
+                              ),
+                              if (curVarioShowAverager) ...[
+                                const Text(
+                                  'Integration Window',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [10, 15, 20, 30].map((sec) {
+                                    final sel = curVarioAveragerSeconds == sec;
+                                    return ChoiceChip(
+                                      label: Text('${sec}s'),
+                                      selected: sel,
+                                      selectedColor: Colors.amberAccent,
+                                      labelStyle: TextStyle(
+                                        color:
+                                            sel ? Colors.black : Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                      onSelected: (_) => setDialogState(
+                                        () => curVarioAveragerSeconds = sec,
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -1034,6 +1098,8 @@ void showWidgetConfigDialog(
                     numericStyle: curNumericStyle,
                     windStyle: curWindStyle,
                     varioStyle: curVarioStyle,
+                    varioShowAverager: curVarioShowAverager,
+                    varioAveragerSeconds: curVarioAveragerSeconds,
                     altitudeChartStyle: curAltitudeChartStyle,
                     mapStyle: curMapStyle,
                     mapOrientation: curMapOrientation,

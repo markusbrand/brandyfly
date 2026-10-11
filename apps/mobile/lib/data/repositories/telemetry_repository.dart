@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../domain/models/cockpit_telemetry.dart';
+import '../../domain/thermal_assistant/climb_averager.dart';
 import '../../domain/thermal_assistant/thermal_assistant_engine.dart';
 import '../../models/flight_model.dart';
 import '../../services/elevation_service.dart';
@@ -50,6 +51,9 @@ class TelemetryRepository {
   /// On-device thermal assistant (circling, wind drift, thermal core).
   final ThermalAssistantEngine _thermalEngine = ThermalAssistantEngine();
 
+  /// Rolling integrated climb rate averager (20s window).
+  final ClimbAverager _climbAverager = ClimbAverager();
+
   /// Replay thermal state: fed in order with checkpoints for cheap seeks.
   final ReplayThermalTracker _replayThermal = ReplayThermalTracker();
 
@@ -94,6 +98,7 @@ class TelemetryRepository {
     _lastHistorySample = null;
     _lastHag = null;
     _elevationQuerySeq++;
+    _climbAverager.reset();
     _thermalEngine.reset();
     _emitLiveOrIdle();
   }
@@ -141,12 +146,18 @@ class TelemetryRepository {
       hag = _lastHag;
     }
 
+    _climbAverager.addSample(
+      s.timestamp.millisecondsSinceEpoch,
+      s.vario,
+    );
+
     final thermal = _thermalEngine.update(
       ThermalSample(
         timestampMs: s.timestamp.millisecondsSinceEpoch,
         position: GeoPosition(s.latitude, s.longitude),
         headingDeg: s.heading,
         climbRateMs: s.vario,
+        altitudeM: s.altitude,
         stale: s.isStale || !s.isValid,
       ),
     );
@@ -161,6 +172,7 @@ class TelemetryRepository {
       glide: _idle.glide,
       hag: hag,
       climb: s.vario,
+      averageClimb: _climbAverager.calculateAverage(),
       windDir: externalWind ? s.windDirectionDeg : wind?.directionDeg,
       windSpeed: externalWind ? s.windSpeedKmh : wind?.speedKmh,
       windStale: !externalWind && (wind?.isStale ?? false),
@@ -170,6 +182,7 @@ class TelemetryRepository {
       history: _liveHistorySnapshot,
       isStale: s.isStale || !s.isValid,
       thermal: thermal,
+      thermalSession: thermal.session,
       hasSource: true,
     );
     if (!_replayActive) _emitLiveOrIdle();
@@ -195,6 +208,7 @@ class TelemetryRepository {
       windSpeed: wind?.speedKmh,
       windStale: wind?.isStale ?? false,
       thermal: thermal,
+      thermalSession: thermal.session,
       hasSource: true,
     );
   }

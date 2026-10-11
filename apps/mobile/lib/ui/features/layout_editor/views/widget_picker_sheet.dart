@@ -73,6 +73,12 @@ const List<_PickerEntry> _instrumentEntries = [
     'Vertical cross-section of forward airspaces, glide slope & terrain',
     Icons.view_agenda,
   ),
+  _PickerEntry(
+    WidgetType.thermalStats,
+    'Thermal Session Stats',
+    'Altitude gain, average climb, duration & turns for active/last thermal',
+    Icons.query_stats,
+  ),
 ];
 
 const List<_PickerEntry> _mapControlEntries = [

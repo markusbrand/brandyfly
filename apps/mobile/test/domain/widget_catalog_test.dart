@@ -35,5 +35,19 @@ void main() {
       expect(widgetTypeFromName('airspaceSideCut'), WidgetType.airspaceSideCut);
       expect(WidgetType.airspaceSideCut.displayName, 'Airspace profile');
     });
+
+    test('thermalStats is defined in widgetCatalog with min 3x2 and presets', () {
+      final spec = specFor(WidgetType.thermalStats);
+      expect(spec.minSize.w, 3);
+      expect(spec.minSize.h, 2);
+      expect(spec.defaultSize.w, 6);
+      expect(spec.defaultSize.h, 4);
+      expect(spec.presets[SizePreset.s], const GridSize(4, 3));
+      expect(spec.presets[SizePreset.m], const GridSize(6, 4));
+      expect(spec.presets[SizePreset.l], const GridSize(8, 5));
+      expect(spec.presets[SizePreset.full], const GridSize(16, 8));
+      expect(widgetTypeFromName('thermalStats'), WidgetType.thermalStats);
+      expect(WidgetType.thermalStats.displayName, 'Thermal stats');
+    });
   });
 }

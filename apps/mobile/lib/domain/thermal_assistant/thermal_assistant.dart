@@ -19,6 +19,7 @@ class ThermalSample {
     required this.position,
     required this.headingDeg,
     required this.climbRateMs,
+    this.altitudeM = 0.0,
     this.stale = false,
   });
 
@@ -26,6 +27,7 @@ class ThermalSample {
   final GeoPosition position;
   final double headingDeg;
   final double climbRateMs;
+  final double altitudeM;
 
   /// Stale or invalid samples are ignored.
   final bool stale;

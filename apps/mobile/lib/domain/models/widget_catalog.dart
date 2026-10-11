@@ -101,6 +101,19 @@ const WidgetSpec _sideCutSpec = WidgetSpec(
   presets: _sideCutPresets,
 );
 
+const Map<SizePreset, GridSize> _thermalStatsPresets = {
+  SizePreset.s: GridSize(4, 3),
+  SizePreset.m: GridSize(6, 4),
+  SizePreset.l: GridSize(8, 5),
+  SizePreset.full: GridSize(16, 8),
+};
+
+const WidgetSpec _thermalStatsSpec = WidgetSpec(
+  minSize: GridSize(3, 2),
+  defaultSize: GridSize(6, 4),
+  presets: _thermalStatsPresets,
+);
+
 /// Size rules for every [WidgetType]. Every type MUST have an entry.
 const Map<WidgetType, WidgetSpec> widgetCatalog = {
   WidgetType.altitude: _numericSpec,
@@ -151,6 +164,7 @@ const Map<WidgetType, WidgetSpec> widgetCatalog = {
   WidgetType.mapZoomOut: _buttonSpec,
   WidgetType.mapRecenter: _buttonSpec,
   WidgetType.airspaceSideCut: _sideCutSpec,
+  WidgetType.thermalStats: _thermalStatsSpec,
   WidgetType.mapZoomRocker: WidgetSpec(
     minSize: GridSize(1, 2),
     defaultSize: GridSize(3, 6),

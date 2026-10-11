@@ -7,11 +7,15 @@ class VarioLiftSinkBar extends StatelessWidget {
   const VarioLiftSinkBar({
     super.key,
     required this.climbRateMs,
+    this.averageClimbMs,
+    this.showAverager = true,
     required this.style,
     this.tier,
   });
 
   final double climbRateMs;
+  final double? averageClimbMs;
+  final bool showAverager;
   final LiftSinkBarStyle style;
 
   /// Content tier; tiny renders the signed climb value only. Null keeps the
@@ -22,7 +26,8 @@ class VarioLiftSinkBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label:
-          'Vario climb rate: ${climbRateMs.toStringAsFixed(1)} meters per second',
+          'Vario climb rate: ${climbRateMs.toStringAsFixed(1)} meters per second'
+          '${showAverager && averageClimbMs != null ? ', average ${averageClimbMs!.toStringAsFixed(1)}' : ''}',
       readOnly: true,
       child: _buildStyledBar(context),
     );
@@ -87,16 +92,36 @@ class VarioLiftSinkBar extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.center,
-              child: Text(
-                isLift
-                    ? '+${climbRateMs.toStringAsFixed(1)}'
-                    : climbRateMs.toStringAsFixed(1),
-                style: TextStyle(
-                  color: isLift ? Colors.greenAccent : Colors.redAccent,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  fontFamily: 'monospace',
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isLift
+                        ? '+${climbRateMs.toStringAsFixed(1)}'
+                        : climbRateMs.toStringAsFixed(1),
+                    style: TextStyle(
+                      color: isLift ? Colors.greenAccent : Colors.redAccent,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  if (showAverager &&
+                      averageClimbMs != null &&
+                      tier != SizeTier.compact) ...[
+                    const SizedBox(width: 4),
+                    Text(
+                      'ø${averageClimbMs! >= 0 ? '+' : ''}${averageClimbMs!.toStringAsFixed(1)}',
+                      key: const Key('vario_edge_bar_averager_text'),
+                      style: const TextStyle(
+                        color: Colors.amberAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 2),
@@ -118,6 +143,34 @@ class VarioLiftSinkBar extends StatelessWidget {
                           top: halfH - 1,
                           height: 2,
                           child: Container(color: Colors.white38),
+                        ),
+                        // Audio lift threshold notch (+0.2 m/s)
+                        Positioned(
+                          key: const Key('vario_notch_lift_threshold'),
+                          left: 2,
+                          right: 2,
+                          top: (halfH - (halfH * (0.2 / 5.0))).clamp(
+                            0.0,
+                            constraints.maxHeight,
+                          ),
+                          height: 1,
+                          child: Container(
+                            color: Colors.greenAccent.withAlpha(90),
+                          ),
+                        ),
+                        // Strong sink warning notch (-2.0 m/s)
+                        Positioned(
+                          key: const Key('vario_notch_sink_warning'),
+                          left: 2,
+                          right: 2,
+                          top: (halfH + (halfH * (2.0 / 5.0))).clamp(
+                            0.0,
+                            constraints.maxHeight,
+                          ),
+                          height: 1,
+                          child: Container(
+                            color: Colors.redAccent.withAlpha(90),
+                          ),
                         ),
                         // Lift bar (from center going up)
                         if (isLift)
@@ -144,6 +197,40 @@ class VarioLiftSinkBar extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: Colors.redAccent,
                                 borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ),
+                        // Rolling average needle marker
+                        if (showAverager && averageClimbMs != null)
+                          Positioned(
+                            key: const Key('vario_averager_needle'),
+                            left: 0,
+                            right: 0,
+                            top: (averageClimbMs! >= 0
+                                    ? halfH -
+                                        (halfH *
+                                            (averageClimbMs!.clamp(0.0, 5.0) /
+                                                5.0))
+                                    : halfH +
+                                        (halfH *
+                                            (averageClimbMs!.abs().clamp(
+                                                      0.0,
+                                                      5.0,
+                                                    ) /
+                                                5.0)))
+                                .clamp(0.0, constraints.maxHeight - 2),
+                            height: 3,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.amberAccent,
+                                borderRadius: BorderRadius.circular(1.5),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.amber,
+                                    blurRadius: 2,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -221,6 +308,19 @@ class VarioLiftSinkBar extends StatelessWidget {
                         fontFamily: 'monospace',
                       ),
                     ),
+                    if (showAverager && averageClimbMs != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'ø ${averageClimbMs! >= 0 ? '+' : ''}${averageClimbMs!.toStringAsFixed(1)} m/s',
+                        key: const Key('vario_dial_averager_text'),
+                        style: const TextStyle(
+                          color: Colors.amberAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

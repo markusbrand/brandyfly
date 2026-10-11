@@ -13,6 +13,7 @@ class CockpitTelemetry {
     this.glide = 8.4,
     this.hag = 320.0,
     this.climb = 1.8,
+    this.averageClimb,
     this.windDir,
     this.windSpeed,
     this.windStale = false,
@@ -24,6 +25,7 @@ class CockpitTelemetry {
     this.history = defaultHistory,
     this.isStale = false,
     this.thermal = ThermalAssistantState.idle,
+    this.thermalSession,
     this.hasSource = false,
   });
 
@@ -42,6 +44,10 @@ class CockpitTelemetry {
   final double glide;
   final double? hag;
   final double climb;
+
+  /// Integrated rolling average climb rate (m/s) over the configured window.
+  final double? averageClimb;
+
   /// Wind direction (degrees, from) - null when no estimate is available.
   /// Never fabricated from heading or defaults.
   final double? windDir;
@@ -64,11 +70,19 @@ class CockpitTelemetry {
   /// Live thermal assistant state (circling, wind, core, track window).
   final ThermalAssistantState thermal;
 
+  /// Current or last completed thermal circling session statistics.
+  final ThermalSessionStats? thermalSession;
+
   /// True when values come from a live or replay telemetry source; false for
   /// idle/demo telemetry (instruments may then render labelled previews).
   final bool hasSource;
 
   bool get hasWind => windDir != null && windSpeed != null;
+
+  double get effectiveAverageClimb => averageClimb ?? climb;
+
+  ThermalSessionStats? get effectiveThermalSession =>
+      thermalSession ?? thermal.session;
 
   LatLng? get pilotPosition =>
       (latitude != null && longitude != null) ? LatLng(latitude!, longitude!) : null;
@@ -102,6 +116,7 @@ class CockpitTelemetry {
       glide: d('glide', 8.4),
       hag: map.containsKey('hag') ? hag : 320.0,
       climb: d('climb', 1.8),
+      averageClimb: (map['averageClimb'] as num?)?.toDouble(),
       windDir: (map['windDir'] as num?)?.toDouble(),
       windSpeed: (map['windSpeed'] as num?)?.toDouble(),
       windStale: map['windStale'] == true,
@@ -121,6 +136,7 @@ class CockpitTelemetry {
     double? glide,
     Object? hag = _sentinel,
     double? climb,
+    Object? averageClimb = _sentinel,
     Object? windDir = _sentinel,
     Object? windSpeed = _sentinel,
     bool? windStale,
@@ -132,6 +148,7 @@ class CockpitTelemetry {
     List<double>? history,
     bool? isStale,
     ThermalAssistantState? thermal,
+    Object? thermalSession = _sentinel,
     bool? hasSource,
   }) {
     return CockpitTelemetry(
@@ -140,6 +157,9 @@ class CockpitTelemetry {
       glide: glide ?? this.glide,
       hag: identical(hag, _sentinel) ? this.hag : (hag as double?),
       climb: climb ?? this.climb,
+      averageClimb: identical(averageClimb, _sentinel)
+          ? this.averageClimb
+          : (averageClimb as double?),
       windDir: identical(windDir, _sentinel)
           ? this.windDir
           : (windDir as double?),
@@ -155,6 +175,9 @@ class CockpitTelemetry {
       history: history ?? this.history,
       isStale: isStale ?? this.isStale,
       thermal: thermal ?? this.thermal,
+      thermalSession: identical(thermalSession, _sentinel)
+          ? this.thermalSession
+          : (thermalSession as ThermalSessionStats?),
       hasSource: hasSource ?? this.hasSource,
     );
   }

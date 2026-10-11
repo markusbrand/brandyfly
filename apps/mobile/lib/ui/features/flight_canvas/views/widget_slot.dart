@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../domain/models/cockpit_telemetry.dart';
 import '../../../../domain/models/size_tier.dart';
 import '../../../../domain/models/ui_config.dart';
+import '../../../../domain/thermal_assistant/thermal_session_stats.dart';
 import '../../../../services/airspace_service.dart';
 import '../../../../widgets/flight/airspace_side_cut_widget.dart';
 import '../../../core/rebuild_probe.dart';
@@ -13,6 +14,7 @@ import '../../instruments/views/altitude_sparkline_chart.dart';
 import '../../instruments/views/numeric_text_widget.dart';
 import '../../instruments/views/thermal_map_adapter.dart';
 import '../../instruments/views/thermal_map_widget.dart';
+import '../../instruments/views/thermal_stats_widget.dart';
 import '../../instruments/views/vario_lift_sink_bar.dart';
 import '../../instruments/views/wind_direction_widget.dart';
 import '../../map/views/map_control_widgets.dart';
@@ -118,13 +120,18 @@ class FlightWidgetContent extends StatelessWidget {
           },
         );
       case WidgetType.varioBar:
-        return ValueSelector<CockpitTelemetry, int>(
+        return ValueSelector<CockpitTelemetry, (int, int?)>(
           listenable: telemetry,
-          select: (t) => (t.climb * 10).round(),
+          select: (t) => (
+            (t.climb * 10).round(),
+            t.averageClimb != null ? (t.averageClimb! * 10).round() : null,
+          ),
           builder: (context, v) {
             RebuildProbe.tick(_probeKey);
             return VarioLiftSinkBar(
-              climbRateMs: v / 10,
+              climbRateMs: v.$1 / 10,
+              averageClimbMs: v.$2 != null ? v.$2! / 10 : null,
+              showAverager: model.effectiveVarioShowAverager,
               style: model.effectiveVarioStyle,
               tier: tier,
             );
@@ -206,6 +213,18 @@ class FlightWidgetContent extends StatelessWidget {
               glideRatio: t.glide.clamp(1.0, 30.0),
               terrainElevationMsl: (t.altitude - hag).clamp(0.0, 6000.0),
               forwardBlocks: forwardBlocks,
+            );
+          },
+        );
+      case WidgetType.thermalStats:
+        return ValueSelector<CockpitTelemetry, ThermalSessionStats?>(
+          listenable: telemetry,
+          select: (t) => t.effectiveThermalSession,
+          builder: (context, session) {
+            RebuildProbe.tick(_probeKey);
+            return ThermalStatsWidget(
+              stats: session,
+              tier: tier,
             );
           },
         );

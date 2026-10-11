@@ -17,6 +17,7 @@ enum WidgetType {
   mapZoomRocker,
   mapRecenter,
   airspaceSideCut,
+  thermalStats,
 }
 
 extension WidgetTypeX on WidgetType {
@@ -67,6 +68,8 @@ extension WidgetTypeX on WidgetType {
         return 'Recenter';
       case WidgetType.airspaceSideCut:
         return 'Airspace profile';
+      case WidgetType.thermalStats:
+        return 'Thermal stats';
     }
   }
 }
