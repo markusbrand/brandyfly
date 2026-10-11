@@ -410,7 +410,7 @@ void showWidgetConfigDialog(
                                   ),
                                 ),
                                 value: curVarioShowAverager,
-                                activeColor: Colors.amberAccent,
+                                activeThumbColor: Colors.amberAccent,
                                 onChanged: (val) => setDialogState(
                                   () => curVarioShowAverager = val,
                                 ),

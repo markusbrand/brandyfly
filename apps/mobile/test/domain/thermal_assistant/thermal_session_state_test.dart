@@ -1,6 +1,4 @@
-import 'package:brandyfly/domain/thermal_assistant/thermal_assistant.dart';
 import 'package:brandyfly/domain/thermal_assistant/thermal_assistant_engine.dart';
-import 'package:brandyfly/domain/thermal_assistant/thermal_types.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

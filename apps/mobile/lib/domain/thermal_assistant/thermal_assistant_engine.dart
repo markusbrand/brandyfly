@@ -6,7 +6,6 @@
 library;
 
 import 'dart:collection';
-import 'dart:math' as math;
 
 import 'thermal_assistant.dart';
 import 'thermal_session_stats.dart';
