@@ -202,7 +202,14 @@ interfaces on a development laptop:
 
 ```sh
 cd apps/mobile
+
+# On Android emulator or physical device:
 flutter run -d android --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true
+
+# On MacBook / macOS devices (recommended default: clone locally and run in iOS Simulator):
+xcrun simctl boot "iPhone 17" 2>/dev/null || true
+open "/Applications/Xcode.app/Contents/Applications/DeviceHub.app" && osascript -e 'tell application "DeviceHub" to activate'
+flutter run -d iPhone --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true
 ```
 
 Optional defines:
