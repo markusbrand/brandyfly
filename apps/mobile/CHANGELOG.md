@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.16.0...brandyfly-v0.17.0) (2026-10-14)
+
+
+### Features
+
+* **instruments:** dual-indicator vario bar and dedicated thermal stats widget ([#268](https://github.com/markusbrand/brandyfly/issues/268)) ([620c480](https://github.com/markusbrand/brandyfly/commit/620c480896284b9f2fb441c6a7576ddb81483d0c))
+
 ## [0.16.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.15.0...brandyfly-v0.16.0) (2026-10-10)
 
 
