@@ -15,8 +15,12 @@ BrandyFly is an open-source, local-first paragliding vario and flight computer a
        `ssh garuda "export PATH=\$HOME/Android/Sdk/platform-tools:\$PATH; adb exec-out screencap -p" > /tmp/screen.png` and inspect with the `read` tool.
    - **On local workstation (Garuda PC)**:
      - Launch the local emulator with `~/bin/start-local-emulator.sh` and run `cd apps/mobile && flutter run -d emulator-5554` (or target Linux desktop directly with `flutter run -d linux`).
-   - **On Red Bull Mac laptop (macOS)**:
-     - Use the local iOS Simulator or Android emulator (`flutter run -d <simulator/emulator-id>`) or macOS desktop target (`flutter run -d macos`).
+   - **On MacBook / macOS devices (Default Mac workflow)**:
+     - It is always recommended to clone the repo locally and run the app locally in the iOS Simulator.
+     - Default command: `cd apps/mobile && flutter run -d iPhone --dart-define=BRANDYFLY_LOCAL_MOCK_FLIGHT_MODE=true` (or `-d "iPhone 17"`).
+     - Simulator window visibility: On macOS (Xcode 16+ / 27+), standalone `Simulator.app` is superseded by **Device Hub** (`/Applications/Xcode.app/Contents/Applications/DeviceHub.app`). Ensure the simulator is booted and the window is visible via:
+       1. Boot simulator if needed: `xcrun simctl boot "iPhone 17" 2>/dev/null || true`
+       2. Open and focus Device Hub: `open "/Applications/Xcode.app/Contents/Applications/DeviceHub.app" && osascript -e 'tell application "DeviceHub" to activate'` (or `open -a Simulator`).
 
 2. **"run the app on my connected android"**:
    - Targets the physical Android device.
