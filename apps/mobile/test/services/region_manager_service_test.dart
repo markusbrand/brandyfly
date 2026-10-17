@@ -9,6 +9,8 @@ import 'package:http/testing.dart';
 import 'package:brandyfly/services/region_manager_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('RegionManagerService', () {
     late Directory tempDir;
     late String customBasePath;
@@ -123,6 +125,27 @@ void main() {
       expect(catalog, isNotNull);
       expect(catalog!.regions.length, 2);
       expect(catalog.findRegion('alps-east'), isNotNull);
+    });
+
+    test('fetchCatalog falls back to bundled asset seed catalog when offline and no disk cache exists', () async {
+      final failingClient = MockClient((request) async {
+        throw const SocketException('No route to host');
+      });
+
+      final service = RegionManagerService(
+        customAppSupportDir: customBasePath,
+        catalogUrl: 'https://cdn.example/catalog.json',
+        httpClient: failingClient,
+      );
+
+      final catalog = await service.fetchCatalog();
+      expect(catalog, isNotNull);
+      expect(catalog!.regions, isNotEmpty);
+      expect(catalog.findRegion('alps-east'), isNotNull);
+
+      // Verify that bundled catalog was written to local cache
+      final cacheFile = File('$customBasePath/regions/catalog_cache.json');
+      expect(await cacheFile.exists(), isTrue);
     });
 
     test('downloadRegion performs resumable HTTP download, checksums, and atomic swap', () async {

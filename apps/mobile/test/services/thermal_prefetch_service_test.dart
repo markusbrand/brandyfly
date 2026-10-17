@@ -365,5 +365,20 @@ void main() {
         );
       },
     );
+
+    test(
+      'Scenario: runaway tile count (> 25000 tiles) skips prefetch',
+      () async {
+        autoEnabled = false;
+        const hugeBounds =
+            GeoBounds(west: -10.0, south: 30.0, east: 40.0, north: 70.0);
+        await writeHeaderOnlyPmtiles(regionDir('huge-region'), hugeBounds);
+        await service.notifyRegionsChanged();
+        kk7.requests.clear();
+
+        await service.prefetchRegion('huge-region');
+        expect(kk7.requests, isEmpty);
+      },
+    );
   });
 }
