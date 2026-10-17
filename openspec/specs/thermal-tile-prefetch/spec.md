@@ -7,7 +7,7 @@ Keeps KK7 thermal heatmap tiles available offline for every downloaded map regio
 ## Requirements
 
 ### Requirement: Region-scoped prefetch coverage
-For each downloaded map region, the application SHALL prefetch KK7 thermal tiles covering the region's bounding box for zoom levels 0 through 12, for the four time-of-day variants `all`, `morning`, `midday` and `evening` of the current season bin. The region bounding box SHALL be taken from the region catalog metadata when available, otherwise from the region's local map archive header.
+For each downloaded map region, the application SHALL prefetch KK7 thermal tiles covering the region's bounding box for zoom levels 0 through 12, for the four time-of-day variants `all`, `morning`, `midday` and `evening` of the current season bin. The region bounding box SHALL be resolved from region catalog metadata when available, falling back to regional `meta.json` or local map archive headers. The system SHALL verify that the calculated tile count does not exceed 25,000 tiles; regions exceeding this threshold SHALL be skipped to prevent resource exhaustion.
 
 #### Scenario: Coverage for a downloaded region
 - **WHEN** prefetch completes for a downloaded region in July
@@ -16,6 +16,14 @@ For each downloaded map region, the application SHALL prefetch KK7 thermal tiles
 #### Scenario: Region without catalog metadata
 - **WHEN** a region exists locally only as a map archive without catalog metadata
 - **THEN** its bounding box is read from the archive header and prefetch proceeds
+
+#### Scenario: Regional metadata bounds resolution
+- **WHEN** a region contains a local `meta.json` with valid geographic bounds
+- **THEN** the bounding box is successfully extracted and used for thermal prefetching
+
+#### Scenario: Runaway tile count protection
+- **WHEN** the calculated prefetch tile count for a region exceeds 25,000 tiles
+- **THEN** the system logs a warning and skips prefetch for that region to protect disk and memory
 
 ### Requirement: Season transition lookahead
 During the last calendar month of the current season bin (February, May, August, November), the application SHALL additionally prefetch the four time-of-day variants of the next season bin. Stored variants of season bins that are neither current nor next SHALL be deleted after the current season's variants are complete.
