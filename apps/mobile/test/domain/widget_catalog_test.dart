@@ -49,5 +49,43 @@ void main() {
       expect(widgetTypeFromName('thermalStats'), WidgetType.thermalStats);
       expect(WidgetType.thermalStats.displayName, 'Thermal stats');
     });
+
+    test('flightTime is defined in widgetCatalog with min 3x2 and presets', () {
+      final spec = specFor(WidgetType.flightTime);
+      expect(spec.minSize.w, 3);
+      expect(spec.minSize.h, 2);
+      expect(spec.defaultSize.w, 4);
+      expect(spec.defaultSize.h, 4);
+      expect(spec.presets[SizePreset.s], const GridSize(3, 2));
+      expect(spec.presets[SizePreset.m], const GridSize(4, 4));
+      expect(spec.presets[SizePreset.l], const GridSize(8, 5));
+      expect(spec.presets[SizePreset.full], const GridSize(16, 8));
+      expect(widgetTypeFromName('flightTime'), WidgetType.flightTime);
+      expect(WidgetType.flightTime.displayName, 'Flight time');
+
+      const tooSmall = GridRect(0, 0, 1, 1);
+      final clamped = clampGridRect(WidgetType.flightTime, tooSmall);
+      expect(clamped.w, 3);
+      expect(clamped.h, 2);
+    });
+
+    test('returnGlide is defined in widgetCatalog with min 4x3 and presets', () {
+      final spec = specFor(WidgetType.returnGlide);
+      expect(spec.minSize.w, 4);
+      expect(spec.minSize.h, 3);
+      expect(spec.defaultSize.w, 6);
+      expect(spec.defaultSize.h, 4);
+      expect(spec.presets[SizePreset.s], const GridSize(4, 3));
+      expect(spec.presets[SizePreset.m], const GridSize(6, 4));
+      expect(spec.presets[SizePreset.l], const GridSize(8, 5));
+      expect(spec.presets[SizePreset.full], const GridSize(16, 8));
+      expect(widgetTypeFromName('returnGlide'), WidgetType.returnGlide);
+      expect(WidgetType.returnGlide.displayName, 'Return glide');
+
+      const tooSmall = GridRect(0, 0, 2, 2);
+      final clamped = clampGridRect(WidgetType.returnGlide, tooSmall);
+      expect(clamped.w, 4);
+      expect(clamped.h, 3);
+    });
   });
 }

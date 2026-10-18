@@ -11,6 +11,8 @@ import '../../../../widgets/flight/airspace_side_cut_widget.dart';
 import '../../../core/rebuild_probe.dart';
 import '../../../core/value_selector.dart';
 import '../../instruments/views/altitude_sparkline_chart.dart';
+import '../../instruments/views/flight_time_widget.dart';
+import '../../instruments/views/return_glide_widget.dart';
 import '../../instruments/views/numeric_text_widget.dart';
 import '../../instruments/views/thermal_map_adapter.dart';
 import '../../instruments/views/thermal_map_widget.dart';
@@ -224,6 +226,60 @@ class FlightWidgetContent extends StatelessWidget {
             RebuildProbe.tick(_probeKey);
             return ThermalStatsWidget(
               stats: session,
+              tier: tier,
+            );
+          },
+        );
+      case WidgetType.flightTime:
+        return ValueSelector<CockpitTelemetry, (int?, int?, bool, bool)>(
+          listenable: telemetry,
+          select: (t) => (
+            t.flightDuration?.inSeconds,
+            t.takeoffTime?.millisecondsSinceEpoch,
+            t.isStale,
+            t.hasSource,
+          ),
+          builder: (context, v) {
+            RebuildProbe.tick(_probeKey);
+            final t = telemetry.value;
+            return FlightTimeWidget(
+              flightDuration: t.flightDuration,
+              takeoffTime: t.takeoffTime,
+              localTime: t.takeoffTime != null && t.flightDuration != null
+                  ? t.takeoffTime!.add(t.flightDuration!)
+                  : null,
+              isStale: v.$3,
+              tier: tier,
+            );
+          },
+        );
+      case WidgetType.returnGlide:
+        return ValueSelector<
+          CockpitTelemetry,
+          (int?, int?, int?, int?, int?, bool, bool)
+        >(
+          listenable: telemetry,
+          select: (t) => (
+            t.rtlDistanceMeters?.round(),
+            t.rtlRequiredGlide != null
+                ? (t.rtlRequiredGlide! * 10).round()
+                : null,
+            t.rtlAltitudeMarginMeters?.round(),
+            t.rtlBearingDegrees?.round(),
+            t.effectiveHeading.round(),
+            t.isStale,
+            t.hasSource,
+          ),
+          builder: (context, v) {
+            RebuildProbe.tick(_probeKey);
+            final t = telemetry.value;
+            return ReturnGlideWidget(
+              requiredGlide: t.rtlRequiredGlide,
+              distanceMeters: t.rtlDistanceMeters,
+              altitudeMarginMeters: t.rtlAltitudeMarginMeters,
+              bearingDegrees: t.rtlBearingDegrees,
+              gliderHeadingDegrees: t.effectiveHeading,
+              isStale: v.$6,
               tier: tier,
             );
           },

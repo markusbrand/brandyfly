@@ -79,6 +79,18 @@ const List<_PickerEntry> _instrumentEntries = [
     'Altitude gain, average climb, duration & turns for active/last thermal',
     Icons.query_stats,
   ),
+  _PickerEntry(
+    WidgetType.flightTime,
+    'Flight Time',
+    'Displays airborne duration, clock & takeoff time',
+    Icons.timer_outlined,
+  ),
+  _PickerEntry(
+    WidgetType.returnGlide,
+    'Return Glide (RTL)',
+    'Required glide ratio, launch distance & altitude margin',
+    Icons.navigation_outlined,
+  ),
 ];
 
 const List<_PickerEntry> _mapControlEntries = [

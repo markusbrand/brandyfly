@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../domain/models/cockpit_telemetry.dart';
+import '../../domain/navigation/geodesic_navigation.dart';
 import '../../domain/thermal_assistant/climb_averager.dart';
 import '../../domain/thermal_assistant/thermal_assistant_engine.dart';
 import '../../models/flight_model.dart';
+import '../../models/lat_lng.dart';
 import '../../services/elevation_service.dart';
 import '../../services/flight_replay_service.dart';
 import '../../services/flight_tracking_service.dart';
@@ -166,6 +168,47 @@ class TelemetryRepository {
     final externalWind = s.windDirectionDeg != null && s.windSpeedKmh != null;
     final wind = thermal.wind;
 
+    final takeoff = _trackingService?.takeoffPoint;
+    final DateTime? takeoffTime;
+    final Duration? flightDuration;
+    final LatLng? takeoffLocation;
+    final double? takeoffAltitude;
+    double? rtlDistance;
+    double? rtlBearing;
+    double? rtlGlide;
+    double? rtlMargin;
+
+    if (takeoff != null) {
+      takeoffTime = takeoff.timestamp;
+      flightDuration = s.timestamp.difference(takeoffTime);
+      takeoffLocation = LatLng(takeoff.latitude, takeoff.longitude);
+      takeoffAltitude = takeoff.altitude;
+
+      var dist = GeodesicNavigation.distanceMeters(
+        s.latitude,
+        s.longitude,
+        takeoff.latitude,
+        takeoff.longitude,
+      );
+      if (dist <= 15.0) {
+        dist = 0.0;
+      }
+      rtlDistance = dist;
+      rtlBearing = GeodesicNavigation.bearingDegrees(
+        s.latitude,
+        s.longitude,
+        takeoff.latitude,
+        takeoff.longitude,
+      );
+      rtlMargin = s.altitude - takeoff.altitude;
+      rtlGlide = GeodesicNavigation.requiredGlide(dist, rtlMargin);
+    } else {
+      takeoffTime = null;
+      flightDuration = null;
+      takeoffLocation = null;
+      takeoffAltitude = null;
+    }
+
     _liveSample = CockpitTelemetry(
       altitude: s.altitude,
       speed: s.speed,
@@ -184,6 +227,14 @@ class TelemetryRepository {
       thermal: thermal,
       thermalSession: thermal.session,
       hasSource: true,
+      takeoffTime: takeoffTime,
+      flightDuration: flightDuration,
+      takeoffLocation: takeoffLocation,
+      takeoffAltitude: takeoffAltitude,
+      rtlDistanceMeters: rtlDistance,
+      rtlBearingDegrees: rtlBearing,
+      rtlRequiredGlide: rtlGlide,
+      rtlAltitudeMarginMeters: rtlMargin,
     );
     if (!_replayActive) _emitLiveOrIdle();
   }
@@ -197,6 +248,33 @@ class TelemetryRepository {
       _telemetry.value = base;
       return;
     }
+
+    final firstPoint = points.first;
+    final takeoffTime = firstPoint.timestamp;
+    final flightDuration = _replayService.elapsedDuration;
+    final takeoffLocation = LatLng(firstPoint.latitude, firstPoint.longitude);
+    final takeoffAltitude = firstPoint.altitude;
+
+    final curPt = _replayService.currentPoint ?? firstPoint;
+    var dist = GeodesicNavigation.distanceMeters(
+      curPt.latitude,
+      curPt.longitude,
+      firstPoint.latitude,
+      firstPoint.longitude,
+    );
+    if (dist <= 15.0) {
+      dist = 0.0;
+    }
+    final rtlDistance = dist;
+    final rtlBearing = GeodesicNavigation.bearingDegrees(
+      curPt.latitude,
+      curPt.longitude,
+      firstPoint.latitude,
+      firstPoint.longitude,
+    );
+    final rtlMargin = curPt.altitude - firstPoint.altitude;
+    final rtlGlide = GeodesicNavigation.requiredGlide(dist, rtlMargin);
+
     // Thermal state is derived solely from recorded points (deterministic).
     final thermal = _replayThermal.advanceTo(
       points,
@@ -210,11 +288,60 @@ class TelemetryRepository {
       thermal: thermal,
       thermalSession: thermal.session,
       hasSource: true,
+      takeoffTime: takeoffTime,
+      flightDuration: flightDuration,
+      takeoffLocation: takeoffLocation,
+      takeoffAltitude: takeoffAltitude,
+      rtlDistanceMeters: rtlDistance,
+      rtlBearingDegrees: rtlBearing,
+      rtlRequiredGlide: rtlGlide,
+      rtlAltitudeMarginMeters: rtlMargin,
     );
   }
 
   void _onTrackingChanged() {
     if (_disposed || _replayActive) return;
+    if (_liveSample != null) {
+      final takeoff = _trackingService?.takeoffPoint;
+      if (takeoff != null) {
+        final lat = _liveSample!.latitude ?? takeoff.latitude;
+        final lon = _liveSample!.longitude ?? takeoff.longitude;
+        var dist = GeodesicNavigation.distanceMeters(
+          lat,
+          lon,
+          takeoff.latitude,
+          takeoff.longitude,
+        );
+        if (dist <= 15.0) dist = 0.0;
+        final margin = _liveSample!.altitude - takeoff.altitude;
+        _liveSample = _liveSample!.copyWith(
+          takeoffTime: takeoff.timestamp,
+          flightDuration: _liveSample!.flightDuration ?? Duration.zero,
+          takeoffLocation: LatLng(takeoff.latitude, takeoff.longitude),
+          takeoffAltitude: takeoff.altitude,
+          rtlDistanceMeters: dist,
+          rtlBearingDegrees: GeodesicNavigation.bearingDegrees(
+            lat,
+            lon,
+            takeoff.latitude,
+            takeoff.longitude,
+          ),
+          rtlRequiredGlide: GeodesicNavigation.requiredGlide(dist, margin),
+          rtlAltitudeMarginMeters: margin,
+        );
+      } else {
+        _liveSample = _liveSample!.copyWith(
+          takeoffTime: null,
+          flightDuration: null,
+          takeoffLocation: null,
+          takeoffAltitude: null,
+          rtlDistanceMeters: null,
+          rtlBearingDegrees: null,
+          rtlRequiredGlide: null,
+          rtlAltitudeMarginMeters: null,
+        );
+      }
+    }
     _emitLiveOrIdle();
   }
 

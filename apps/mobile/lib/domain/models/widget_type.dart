@@ -18,6 +18,8 @@ enum WidgetType {
   mapRecenter,
   airspaceSideCut,
   thermalStats,
+  flightTime,
+  returnGlide,
 }
 
 extension WidgetTypeX on WidgetType {
@@ -70,6 +72,10 @@ extension WidgetTypeX on WidgetType {
         return 'Airspace profile';
       case WidgetType.thermalStats:
         return 'Thermal stats';
+      case WidgetType.flightTime:
+        return 'Flight time';
+      case WidgetType.returnGlide:
+        return 'Return glide';
     }
   }
 }
