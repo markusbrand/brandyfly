@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:brandyfly/domain/models/widget_type.dart';
 import 'package:brandyfly/domain/models/ui_config.dart';
-import 'package:brandyfly/domain/models/widget_catalog.dart';
 import 'package:brandyfly/services/screen_manager_service.dart';
 import 'package:brandyfly/ui/features/layout_editor/views/widget_picker_sheet.dart';
 import 'package:brandyfly/ui/features/layout_editor/views/inspector_panel.dart';

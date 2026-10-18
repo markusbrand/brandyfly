@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:brandyfly/data/repositories/telemetry_repository.dart';
 import 'package:brandyfly/domain/models/size_tier.dart';
 import 'package:brandyfly/domain/models/ui_config.dart';
-import 'package:brandyfly/domain/models/widget_type.dart';
 import 'package:brandyfly/services/flight_replay_service.dart';
 import 'package:brandyfly/services/igc_parser_service.dart';
 import 'package:brandyfly/ui/features/flight_canvas/views/widget_slot.dart';

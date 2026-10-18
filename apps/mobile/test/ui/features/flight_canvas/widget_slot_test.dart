@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:brandyfly/domain/models/cockpit_telemetry.dart';
 import 'package:brandyfly/domain/models/size_tier.dart';
 import 'package:brandyfly/domain/models/ui_config.dart';
-import 'package:brandyfly/domain/models/widget_type.dart';
 import 'package:brandyfly/ui/core/rebuild_probe.dart';
 import 'package:brandyfly/ui/features/flight_canvas/views/widget_slot.dart';
 import 'package:brandyfly/ui/features/instruments/views/flight_time_widget.dart';
