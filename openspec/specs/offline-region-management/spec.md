@@ -6,7 +6,7 @@ Manage offline regional flight datasets, enabling pilots to browse curated mount
 ## Requirements
 
 ### Requirement: Region catalog browsing
-The application SHALL fetch and display a catalog of available offline map regions from a remote server.
+The application SHALL fetch and display a catalog of available offline map regions from a remote server. When network access is unavailable and no cached catalog exists in local app storage, the application SHALL fall back to a bundled asset seed catalog (`assets/map_data/catalog.json`) to allow offline region browsing without crashes or network blocking.
 
 #### Scenario: Catalog loaded successfully
 - **WHEN** the pilot opens the region manager screen with internet connectivity
@@ -14,7 +14,11 @@ The application SHALL fetch and display a catalog of available offline map regio
 
 #### Scenario: Catalog fetch fails (offline)
 - **WHEN** the pilot opens the region manager without internet connectivity
-- **THEN** the app displays the last cached catalog (if available) or a message indicating that internet is required to browse available regions, without crashing or hanging
+- **THEN** the app displays the last cached catalog (if available) or falls back to the bundled seed catalog, without crashing or hanging
+
+#### Scenario: Fallback to bundled seed catalog
+- **WHEN** the app starts offline for the first time without a cached catalog on disk
+- **THEN** the application loads the bundled asset seed catalog and displays default curated offline regions
 
 ### Requirement: Region download with progress
 The application SHALL download region PMTiles files in the background with visible progress indication.
