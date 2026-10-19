@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.16.0...brandyfly-v0.17.0) (2026-10-19)
+
+
+### Features
+
+* flight duration and return-to-launch (RTL) widgets ([#273](https://github.com/markusbrand/brandyfly/issues/273)) ([5a3b4af](https://github.com/markusbrand/brandyfly/commit/5a3b4af31903c55ce1705e59f6b782728e8e7d3b))
+* **instruments:** dual-indicator vario bar and dedicated thermal stats widget ([#268](https://github.com/markusbrand/brandyfly/issues/268)) ([620c480](https://github.com/markusbrand/brandyfly/commit/620c480896284b9f2fb441c6a7576ddb81483d0c))
+
 ## [0.16.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.15.0...brandyfly-v0.16.0) (2026-10-10)
 
 
