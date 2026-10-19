@@ -124,7 +124,8 @@ class FlightTimeWidget extends StatelessWidget {
 
   Widget _buildCompact(String durationStr) {
     final effectiveClock = localTime ?? DateTime.now();
-    final clockStr = '${effectiveClock.hour.toString().padLeft(2, '0')}:${effectiveClock.minute.toString().padLeft(2, '0')}';
+    final clockStr =
+        '${effectiveClock.hour.toString().padLeft(2, '0')}:${effectiveClock.minute.toString().padLeft(2, '0')}';
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -133,55 +134,66 @@ class FlightTimeWidget extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(
-              child: Text(
-                'FLIGHT TIME',
-                style: CockpitTokens.instrumentLabel.copyWith(
-                  fontSize: 10,
-                  letterSpacing: 0.6,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'FLIGHT TIME',
+                  style: CockpitTokens.instrumentLabel.copyWith(
+                    fontSize: 10,
+                    letterSpacing: 0.6,
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (isStale)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                decoration: BoxDecoration(
-                  color: CockpitTokens.cautionAmber.withAlpha(50),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: const Text(
-                  'STALE',
-                  style: TextStyle(
-                    color: CockpitTokens.cautionAmber,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              )
-            else if (isStandby)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.white12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: const Text(
-                  'STANDBY',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              )
-            else
-              Text(
-                clockStr,
-                style: CockpitTokens.instrumentLabel.copyWith(
-                  fontSize: 9,
-                  color: Colors.white60,
-                ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: isStale
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 3, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: CockpitTokens.cautionAmber.withAlpha(50),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: const Text(
+                          'STALE',
+                          style: TextStyle(
+                            color: CockpitTokens.cautionAmber,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    : isStandby
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 3, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.white12,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: const Text(
+                              'STANDBY',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            clockStr,
+                            style: CockpitTokens.instrumentLabel.copyWith(
+                              fontSize: 9,
+                              color: Colors.white60,
+                            ),
+                          ),
               ),
+            ),
           ],
         ),
         Expanded(
