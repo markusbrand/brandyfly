@@ -114,6 +114,32 @@ const WidgetSpec _thermalStatsSpec = WidgetSpec(
   presets: _thermalStatsPresets,
 );
 
+const Map<SizePreset, GridSize> _flightTimePresets = {
+  SizePreset.s: GridSize(3, 2),
+  SizePreset.m: GridSize(4, 4),
+  SizePreset.l: GridSize(8, 5),
+  SizePreset.full: GridSize(16, 8),
+};
+
+const WidgetSpec _flightTimeSpec = WidgetSpec(
+  minSize: GridSize(3, 2),
+  defaultSize: GridSize(4, 4),
+  presets: _flightTimePresets,
+);
+
+const Map<SizePreset, GridSize> _returnGlidePresets = {
+  SizePreset.s: GridSize(4, 3),
+  SizePreset.m: GridSize(6, 4),
+  SizePreset.l: GridSize(8, 5),
+  SizePreset.full: GridSize(16, 8),
+};
+
+const WidgetSpec _returnGlideSpec = WidgetSpec(
+  minSize: GridSize(4, 3),
+  defaultSize: GridSize(6, 4),
+  presets: _returnGlidePresets,
+);
+
 /// Size rules for every [WidgetType]. Every type MUST have an entry.
 const Map<WidgetType, WidgetSpec> widgetCatalog = {
   WidgetType.altitude: _numericSpec,
@@ -165,6 +191,8 @@ const Map<WidgetType, WidgetSpec> widgetCatalog = {
   WidgetType.mapRecenter: _buttonSpec,
   WidgetType.airspaceSideCut: _sideCutSpec,
   WidgetType.thermalStats: _thermalStatsSpec,
+  WidgetType.flightTime: _flightTimeSpec,
+  WidgetType.returnGlide: _returnGlideSpec,
   WidgetType.mapZoomRocker: WidgetSpec(
     minSize: GridSize(1, 2),
     defaultSize: GridSize(3, 6),

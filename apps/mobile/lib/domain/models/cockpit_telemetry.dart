@@ -27,6 +27,14 @@ class CockpitTelemetry {
     this.thermal = ThermalAssistantState.idle,
     this.thermalSession,
     this.hasSource = false,
+    this.takeoffTime,
+    this.flightDuration,
+    this.takeoffLocation,
+    this.takeoffAltitude,
+    this.rtlDistanceMeters,
+    this.rtlBearingDegrees,
+    this.rtlRequiredGlide,
+    this.rtlAltitudeMarginMeters,
   });
 
   static const List<double> defaultHistory = [
@@ -77,6 +85,30 @@ class CockpitTelemetry {
   /// idle/demo telemetry (instruments may then render labelled previews).
   final bool hasSource;
 
+  /// Confirmed takeoff timestamp; null when in pre-flight standby.
+  final DateTime? takeoffTime;
+
+  /// Elapsed duration since takeoff; null when in pre-flight standby.
+  final Duration? flightDuration;
+
+  /// Confirmed takeoff coordinates; null when in pre-flight standby.
+  final LatLng? takeoffLocation;
+
+  /// Takeoff altitude (meters MSL); null when in pre-flight standby.
+  final double? takeoffAltitude;
+
+  /// Geodesic horizontal distance to launch (meters); null when launch is unknown.
+  final double? rtlDistanceMeters;
+
+  /// True bearing to launch (degrees); null when launch is unknown.
+  final double? rtlBearingDegrees;
+
+  /// Required glide ratio (L/D) to reach takeoff; null when below launch or within 15m.
+  final double? rtlRequiredGlide;
+
+  /// Altitude margin above takeoff (meters, current_alt - takeoff_alt); null when launch is unknown.
+  final double? rtlAltitudeMarginMeters;
+
   bool get hasWind => windDir != null && windSpeed != null;
 
   double get effectiveAverageClimb => averageClimb ?? climb;
@@ -110,6 +142,32 @@ class CockpitTelemetry {
     final rawTrack = map['trackPoints'];
     final rawFlight = map['flightPoints'] ?? map['activeFlightPoints'];
 
+    final rawTakeoffTime = map['takeoffTime'];
+    final DateTime? takeoffTime = rawTakeoffTime is DateTime
+        ? rawTakeoffTime
+        : (rawTakeoffTime is String ? DateTime.tryParse(rawTakeoffTime) : null);
+
+    final rawFlightDuration = map['flightDuration'];
+    final Duration? flightDuration = rawFlightDuration is Duration
+        ? rawFlightDuration
+        : (rawFlightDuration is int
+            ? Duration(seconds: rawFlightDuration)
+            : (rawFlightDuration is num
+                ? Duration(milliseconds: (rawFlightDuration * 1000).round())
+                : null));
+
+    final rawTakeoffLocation = map['takeoffLocation'];
+    final LatLng? takeoffLocation;
+    if (rawTakeoffLocation is LatLng) {
+      takeoffLocation = rawTakeoffLocation;
+    } else if (rawTakeoffLocation is Map) {
+      final lat = (rawTakeoffLocation['latitude'] ?? rawTakeoffLocation['lat']) as num?;
+      final lng = (rawTakeoffLocation['longitude'] ?? rawTakeoffLocation['lng']) as num?;
+      takeoffLocation = (lat != null && lng != null) ? LatLng(lat.toDouble(), lng.toDouble()) : null;
+    } else {
+      takeoffLocation = null;
+    }
+
     return CockpitTelemetry(
       altitude: d('altitude', 1450.0),
       speed: d('speed', 42.5),
@@ -127,6 +185,14 @@ class CockpitTelemetry {
       flightPoints: rawFlight is List<FlightPoint> ? rawFlight : null,
       history: history,
       isStale: map['isStale'] == true,
+      takeoffTime: takeoffTime,
+      flightDuration: flightDuration,
+      takeoffLocation: takeoffLocation,
+      takeoffAltitude: (map['takeoffAltitude'] as num?)?.toDouble(),
+      rtlDistanceMeters: (map['rtlDistanceMeters'] as num?)?.toDouble(),
+      rtlBearingDegrees: (map['rtlBearingDegrees'] as num?)?.toDouble(),
+      rtlRequiredGlide: (map['rtlRequiredGlide'] as num?)?.toDouble(),
+      rtlAltitudeMarginMeters: (map['rtlAltitudeMarginMeters'] as num?)?.toDouble(),
     );
   }
 
@@ -150,6 +216,14 @@ class CockpitTelemetry {
     ThermalAssistantState? thermal,
     Object? thermalSession = _sentinel,
     bool? hasSource,
+    Object? takeoffTime = _sentinel,
+    Object? flightDuration = _sentinel,
+    Object? takeoffLocation = _sentinel,
+    Object? takeoffAltitude = _sentinel,
+    Object? rtlDistanceMeters = _sentinel,
+    Object? rtlBearingDegrees = _sentinel,
+    Object? rtlRequiredGlide = _sentinel,
+    Object? rtlAltitudeMarginMeters = _sentinel,
   }) {
     return CockpitTelemetry(
       altitude: altitude ?? this.altitude,
@@ -179,6 +253,30 @@ class CockpitTelemetry {
           ? this.thermalSession
           : (thermalSession as ThermalSessionStats?),
       hasSource: hasSource ?? this.hasSource,
+      takeoffTime: identical(takeoffTime, _sentinel)
+          ? this.takeoffTime
+          : (takeoffTime as DateTime?),
+      flightDuration: identical(flightDuration, _sentinel)
+          ? this.flightDuration
+          : (flightDuration as Duration?),
+      takeoffLocation: identical(takeoffLocation, _sentinel)
+          ? this.takeoffLocation
+          : (takeoffLocation as LatLng?),
+      takeoffAltitude: identical(takeoffAltitude, _sentinel)
+          ? this.takeoffAltitude
+          : (takeoffAltitude as double?),
+      rtlDistanceMeters: identical(rtlDistanceMeters, _sentinel)
+          ? this.rtlDistanceMeters
+          : (rtlDistanceMeters as double?),
+      rtlBearingDegrees: identical(rtlBearingDegrees, _sentinel)
+          ? this.rtlBearingDegrees
+          : (rtlBearingDegrees as double?),
+      rtlRequiredGlide: identical(rtlRequiredGlide, _sentinel)
+          ? this.rtlRequiredGlide
+          : (rtlRequiredGlide as double?),
+      rtlAltitudeMarginMeters: identical(rtlAltitudeMarginMeters, _sentinel)
+          ? this.rtlAltitudeMarginMeters
+          : (rtlAltitudeMarginMeters as double?),
     );
   }
 }

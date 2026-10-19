@@ -44,6 +44,10 @@ class FlightTrackingService extends ChangeNotifier {
   FlightSettings get settings => _settings;
   ITelemetrySource? get telemetrySource => _telemetrySource;
   List<FlightPoint> get activeFlightPoints => _activeFlightPointsView;
+  FlightPoint? get takeoffPoint =>
+      (_state != FlightState.groundPreflight && _activeFlightPoints.isNotEmpty)
+          ? _activeFlightPoints.first
+          : null;
   FlightModel? get lastCompletedFlight => _lastCompletedFlight;
 
   Stream<FlightState> get stateStream => _stateController.stream;
