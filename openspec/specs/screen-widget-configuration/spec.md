@@ -19,11 +19,27 @@ Provides autonomous per-screen layout strategies, widget-specific styling and la
 ## Requirements
 
 ### Requirement: Screen-Level Layout Strategy and Management
-Each flight screen SHALL encapsulate its own layout strategy, unique screen identifier, display title, auto-switching trigger rules, and ordered collection of placed widgets. The system SHALL preserve the active screen identifier and widget selection state when modifying or deleting inactive screens, only transitioning the active screen when the currently active screen is explicitly deleted. Automatic switching SHALL follow the thermal assistant flight mode and climb rate and SHALL be evaluated continuously.
+Each flight screen SHALL encapsulate its own layout strategy, unique screen identifier, display title, auto-switching trigger rules, and ordered collection of placed widgets. The system SHALL preserve the active screen identifier and widget selection state when modifying or deleting inactive screens, only transitioning the active screen when the currently active screen is explicitly deleted.
 
 #### Scenario: Screen-specific layout strategy rendering
 - **WHEN** a flight screen is configured with a specific layout strategy (e.g. Freeform HUD, Snap-to-Grid, or Sidebar Dashboard)
 - **THEN** the application SHALL render that screen using its defined strategy without affecting the layout strategy of other screens
+
+#### Scenario: Removing an inactive screen maintains active screen and widget selection
+- **WHEN** the user or system removes a screen whose ID is not the active screen ID
+- **THEN** the application SHALL remove the target screen from the configuration
+- **AND** the active screen ID and selected widget ID SHALL remain unchanged
+
+#### Scenario: Removing non-existent screen ID is a safe no-op
+- **WHEN** a screen removal request is received for an ID that does not exist in the screen configuration
+- **THEN** the application SHALL retain the existing screen configuration, active screen ID, and widget selection without broadcasting spurious change notifications
+
+#### Scenario: Removing active screen transitions to next available screen
+- **WHEN** the user removes the screen that is currently active and other screens remain
+- **THEN** the application SHALL remove the screen, clear widget selection, and set the active screen ID to the first available remaining screen
+
+### Requirement: Thermal Screen Auto-Switching
+Automatic screen switching SHALL follow the thermal assistant flight mode and climb rate, and SHALL be evaluated continuously so that a switch suppressed by the rate limit, manual override, or edit mode is applied as soon as the suppression ends and its condition still holds.
 
 #### Scenario: Auto-switching screen trigger execution
 - **WHEN** the thermal assistant flight mode is circling, the average climb rate is above 0 m/s, telemetry is not stale, and a screen is configured with the thermal circling trigger
@@ -62,19 +78,6 @@ Each flight screen SHALL encapsulate its own layout strategy, unique screen iden
 #### Scenario: No configured trigger
 - **WHEN** no screen is configured with a matching trigger
 - **THEN** the active screen SHALL remain unchanged on flight-mode transitions
-
-#### Scenario: Removing an inactive screen maintains active screen and widget selection
-- **WHEN** the user or system removes a screen whose ID is not the active screen ID
-- **THEN** the application SHALL remove the target screen from the configuration
-- **AND** the active screen ID and selected widget ID SHALL remain unchanged
-
-#### Scenario: Removing non-existent screen ID is a safe no-op
-- **WHEN** a screen removal request is received for an ID that does not exist in the screen configuration
-- **THEN** the application SHALL retain the existing screen configuration, active screen ID, and widget selection without broadcasting spurious change notifications
-
-#### Scenario: Removing active screen transitions to next available screen
-- **WHEN** the user removes the screen that is currently active and other screens remain
-- **THEN** the application SHALL remove the screen, clear widget selection, and set the active screen ID to the first available remaining screen
 
 ### Requirement: Widget Instance Specific Configuration
 Each widget placement on a screen SHALL encapsulate its own visual style, zoom level, and specialized presentation options, falling back to default built-in styles when unconfigured.
