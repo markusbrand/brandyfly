@@ -9,8 +9,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-CockpitTelemetry _mode(bool circling, int rev) => CockpitTelemetry(
+CockpitTelemetry _mode(
+  bool circling,
+  int rev, {
+  double averageClimb = 1.5,
+  bool stale = false,
+}) => CockpitTelemetry(
   hasSource: true,
+  averageClimb: averageClimb,
+  isStale: stale,
   thermal: ThermalAssistantState(
     mode: circling
         ? const FlightModeState.circling(TurnDirection.right)
@@ -26,9 +33,28 @@ void main() {
   late DateTime now;
   var rev = 0;
 
-  void circle() => telemetry.value = _mode(true, ++rev);
+  void circle({double climb = 1.5, bool stale = false}) =>
+      telemetry.value = _mode(true, ++rev, averageClimb: climb, stale: stale);
   void glide() => telemetry.value = _mode(false, ++rev);
   void advance(int seconds) => now = now.add(Duration(seconds: seconds));
+
+  /// Glides for [seconds] with 1 Hz telemetry updates (first update at t=0).
+  void glideFor(int seconds) {
+    glide();
+    for (var i = 0; i < seconds; i++) {
+      advance(1);
+      glide();
+    }
+  }
+
+  /// Circles for [seconds] with 1 Hz telemetry updates.
+  void circleFor(int seconds, {double climb = 1.5}) {
+    circle(climb: climb);
+    for (var i = 0; i < seconds; i++) {
+      advance(1);
+      circle(climb: climb);
+    }
+  }
 
   setUp(() {
     screens = ScreenManagerService();
@@ -60,11 +86,71 @@ void main() {
     expect(screens.manualScreenChangeCount, 0, reason: 'automatic switch');
   });
 
-  test('returns to the previous screen when gliding again', () {
+  test('returns to the previous screen after ~10 s of straight flight', () {
     circle();
     advance(30);
+    // The detector reports gliding after 8 s of stable heading; the
+    // controller holds a further 2 s.
+    glideFor(1);
+    expect(screens.activeScreen.id, 'thermaling', reason: 'hold not elapsed');
+    advance(1);
     glide();
     expect(screens.activeScreen.id, 'normal_flight');
+  });
+
+  test('returns to the last active screen, not a fixed one', () {
+    screens.setActiveScreen('map_screen'); // manual
+    glide(); // registers the override
+    advance(61);
+    circle();
+    expect(screens.activeScreen.id, 'thermaling');
+    advance(30);
+    glideFor(2);
+    expect(screens.activeScreen.id, 'map_screen');
+  });
+
+  test('renewed circling cancels the pending return', () {
+    circle();
+    advance(30);
+    glideFor(1);
+    circleFor(5);
+    expect(screens.activeScreen.id, 'thermaling');
+    glideFor(1);
+    expect(screens.activeScreen.id, 'thermaling', reason: 'hold restarted');
+    advance(1);
+    glide();
+    expect(screens.activeScreen.id, 'normal_flight');
+  });
+
+  test('circling in sink does not switch until lift is found', () {
+    circleFor(10, climb: -0.8);
+    expect(screens.activeScreen.id, 'normal_flight');
+    circle(climb: 0.0);
+    expect(screens.activeScreen.id, 'normal_flight');
+    circle(climb: 0.4);
+    expect(screens.activeScreen.id, 'thermaling');
+  });
+
+  test('stale telemetry does not trigger the thermal screen', () {
+    circle(stale: true);
+    expect(screens.activeScreen.id, 'normal_flight');
+    circle();
+    expect(screens.activeScreen.id, 'thermaling');
+  });
+
+  test('switches only once per circling phase', () {
+    circle();
+    advance(70);
+    screens.setActiveScreen('normal_flight'); // manual, still circling
+    circleFor(70);
+    expect(
+      screens.activeScreen.id,
+      'normal_flight',
+      reason: 'pilot choice respected for this thermal',
+    );
+    glideFor(15);
+    circle();
+    expect(screens.activeScreen.id, 'thermaling', reason: 'next thermal');
   });
 
   test('prefers the glide-straight screen on exit when configured', () {
@@ -74,7 +160,7 @@ void main() {
     );
     circle();
     advance(30);
-    glide();
+    glideFor(2);
     expect(screens.activeScreen.id, 'map_screen');
   });
 
@@ -87,23 +173,28 @@ void main() {
     circle();
     expect(screens.activeScreen.id, 'map_screen');
     advance(31);
-    glide();
     circle();
-    expect(screens.activeScreen.id, 'thermaling');
+    expect(screens.activeScreen.id, 'thermaling', reason: 'deferred entry');
   });
 
-  test('no more than one automatic switch per 10 s', () {
+  test('rate-limited return is deferred, not dropped (short search turn)', () {
     circle();
     expect(screens.activeScreen.id, 'thermaling');
     advance(5);
-    glide();
+    glideFor(3);
     expect(screens.activeScreen.id, 'thermaling', reason: 'rate limited');
+    advance(2); // 10 s since the automatic switch
+    glide();
+    expect(screens.activeScreen.id, 'normal_flight');
   });
 
   test('no switching while layout edit mode is active', () {
     screens.toggleEditMode(true);
     circle();
     expect(screens.activeScreen.id, 'normal_flight');
+    screens.toggleEditMode(false);
+    circle();
+    expect(screens.activeScreen.id, 'thermaling', reason: 'deferred');
   });
 
   test('no configured trigger leaves the active screen unchanged', () {
@@ -122,7 +213,7 @@ void main() {
     advance(70);
     screens.setActiveScreen('map_screen'); // manual
     advance(70);
-    glide();
+    glideFor(15);
     expect(screens.activeScreen.id, 'map_screen');
   });
 
