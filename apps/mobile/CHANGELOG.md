@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.17.0...brandyfly-v0.17.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **screens:** reliable thermal screen auto-switch ([#274](https://github.com/markusbrand/brandyfly/issues/274)) ([afab77b](https://github.com/markusbrand/brandyfly/commit/afab77b3974cea6989acb7be1717b4d0a6a91f48))
+
 ## [0.17.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.16.0...brandyfly-v0.17.0) (2026-10-19)
 
 
