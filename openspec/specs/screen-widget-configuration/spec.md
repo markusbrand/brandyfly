@@ -280,16 +280,31 @@ The application SHALL track an active selected widget in Edit Mode, support sele
 - **AND** restore the standard operative flight interface with all widgets rendered in their configured persistent stack depth order with zero selection overlays.
 
 ### Requirement: Floating Docked Widget Inspector Panel
-The application SHALL display an elevated floating or docked Inspector Panel in Edit Mode whenever a widget is selected, providing immediate access to widget configuration, stepper nudging, dimension adjustments, size presets, stack layer reordering controls, and removal. The panel SHALL reflow its controls to the available width instead of scaling them down.
+The application SHALL display an elevated unified Edit Mode Dock combining the `WidgetInspectorPanel` (when selected) and `EditToolbar` in Edit Mode. The dock SHALL automatically dodge selected widgets by default, support free 2D dragging with safe-area clamping, reset to auto-dodge, minimize into a compact pill, and reflow controls to available width without scaling.
 
 #### Scenario: Displaying inspector panel upon widget selection
-- **WHEN** any widget on the active screen is selected in Edit Mode
-- **THEN** the application SHALL render the Inspector Panel docked next to the edit toolbar on the side of the canvas away from the selected widget: above the bottom toolbar on tall canvases (or at the top edge when the selected widget's center lies in the lower half), and in a side panel on wide canvases at least 600 dp wide (on the side opposite the selected widget's center)
+- **WHEN** any widget on the active screen is selected in Edit Mode and the dock is in automatic dodge mode
+- **THEN** the application SHALL render the unified Edit Mode Dock (Inspector Panel above the Edit Toolbar) on the side of the canvas away from the selected widget: at the bottom edge when the selected widget's center lies in the upper half of a tall canvas, at the top edge when the selected widget's center lies in the lower half of a tall canvas, and in a side panel on wide canvases at least 600 dp wide (on the side opposite the selected widget's center)
 - **AND** display the widget type title, coordinate position `[x, y]`, grid dimensions `[w x h]`, current content tier, and current stack layer indicator `Layer X/Y`.
 
 #### Scenario: Inspector does not cover the selected widget in portrait
-- **WHEN** a widget whose center lies in the lower half of a tall canvas is selected
-- **THEN** the Inspector Panel SHALL be docked at the top edge and SHALL NOT overlap the selected widget's bounds
+- **WHEN** a widget whose center lies in the lower half of a tall canvas is selected while the Edit Mode Dock is in automatic dodge mode
+- **THEN** both the Inspector Panel and the Edit Toolbar SHALL move together as a unified dock to the top edge and SHALL NOT overlap the selected widget's bounds in the lower half.
+
+#### Scenario: Free-dragging the unified edit dock overrides automatic dodge
+- **WHEN** the pilot drags the Edit Mode Dock header or drag handle in Edit Mode
+- **THEN** the unified dock (Inspector Panel and Edit Toolbar together) SHALL track the 2D pan gesture in real time and remain clamped within the viewport safe area bounds
+- **AND** SHALL retain that manual floating position across subsequent widget selections or edits until the user taps the reset-to-auto-dodge control or exits Edit Mode.
+
+#### Scenario: Resetting manual edit dock position to auto-dodge
+- **WHEN** the Edit Mode Dock has been manually dragged to a custom position and the pilot taps the auto-dodge reset button on the dock
+- **THEN** the dock SHALL clear its manual offset and immediately return to automatic selected-widget dodging.
+
+#### Scenario: Minimizing and expanding the unified edit dock
+- **WHEN** the pilot taps the minimize button on the Edit Mode Dock
+- **THEN** the Inspector Panel and full Edit Toolbar SHALL collapse into a compact floating pill showing the active edit status, expand toggle, and quick Done action so the underlying 16x32 grid is unobstructed
+- **AND WHEN** the pilot taps the expand button on the minimized edit pill
+- **THEN** the full unified Edit Mode Dock SHALL restore at its clamped position.
 
 #### Scenario: Opening configuration tune dialog directly from inspector
 - **WHEN** the pilot taps the "Configure" action button within the Inspector Panel

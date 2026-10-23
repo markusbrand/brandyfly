@@ -469,7 +469,173 @@ void main() {
       expect(panel.center.dy, lessThan(422), reason: 'docked at the top');
       final vario = _rectOf(tester, 'vario');
       expect(panel.overlaps(vario.deflate(1)), isFalse);
+      final toolbarRect =
+          tester.getRect(find.byKey(const Key('edit_toolbar')));
+      expect(toolbarRect.center.dy, lessThan(422),
+          reason: 'toolbar also docked at top');
+      expect(toolbarRect.overlaps(vario.deflate(1)), isFalse);
     });
+
+    testWidgets(
+      'edit dock: manual 2D drag overrides auto-dodge and clamps within boundaries',
+      (tester) async {
+        await _setView(tester, const Size(390, 844));
+        final manager = _manager(standard);
+        manager.toggleEditMode(true);
+        manager.selectWidget('alt'); // top half -> dock is at bottom
+        await tester.pumpWidget(_app(manager));
+        await tester.pumpAndSettle();
+
+        final initialRect =
+            tester.getRect(find.byKey(const Key('edit_dock_overlay')));
+        expect(initialRect.top, greaterThan(400));
+        expect(find.byKey(const Key('btn_edit_dock_auto_dodge')), findsNothing);
+
+        // Drag dock upward by 250 dp
+        final handle = find.byKey(const Key('edit_dock_drag_handle'));
+        expect(handle, findsOneWidget);
+        await tester.drag(handle, const Offset(0, -250));
+        await tester.pumpAndSettle();
+
+        final draggedRect =
+            tester.getRect(find.byKey(const Key('edit_dock_overlay')));
+        expect(draggedRect.top, lessThan(initialRect.top - 150));
+        // Auto-dodge reset button should now appear
+        expect(
+            find.byKey(const Key('btn_edit_dock_auto_dodge')), findsOneWidget);
+
+        // Selecting another widget retains manual position instead of auto-dodging
+        manager.selectWidget('vario');
+        await tester.pumpAndSettle();
+        final retainedRect =
+            tester.getRect(find.byKey(const Key('edit_dock_overlay')));
+        expect((retainedRect.top - draggedRect.top).abs(), lessThan(50));
+
+        // Dragging beyond top viewport boundary clamps to safe margin (8 dp)
+        await tester.drag(handle, const Offset(0, -800));
+        await tester.pumpAndSettle();
+        final clampedTopRect =
+            tester.getRect(find.byKey(const Key('edit_dock_overlay')));
+        expect(clampedTopRect.top, greaterThanOrEqualTo(8.0));
+      },
+    );
+
+    testWidgets('edit dock: reset button restores auto-dodge behavior', (
+      tester,
+    ) async {
+      await _setView(tester, const Size(390, 844));
+      final manager = _manager(standard);
+      manager.toggleEditMode(true);
+      manager.selectWidget('alt');
+      await tester.pumpWidget(_app(manager));
+      await tester.pumpAndSettle();
+
+      // Drag dock up
+      await tester.drag(
+          find.byKey(const Key('edit_dock_drag_handle')), const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('btn_edit_dock_auto_dodge')), findsOneWidget);
+
+      // Select lower-half widget while manual offset is active
+      manager.selectWidget('vario');
+      await tester.pumpAndSettle();
+
+      // Tap reset auto-dodge button
+      await tester.tap(find.byKey(const Key('btn_edit_dock_auto_dodge')));
+      await tester.pumpAndSettle();
+
+      // Reset button should disappear and dock should flip to the top for lower-half widget
+      expect(find.byKey(const Key('btn_edit_dock_auto_dodge')), findsNothing);
+      final panel =
+          tester.getRect(find.byKey(const Key('widget_inspector_panel')));
+      expect(panel.center.dy, lessThan(422));
+    });
+
+    testWidgets(
+      'edit dock: minimize collapses into pill and expand restores full dock',
+      (tester) async {
+        await _setView(tester, const Size(390, 844));
+        final manager = _manager(standard);
+        manager.toggleEditMode(true);
+        manager.selectWidget('alt');
+        await tester.pumpWidget(_app(manager));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('widget_inspector_panel')), findsOneWidget);
+        expect(find.byKey(const Key('edit_toolbar')), findsOneWidget);
+        expect(find.byKey(const Key('btn_edit_dock_minimize')), findsOneWidget);
+
+        // Minimize dock
+        await tester.tap(find.byKey(const Key('btn_edit_dock_minimize')));
+        await tester.pumpAndSettle();
+
+        // Inspector and full toolbar should collapse
+        expect(find.byKey(const Key('widget_inspector_panel')), findsNothing);
+        expect(find.byKey(const Key('btn_edit_dock_minimize')), findsNothing);
+        expect(find.byKey(const Key('btn_edit_dock_expand')), findsOneWidget);
+        expect(find.byKey(const Key('btn_add_widget')), findsOneWidget);
+        expect(find.byKey(const Key('btn_done_editing')), findsOneWidget);
+        expect(find.text('Editing'), findsOneWidget);
+
+        // Minimized pill is compact
+        final pillRect =
+            tester.getRect(find.byKey(const Key('edit_dock_overlay')));
+        expect(pillRect.height, lessThan(60));
+
+        // Minimized pill can still be dragged via handle
+        await tester.drag(
+            find.byKey(const Key('edit_dock_drag_handle')), const Offset(0, -200));
+        await tester.pumpAndSettle();
+        final draggedPillRect =
+            tester.getRect(find.byKey(const Key('edit_dock_overlay')));
+        expect(draggedPillRect.top, lessThan(pillRect.top - 100));
+
+        // Expand dock
+        await tester.tap(find.byKey(const Key('btn_edit_dock_expand')));
+        await tester.pumpAndSettle();
+
+        // Full inspector and toolbar should be restored
+        expect(find.byKey(const Key('widget_inspector_panel')), findsOneWidget);
+        expect(find.byKey(const Key('edit_toolbar')), findsOneWidget);
+        expect(find.byKey(const Key('btn_edit_dock_minimize')), findsOneWidget);
+        expect(find.byKey(const Key('btn_edit_dock_expand')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'edit dock: exiting edit mode resets manual offset and minimized state',
+      (tester) async {
+        await _setView(tester, const Size(390, 844));
+        final manager = _manager(standard);
+        manager.toggleEditMode(true);
+        manager.selectWidget('alt');
+        await tester.pumpWidget(_app(manager));
+        await tester.pumpAndSettle();
+
+        // Drag dock and minimize it
+        await tester.drag(
+            find.byKey(const Key('edit_dock_drag_handle')), const Offset(0, -200));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('btn_edit_dock_minimize')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('btn_edit_dock_expand')), findsOneWidget);
+
+        // Exit edit mode
+        manager.toggleEditMode(false);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('edit_dock_overlay')), findsNothing);
+
+        // Re-enter edit mode
+        manager.toggleEditMode(true);
+        manager.selectWidget('alt');
+        await tester.pumpAndSettle();
+
+        // Should be restored to auto-dodge expanded state without manual offset
+        expect(find.byKey(const Key('widget_inspector_panel')), findsOneWidget);
+        expect(find.byKey(const Key('btn_edit_dock_minimize')), findsOneWidget);
+        expect(find.byKey(const Key('btn_edit_dock_auto_dodge')), findsNothing);
+      },
+    );
 
     testWidgets('wide canvas: edit chrome docks to the side away from selection', (
       tester,

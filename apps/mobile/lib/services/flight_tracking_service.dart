@@ -97,6 +97,32 @@ class FlightTrackingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Manually starts recording a flight from [FlightState.groundPreflight].
+  ///
+  /// Immediately transitions to [FlightState.flying] and prepends any
+  /// points stored in the pre-takeoff circular buffer.
+  void startManualRecording() {
+    if (_state != FlightState.groundPreflight) return;
+    _state = FlightState.flying;
+    _activeFlightPoints.clear();
+    _activeFlightPoints.addAll(_preTakeoffBuffer);
+    _takeoffConditionStartTime = null;
+    _landingConditionStartTime = null;
+    _stateController.add(_state);
+    notifyListeners();
+  }
+
+  /// Manually finalizes the active flight recording from [FlightState.flying].
+  ///
+  /// Immediately transitions to [FlightState.landed] and generates the flight model.
+  void stopManualRecording() {
+    if (_state != FlightState.flying) return;
+    final landingTime = _activeFlightPoints.isNotEmpty
+        ? _activeFlightPoints.last.timestamp
+        : DateTime.now();
+    _finalizeFlight(landingTime);
+  }
+
   void processPoint(FlightPoint point) {
     if (!_varioController.isClosed) {
       _varioController.add(point.vario);

@@ -195,5 +195,60 @@ void main() {
       expect(service.settings.takeoffSpeedThresholdKmh, 15.0);
       expect(service.settings.landingSettlingDurationSeconds, 30);
     });
+
+    test('startManualRecording and stopManualRecording transition states and finalize flight', () {
+      final baseTime = DateTime.utc(2026, 8, 20, 10, 0, 0);
+
+      // Buffer 3 preflight points
+      for (var i = 0; i < 3; i++) {
+        service.processPoint(
+          FlightPoint(
+            timestamp: baseTime.add(Duration(seconds: i)),
+            latitude: 47.5,
+            longitude: 13.6,
+            altitude: 1000.0,
+            speed: 2.0,
+            vario: 0.0,
+          ),
+        );
+      }
+
+      expect(service.state, FlightState.groundPreflight);
+      expect(service.activeFlightPoints, isEmpty);
+
+      // Start manual recording
+      service.startManualRecording();
+
+      expect(service.state, FlightState.flying);
+      expect(service.activeFlightPoints.length, 3);
+
+      // Calling startManualRecording again does nothing
+      service.startManualRecording();
+      expect(service.state, FlightState.flying);
+
+      // Add a flying point
+      service.processPoint(
+        FlightPoint(
+          timestamp: baseTime.add(const Duration(seconds: 4)),
+          latitude: 47.501,
+          longitude: 13.601,
+          altitude: 1020.0,
+          speed: 35.0,
+          vario: 1.5,
+        ),
+      );
+      expect(service.activeFlightPoints.length, 4);
+
+      // Stop manual recording
+      service.stopManualRecording();
+
+      expect(service.state, FlightState.landed);
+      expect(service.lastCompletedFlight, isNotNull);
+      expect(service.lastCompletedFlight!.points.length, 4);
+
+      // Calling stopManualRecording again does nothing
+      service.stopManualRecording();
+      expect(service.state, FlightState.landed);
+    });
   });
 }

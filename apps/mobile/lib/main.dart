@@ -26,10 +26,12 @@ import 'services/telemetry/synthetic_telemetry_source.dart';
 import 'services/ui_persistence_service.dart';
 import 'services/thermal_prefetch_service.dart';
 import 'services/xcontest_upload_service.dart';
+import 'ui/core/widgets/draggable_overlay_container.dart';
 import 'data/thermal/region_bounds_provider.dart';
 import 'data/thermal/thermal_tile_store.dart';
 import 'widgets/flight/flight_summary_sheet.dart';
 import 'widgets/flight/flights_screen.dart';
+import 'widgets/flight/recording_status_overlay.dart';
 import 'widgets/flight/replay_control_overlay.dart';
 import 'widgets/flight/synthetic_flight_controls.dart';
 import 'widgets/layout/layout_strategy_container.dart';
@@ -516,19 +518,15 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
                         platformVersion: _platformVersion ?? 'Unknown',
                         screenManager: _screenManager,
                         telemetry: _telemetryRepository.telemetry,
+                        trackingService: _trackingService,
                       ),
               ),
 
-              // Floating Bottom Replay HUD when Replay Mode is active
+              // Floating Replay HUD when Replay Mode is active
               if (_screenManager.isReplayActive)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: ReplayControlOverlay(
-                    replayService: _replayService,
-                    onExit: _exitReplay,
-                  ),
+                ReplayControlOverlay(
+                  replayService: _replayService,
+                  onExit: _exitReplay,
                 ),
 
               // Floating Mock Flight Session & Mode Controller Overlay
@@ -596,16 +594,16 @@ class _LiveFlightView extends StatelessWidget {
     required this.platformVersion,
     required this.screenManager,
     required this.telemetry,
+    this.trackingService,
   });
 
   final String platformVersion;
   final ScreenManagerService screenManager;
   final ValueListenable<CockpitTelemetry> telemetry;
+  final FlightTrackingService? trackingService;
 
   @override
   Widget build(BuildContext context) {
-    final isReplaying = screenManager.isReplayActive;
-
     return Scaffold(
       body: Stack(
         children: [
@@ -617,60 +615,11 @@ class _LiveFlightView extends StatelessWidget {
             ),
           ),
 
-          // Floating Top-Right Mode & Platform Status Overlay
-          Positioned(
-            top: 8,
-            right: 8,
-            child: SafeArea(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(180),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isReplaying
-                        ? Colors.cyanAccent.withAlpha(120)
-                        : Colors.greenAccent.withAlpha(120),
-                    width: 1,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black54,
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'BrandyFly',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    _ModeChip(
-                      label: isReplaying ? 'REPLAY' : 'LIVE',
-                      color: isReplaying ? Colors.cyanAccent : Colors.green,
-                    ),
-                    if (!isReplaying) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        'Running on: $platformVersion',
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 9,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+          // Floating Top-Right Mode & Recording Status Overlay
+          RecordingStatusOverlay(
+            platformVersion: platformVersion,
+            screenManager: screenManager,
+            trackingService: trackingService,
           ),
         ],
       ),
@@ -735,277 +684,180 @@ class _SimulationControlOverlayState extends State<_SimulationControlOverlay> {
   );
 
   bool _isSessionMinimized = false;
-  Offset? _overlayPosition;
-  final GlobalKey _overlayKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
     final frame = widget.replay.currentFrame;
     final isReplaying = widget.screenManager.isReplayActive;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final safePadding = MediaQuery.paddingOf(context);
-
-        Offset? clampedPos;
-        if (_overlayPosition != null) {
-          final RenderBox? box =
-              _overlayKey.currentContext?.findRenderObject() as RenderBox?;
-          final cardSize = box?.size ?? const Size(280, 50);
-          final minX = safePadding.left + 4;
-          final maxX =
-              (constraints.maxWidth - cardSize.width - safePadding.right - 4)
-                  .clamp(minX, double.infinity);
-          final minY = safePadding.top + 4;
-          final maxY =
-              (constraints.maxHeight - cardSize.height - safePadding.bottom - 4)
-                  .clamp(minY, double.infinity);
-
-          clampedPos = Offset(
-            _overlayPosition!.dx.clamp(minX, maxX),
-            _overlayPosition!.dy.clamp(minY, maxY),
-          );
-        }
-
-        final overlayCard = Semantics(
-          button: true,
-          label: 'Move simulation overlay',
-          child: GestureDetector(
-            key: const Key('simulation_overlay_card'),
-            behavior: HitTestBehavior.opaque,
-            onPanStart: (details) {
-              if (_overlayPosition == null) {
-                final RenderBox? box =
-                    _overlayKey.currentContext?.findRenderObject()
-                        as RenderBox?;
-                final RenderBox? rootBox =
-                    context.findRenderObject() as RenderBox?;
-                if (box != null &&
-                    box.hasSize &&
-                    rootBox != null &&
-                    rootBox.hasSize) {
-                  _overlayPosition = rootBox.globalToLocal(
-                    box.localToGlobal(Offset.zero),
-                  );
-                }
-              }
-            },
-            onPanUpdate: (details) {
-              final RenderBox? box =
-                  _overlayKey.currentContext?.findRenderObject() as RenderBox?;
-              final cardSize = box?.size ?? const Size(280, 50);
-
-              final minX = safePadding.left + 4;
-              final maxX =
-                  (constraints.maxWidth -
-                          cardSize.width -
-                          safePadding.right -
-                          4)
-                      .clamp(minX, double.infinity);
-              final minY = safePadding.top + 4;
-              final maxY =
-                  (constraints.maxHeight -
-                          cardSize.height -
-                          safePadding.bottom -
-                          4)
-                      .clamp(minY, double.infinity);
-
-              final currentPos =
-                  _overlayPosition ??
-                  Offset(
-                    (constraints.maxWidth -
-                            cardSize.width -
-                            safePadding.right -
-                            8)
-                        .clamp(minX, maxX),
-                    safePadding.top + 56,
-                  );
-
-              final newX = (currentPos.dx + details.delta.dx).clamp(minX, maxX);
-              final newY = (currentPos.dy + details.delta.dy).clamp(minY, maxY);
-
-              setState(() {
-                _overlayPosition = Offset(newX, newY);
-              });
-            },
-            child: Container(
-              key: _overlayKey,
-              constraints: const BoxConstraints(maxWidth: 360),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade900.withAlpha(220),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isReplaying
-                      ? Colors.cyanAccent.withAlpha(140)
-                      : Colors.orangeAccent.withAlpha(140),
-                  width: 1.2,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black54,
-                    blurRadius: 10,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
+    return DraggableOverlayContainer(
+      cardKey: const Key('simulation_overlay_card'),
+      semanticsLabel: 'Move simulation overlay',
+      margin: const EdgeInsets.only(top: 56, right: 8, bottom: 4, left: 4),
+      initialAlignment: Alignment.topRight,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 360),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey.shade900.withAlpha(220),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isReplaying
+                ? Colors.cyanAccent.withAlpha(140)
+                : Colors.orangeAccent.withAlpha(140),
+            width: 1.2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black54,
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'BrandyFly',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        _ModeChip(
-                          label: isReplaying ? 'REPLAY' : 'SIMULATED',
-                          color: isReplaying
-                              ? Colors.cyanAccent
-                              : Colors.orange,
-                        ),
-                        if (!isReplaying) ...[
-                          IconButton(
-                            icon: const Icon(
-                              Icons.skip_next,
-                              size: 16,
-                              color: Colors.orangeAccent,
-                            ),
-                            padding: const EdgeInsets.all(2),
-                            constraints: const BoxConstraints(),
-                            tooltip: 'Advance scenario',
-                            onPressed: widget.onNext,
-                          ),
-                          const SizedBox(width: 2),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.restart_alt,
-                              size: 16,
-                              color: Colors.white70,
-                            ),
-                            padding: const EdgeInsets.all(2),
-                            constraints: const BoxConstraints(),
-                            tooltip: 'Reset replay',
-                            onPressed: widget.onReset,
-                          ),
-                          const SizedBox(width: 2),
-                          IconButton(
-                            key: Key(
-                              _isSessionMinimized
-                                  ? 'btn_expand_mock_session'
-                                  : 'btn_minimize_mock_session',
-                            ),
-                            icon: Icon(
-                              _isSessionMinimized
-                                  ? Icons.expand_more
-                                  : Icons.expand_less,
-                              size: 18,
-                              color: Colors.white70,
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: _isSessionMinimized
-                                ? 'Expand mock flight session'
-                                : 'Minimize mock flight session',
-                            onPressed: () => setState(
-                              () => _isSessionMinimized = !_isSessionMinimized,
-                            ),
-                          ),
-                        ],
-                      ],
+                  const Text(
+                    'BrandyFly',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (!isReplaying && !_isSessionMinimized) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.black45,
-                        borderRadius: BorderRadius.circular(6),
+                  const SizedBox(width: 4),
+                  _ModeChip(
+                    label: isReplaying ? 'REPLAY' : 'SIMULATED',
+                    color: isReplaying
+                        ? Colors.cyanAccent
+                        : Colors.orange,
+                  ),
+                  if (!isReplaying) ...[
+                    IconButton(
+                      icon: const Icon(
+                        Icons.skip_next,
+                        size: 16,
+                        color: Colors.orangeAccent,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Mock flight session (${widget.config.sessionLabel})',
-                            style: const TextStyle(
-                              color: Colors.orangeAccent,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Fixture: ${widget.config.fixtureVersion}',
-                            style: _detailTextStyle,
-                          ),
-                          Text(
-                            'Seed: ${widget.config.seed}',
-                            style: _detailTextStyle,
-                          ),
-                          Text(
-                            'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
-                            style: _detailTextStyle,
-                          ),
-                          Text(
-                            'Provenance: ${widget.config.provenance}',
-                            style: _detailTextStyle,
-                          ),
-                          Text(
-                            'Session label: ${widget.config.sessionLabel}',
-                            style: _detailTextStyle,
-                          ),
-                          Text(
-                            'Replay hash: ${widget.replay.canonicalReplayHash}',
-                            style: _detailTextStyle,
-                          ),
-                          Text(
-                            'Marker: ${frame.sessionMarker}',
-                            style: _detailTextStyle,
-                          ),
-                          Text(
-                            frame.title,
-                            style: const TextStyle(
-                              fontSize: 8.5,
-                              color: Colors.cyanAccent,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (widget.synthetic != null) ...[
-                            const SizedBox(height: 4),
-                            SyntheticFlightControls(source: widget.synthetic!),
-                          ],
-                        ],
+                      padding: const EdgeInsets.all(2),
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Advance scenario',
+                      onPressed: widget.onNext,
+                    ),
+                    const SizedBox(width: 2),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.restart_alt,
+                        size: 16,
+                        color: Colors.white70,
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Reset replay',
+                      onPressed: widget.onReset,
+                    ),
+                    const SizedBox(width: 2),
+                    IconButton(
+                      key: Key(
+                        _isSessionMinimized
+                            ? 'btn_expand_mock_session'
+                            : 'btn_minimize_mock_session',
+                      ),
+                      icon: Icon(
+                        _isSessionMinimized
+                            ? Icons.expand_more
+                            : Icons.expand_less,
+                        size: 18,
+                        color: Colors.white70,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: _isSessionMinimized
+                          ? 'Expand mock flight session'
+                          : 'Minimize mock flight session',
+                      onPressed: () => setState(
+                        () => _isSessionMinimized = !_isSessionMinimized,
                       ),
                     ),
                   ],
                 ],
               ),
             ),
-          ),
-        );
-
-        return Stack(
-          children: [
-            Positioned(
-              left: clampedPos?.dx,
-              top: clampedPos?.dy ?? (safePadding.top + 56),
-              right: clampedPos == null ? (safePadding.right + 8) : null,
-              child: overlayCard,
-            ),
+            if (!isReplaying && !_isSessionMinimized) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Mock flight session (${widget.config.sessionLabel})',
+                      style: const TextStyle(
+                        color: Colors.orangeAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Fixture: ${widget.config.fixtureVersion}',
+                      style: _detailTextStyle,
+                    ),
+                    Text(
+                      'Seed: ${widget.config.seed}',
+                      style: _detailTextStyle,
+                    ),
+                    Text(
+                      'Clock step: ${widget.config.logicalClockStep.inMilliseconds} ms',
+                      style: _detailTextStyle,
+                    ),
+                    Text(
+                      'Provenance: ${widget.config.provenance}',
+                      style: _detailTextStyle,
+                    ),
+                    Text(
+                      'Session label: ${widget.config.sessionLabel}',
+                      style: _detailTextStyle,
+                    ),
+                    Text(
+                      'Replay hash: ${widget.replay.canonicalReplayHash}',
+                      style: _detailTextStyle,
+                    ),
+                    Text(
+                      'Marker: ${frame.sessionMarker}',
+                      style: _detailTextStyle,
+                    ),
+                    Text(
+                      frame.title,
+                      style: const TextStyle(
+                        fontSize: 8.5,
+                        color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (widget.synthetic != null) ...[
+                      const SizedBox(height: 4),
+                      SyntheticFlightControls(source: widget.synthetic!),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 }
