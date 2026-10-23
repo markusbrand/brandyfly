@@ -1,8 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../models/ui_config.dart';
 import '../../services/audio_vario_service.dart';
 import '../../services/screen_manager_service.dart';
+import '../../ui/core/theme/cockpit_tokens.dart';
 
 class TopNavBarOverlay extends StatefulWidget {
   const TopNavBarOverlay({
@@ -175,40 +175,37 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
     );
   }
 
-  // Option 1: Translucent Drawer (Full width backdrop blur)
+  // Option 1: Translucent Drawer (High-opacity dark cockpit surface)
   Widget _buildTranslucentDrawer(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxHeight: 380),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.blueGrey.shade900.withAlpha(210),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withAlpha(30)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black45,
-                  blurRadius: 16,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildHeader(context, "BrandyFly Navigation"),
-                  const Divider(color: Colors.white24, height: 24),
-                  _buildScreenSelector(context),
-                  const SizedBox(height: 16),
-                  _buildActionButtons(context),
-                ],
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: CockpitTokens.nightPanel.withAlpha(240),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withAlpha(30)),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black45,
+                blurRadius: 16,
+                offset: Offset(0, 8),
               ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHeader(context, "BrandyFly Navigation"),
+                const Divider(color: Colors.white24, height: 24),
+                _buildScreenSelector(context),
+                const SizedBox(height: 16),
+                _buildActionButtons(context),
+              ],
             ),
           ),
         ),

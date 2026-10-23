@@ -250,5 +250,45 @@ void main() {
       service.stopManualRecording();
       expect(service.state, FlightState.landed);
     });
+
+    test('notifies ChangeNotifier listeners only on whole-second changes while flying', () {
+      final baseTime = DateTime.utc(2026, 8, 20, 10, 0, 0);
+      service.startManualRecording();
+
+      var notifications = 0;
+      service.addListener(() => notifications++);
+
+      // 10 sub-second points within second 0 (0ms .. 900ms)
+      for (var i = 0; i < 10; i++) {
+        service.processPoint(
+          FlightPoint(
+            timestamp: baseTime.add(Duration(milliseconds: i * 100)),
+            latitude: 47.5,
+            longitude: 13.6,
+            altitude: 1000.0 + i,
+            speed: 35.0,
+            vario: 1.0,
+          ),
+        );
+      }
+      // First point at 0s sets elapsed second = 0 (1 notification), remaining 9 points within 0s do not notify
+      expect(notifications, 1);
+
+      // Advance into second 1 (1000ms .. 1900ms) -> 1 notification for second 1
+      for (var i = 0; i < 10; i++) {
+        service.processPoint(
+          FlightPoint(
+            timestamp: baseTime.add(Duration(milliseconds: 1000 + i * 100)),
+            latitude: 47.501,
+            longitude: 13.601,
+            altitude: 1010.0 + i,
+            speed: 35.0,
+            vario: 1.0,
+          ),
+        );
+      }
+      expect(notifications, 2);
+      expect(service.activeFlightPoints.length, 20);
+    });
   });
 }

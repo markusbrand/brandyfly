@@ -33,6 +33,7 @@ class FlightTrackingService extends ChangeNotifier {
   DateTime? _takeoffConditionStartTime;
   DateTime? _landingConditionStartTime;
   FlightModel? _lastCompletedFlight;
+  int? _lastNotifiedElapsedSecond;
 
   // Streams for reactive listeners
   final _stateController = StreamController<FlightState>.broadcast();
@@ -93,6 +94,7 @@ class FlightTrackingService extends ChangeNotifier {
     _takeoffConditionStartTime = null;
     _landingConditionStartTime = null;
     _lastCompletedFlight = null;
+    _lastNotifiedElapsedSecond = null;
     _stateController.add(_state);
     notifyListeners();
   }
@@ -108,6 +110,11 @@ class FlightTrackingService extends ChangeNotifier {
     _activeFlightPoints.addAll(_preTakeoffBuffer);
     _takeoffConditionStartTime = null;
     _landingConditionStartTime = null;
+    _lastNotifiedElapsedSecond = _activeFlightPoints.isNotEmpty
+        ? _activeFlightPoints.last.timestamp
+            .difference(_activeFlightPoints.first.timestamp)
+            .inSeconds
+        : null;
     _stateController.add(_state);
     notifyListeners();
   }
@@ -167,6 +174,11 @@ class FlightTrackingService extends ChangeNotifier {
         _activeFlightPoints.addAll(_preTakeoffBuffer);
         _takeoffConditionStartTime = null;
         _landingConditionStartTime = null;
+        _lastNotifiedElapsedSecond = _activeFlightPoints.isNotEmpty
+            ? _activeFlightPoints.last.timestamp
+                .difference(_activeFlightPoints.first.timestamp)
+                .inSeconds
+            : null;
         _stateController.add(_state);
         notifyListeners();
       }
@@ -191,13 +203,20 @@ class FlightTrackingService extends ChangeNotifier {
       if (settlingDuration.inSeconds >= _settings.landingSettlingDurationSeconds) {
         // Landing confirmed!
         _finalizeFlight(point.timestamp);
+        return;
       }
     } else {
       // Pilot still moving or climbing/sinking
       _landingConditionStartTime = null;
     }
 
-    notifyListeners();
+    final elapsedSec = point.timestamp
+        .difference(_activeFlightPoints.first.timestamp)
+        .inSeconds;
+    if (elapsedSec != _lastNotifiedElapsedSecond) {
+      _lastNotifiedElapsedSecond = elapsedSec;
+      notifyListeners();
+    }
   }
 
   void _finalizeFlight(DateTime landingTime) {

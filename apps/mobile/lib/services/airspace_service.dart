@@ -145,6 +145,21 @@ class AirspaceService extends ChangeNotifier {
 
   final List<AirspaceModel> _loadedAirspaces = [];
   AirspaceProximityState _latestProximity = AirspaceProximityState.clear;
+  int _airspaceRevision = 0;
+
+  double? _cachedForwardLat;
+  double? _cachedForwardLon;
+  double? _cachedForwardAlt;
+  double? _cachedForwardHeading;
+  double? _cachedForwardLookahead;
+  double? _cachedForwardGlide;
+  int? _cachedForwardRevision;
+  List<ForwardAirspaceBlock>? _cachedForwardBlocks;
+
+  void _invalidateForwardCache() {
+    _airspaceRevision++;
+    _cachedForwardBlocks = null;
+  }
 
   final _proximityController =
       StreamController<AirspaceProximityState>.broadcast();
@@ -219,6 +234,7 @@ class AirspaceService extends ChangeNotifier {
       // Parse Dart models for map rendering and side-cut widget
       _loadedAirspaces.clear();
       _loadedAirspaces.addAll(_parseOpenAirToModels(openAirText));
+      _invalidateForwardCache();
       notifyListeners();
       return count;
     } catch (e) {
@@ -235,6 +251,7 @@ class AirspaceService extends ChangeNotifier {
 
       _loadedAirspaces.clear();
       _loadedAirspaces.addAll(_parseOpenAirToModels(_dachOpenAirFixture));
+      _invalidateForwardCache();
       notifyListeners();
       return count;
     } catch (e) {
@@ -249,6 +266,7 @@ class AirspaceService extends ChangeNotifier {
       await _native.airspaceClearStore();
     } catch (_) {}
     _loadedAirspaces.clear();
+    _invalidateForwardCache();
     _latestProximity = AirspaceProximityState.clear;
     _proximityController.add(AirspaceProximityState.clear);
     _alertController.add(AirspaceAlertLevel.clear);
@@ -372,7 +390,23 @@ class AirspaceService extends ChangeNotifier {
     double lookaheadDistanceM = 10000.0,
     double glideRatio = 8.0,
   }) {
-    if (_loadedAirspaces.isEmpty) return [];
+    if (_loadedAirspaces.isEmpty) return const [];
+
+    if (_cachedForwardBlocks != null &&
+        _cachedForwardRevision == _airspaceRevision &&
+        _cachedForwardLookahead == lookaheadDistanceM &&
+        (altitudeMsl - _cachedForwardAlt!).abs() < 10.0 &&
+        (glideRatio - _cachedForwardGlide!).abs() < 0.5 &&
+        _angularDeltaDeg(headingDeg, _cachedForwardHeading!) < 2.0 &&
+        _approxHorizontalDistanceM(
+              lat,
+              lon,
+              _cachedForwardLat!,
+              _cachedForwardLon!,
+            ) <
+            25.0) {
+      return _cachedForwardBlocks!;
+    }
 
     final headingRad = headingDeg * math.pi / 180.0;
     const earthR = 6371000.0;
@@ -427,7 +461,34 @@ class AirspaceService extends ChangeNotifier {
     }
 
     blocks.sort((a, b) => a.entryDistanceM.compareTo(b.entryDistanceM));
-    return blocks;
+    final unmodifiableBlocks = List<ForwardAirspaceBlock>.unmodifiable(blocks);
+    _cachedForwardLat = lat;
+    _cachedForwardLon = lon;
+    _cachedForwardAlt = altitudeMsl;
+    _cachedForwardHeading = headingDeg;
+    _cachedForwardLookahead = lookaheadDistanceM;
+    _cachedForwardGlide = glideRatio;
+    _cachedForwardRevision = _airspaceRevision;
+    _cachedForwardBlocks = unmodifiableBlocks;
+    return unmodifiableBlocks;
+  }
+
+  static double _angularDeltaDeg(double a, double b) {
+    final diff = (a - b).abs() % 360.0;
+    return diff > 180.0 ? 360.0 - diff : diff;
+  }
+
+  static double _approxHorizontalDistanceM(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const earthR = 6371000.0;
+    final dLatRad = (lat2 - lat1) * math.pi / 180.0;
+    final cosLat = math.cos(lat1 * math.pi / 180.0);
+    final dLonRad = (lon2 - lon1) * math.pi / 180.0 * cosLat;
+    return earthR * math.sqrt(dLatRad * dLatRad + dLonRad * dLonRad);
   }
 
   static bool _pointInPolygon(

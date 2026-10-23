@@ -192,28 +192,44 @@ class FlightWidgetContent extends StatelessWidget {
           },
         );
       case WidgetType.airspaceSideCut:
-        return ValueListenableBuilder<CockpitTelemetry>(
-          valueListenable: telemetry,
-          builder: (context, t, _) {
+        return ValueSelector<
+          CockpitTelemetry,
+          (int, int, int, int, int, int, int)
+        >(
+          listenable: telemetry,
+          select: (t) => (
+            ((t.latitude ?? 47.53) * 4000).round(),
+            ((t.longitude ?? 13.68) * 4000).round(),
+            t.altitude.round(),
+            (t.speed * 10).round(),
+            t.effectiveHeading.round(),
+            (t.glide.clamp(1.0, 30.0) * 10).round(),
+            (t.hag ?? 300.0).round(),
+          ),
+          builder: (context, v) {
             RebuildProbe.tick(_probeKey);
+            final t = telemetry.value;
             final airspaceService = Provider.of<AirspaceService?>(context);
             final lat = t.latitude ?? 47.53;
             final lon = t.longitude ?? 13.68;
+            final clampedGlide = v.$6 / 10.0;
+            final alt = v.$3.toDouble();
+            final heading = v.$5.toDouble();
             final forwardBlocks = airspaceService?.getForwardAirspaces(
                   lat: lat,
                   lon: lon,
-                  altitudeMsl: t.altitude,
-                  headingDeg: t.effectiveHeading,
-                  glideRatio: t.glide.clamp(1.0, 30.0),
+                  altitudeMsl: alt,
+                  headingDeg: heading,
+                  glideRatio: clampedGlide,
                 ) ??
                 const [];
-            final hag = t.hag ?? 300.0;
+            final hag = v.$7.toDouble();
             return AirspaceSideCutWidget(
-              aircraftAltitudeMsl: t.altitude,
-              groundspeedMps: t.speed / 3.6,
-              headingDeg: t.effectiveHeading,
-              glideRatio: t.glide.clamp(1.0, 30.0),
-              terrainElevationMsl: (t.altitude - hag).clamp(0.0, 6000.0),
+              aircraftAltitudeMsl: alt,
+              groundspeedMps: (v.$4 / 10.0) / 3.6,
+              headingDeg: heading,
+              glideRatio: clampedGlide,
+              terrainElevationMsl: (alt - hag).clamp(0.0, 6000.0),
               forwardBlocks: forwardBlocks,
             );
           },

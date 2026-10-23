@@ -52,17 +52,19 @@ class AirspaceSideCutWidget extends StatelessWidget {
                   const SizedBox(height: 4.0),
                 ],
                 Expanded(
-                  child: CustomPaint(
-                    painter: AirspaceSideCutPainter(
-                      aircraftAltitudeMsl: aircraftAltitudeMsl,
-                      groundspeedMps: groundspeedMps,
-                      headingDeg: headingDeg,
-                      glideRatio: glideRatio,
-                      terrainElevationMsl: terrainElevationMsl,
-                      forwardBlocks: forwardBlocks,
-                      lookaheadDistanceM: lookaheadDistanceM,
-                      maxAltitudeMsl: maxAltitudeMsl,
-                      minAltitudeMsl: minAltitudeMsl,
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: AirspaceSideCutPainter(
+                        aircraftAltitudeMsl: aircraftAltitudeMsl,
+                        groundspeedMps: groundspeedMps,
+                        headingDeg: headingDeg,
+                        glideRatio: glideRatio,
+                        terrainElevationMsl: terrainElevationMsl,
+                        forwardBlocks: forwardBlocks,
+                        lookaheadDistanceM: lookaheadDistanceM,
+                        maxAltitudeMsl: maxAltitudeMsl,
+                        minAltitudeMsl: minAltitudeMsl,
+                      ),
                     ),
                   ),
                 ),
@@ -161,6 +163,37 @@ class AirspaceSideCutPainter extends CustomPainter {
   final double maxAltitudeMsl;
   final double minAltitudeMsl;
 
+  static final Paint _gridPaint = Paint()
+    ..color = Colors.white.withValues(alpha: 0.08)
+    ..strokeWidth = 1.0;
+  static final Paint _terrainPaint = Paint()
+    ..color = const Color(0xFF334155).withValues(alpha: 0.7)
+    ..style = PaintingStyle.fill;
+  static final Paint _groundLinePaint = Paint()
+    ..color = const Color(0xFF64748B)
+    ..strokeWidth = 1.5;
+  static final Paint _blockFillPaint = Paint()..style = PaintingStyle.fill;
+  static final Paint _blockBorderPaint = Paint()..style = PaintingStyle.stroke;
+  static final Paint _slopePaint = Paint()
+    ..strokeWidth = 2.0
+    ..strokeCap = StrokeCap.round;
+  static final Paint _glowPaint = Paint()..strokeWidth = 6.0;
+  static final Paint _dotPaint = Paint()
+    ..color = Colors.cyanAccent
+    ..style = PaintingStyle.fill;
+  static final Paint _ringPaint = Paint()
+    ..color = Colors.white
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  static final Path _terrainPath = Path();
+  static final TextPainter _textPainter =
+      TextPainter(textDirection: TextDirection.ltr);
+  static final TextStyle _gridLabelStyle = TextStyle(
+    color: Colors.white.withValues(alpha: 0.35),
+    fontSize: 9,
+    fontFamily: 'monospace',
+  );
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width < 10.0 || size.height < 10.0) return;
@@ -194,46 +227,32 @@ class AirspaceSideCutPainter extends CustomPainter {
     double Function(double) toX,
     double Function(double) toY,
   ) {
-    final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
-      ..strokeWidth = 1.0;
-
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-
     // Altitude horizontal grid lines (every 500m or 1000m)
     final stepAlt = altRange > 3000 ? 1000.0 : 500.0;
     for (var alt = minAltitudeMsl; alt <= maxAltitudeMsl; alt += stepAlt) {
       final y = toY(alt);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), _gridPaint);
 
-      textPainter.text = TextSpan(
+      _textPainter.text = TextSpan(
         text: '${alt.toInt()}m',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.35),
-          fontSize: 9,
-          fontFamily: 'monospace',
-        ),
+        style: _gridLabelStyle,
       );
-      textPainter.layout();
-      textPainter.paint(canvas, Offset(4, y - 11));
+      _textPainter.layout();
+      _textPainter.paint(canvas, Offset(4, y - 11));
     }
 
     // Distance vertical grid lines (every 2.5 km or 5 km)
     final stepDist = lookaheadDistanceM >= 10000 ? 5000.0 : 2500.0;
     for (var d = stepDist; d <= lookaheadDistanceM; d += stepDist) {
       final x = toX(d);
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), _gridPaint);
 
-      textPainter.text = TextSpan(
+      _textPainter.text = TextSpan(
         text: '${(d / 1000).toStringAsFixed(1)}km',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.35),
-          fontSize: 9,
-          fontFamily: 'monospace',
-        ),
+        style: _gridLabelStyle,
       );
-      textPainter.layout();
-      textPainter.paint(canvas, Offset(x - 14, size.height - 12));
+      _textPainter.layout();
+      _textPainter.paint(canvas, Offset(x - 14, size.height - 12));
     }
   }
 
@@ -243,23 +262,21 @@ class AirspaceSideCutPainter extends CustomPainter {
     double Function(double) toY,
   ) {
     final groundY = toY(terrainElevationMsl).clamp(0.0, size.height);
-    final terrainPaint = Paint()
-      ..color = const Color(0xFF334155).withValues(alpha: 0.7)
-      ..style = PaintingStyle.fill;
 
-    final path = Path()
+    _terrainPath
+      ..reset()
       ..moveTo(0, size.height)
       ..lineTo(0, groundY)
       ..lineTo(size.width, groundY)
       ..lineTo(size.width, size.height)
       ..close();
 
-    canvas.drawPath(path, terrainPaint);
-
-    final groundLinePaint = Paint()
-      ..color = const Color(0xFF64748B)
-      ..strokeWidth = 1.5;
-    canvas.drawLine(Offset(0, groundY), Offset(size.width, groundY), groundLinePaint);
+    canvas.drawPath(_terrainPath, _terrainPaint);
+    canvas.drawLine(
+      Offset(0, groundY),
+      Offset(size.width, groundY),
+      _groundLinePaint,
+    );
   }
 
   void _paintAirspaceBlocks(
@@ -268,8 +285,6 @@ class AirspaceSideCutPainter extends CustomPainter {
     double Function(double) toX,
     double Function(double) toY,
   ) {
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-
     for (final block in forwardBlocks) {
       final left = toX(block.entryDistanceM).clamp(0.0, size.width);
       final right = toX(block.exitDistanceM).clamp(0.0, size.width);
@@ -284,20 +299,18 @@ class AirspaceSideCutPainter extends CustomPainter {
       final rect = Rect.fromLTRB(left, rectTop, right, rectBottom);
       final color = _airspaceColor(block.airspace.airspaceClass);
 
-      final fillPaint = Paint()
-        ..color = color.withValues(alpha: block.willPenetrate ? 0.45 : 0.22)
-        ..style = PaintingStyle.fill;
-      canvas.drawRect(rect, fillPaint);
+      _blockFillPaint.color =
+          color.withValues(alpha: block.willPenetrate ? 0.45 : 0.22);
+      canvas.drawRect(rect, _blockFillPaint);
 
-      final borderPaint = Paint()
+      _blockBorderPaint
         ..color = block.willPenetrate ? Colors.redAccent : color
-        ..style = PaintingStyle.stroke
         ..strokeWidth = block.willPenetrate ? 2.0 : 1.2;
-      canvas.drawRect(rect, borderPaint);
+      canvas.drawRect(rect, _blockBorderPaint);
 
       // Label inside airspace block
       final label = '${block.airspace.name} [${block.airspace.airspaceClass}]';
-      textPainter.text = TextSpan(
+      _textPainter.text = TextSpan(
         text: label,
         style: TextStyle(
           color: block.willPenetrate ? Colors.redAccent : color,
@@ -305,9 +318,9 @@ class AirspaceSideCutPainter extends CustomPainter {
           fontWeight: FontWeight.bold,
         ),
       );
-      textPainter.layout(maxWidth: (right - left).clamp(20.0, size.width));
+      _textPainter.layout(maxWidth: (right - left).clamp(20.0, size.width));
       if (rect.width > 25 && rect.height > 15) {
-        textPainter.paint(canvas, Offset(left + 4, top + 4));
+        _textPainter.paint(canvas, Offset(left + 4, top + 4));
       }
     }
   }
@@ -323,20 +336,14 @@ class AirspaceSideCutPainter extends CustomPainter {
     final endY = toY(endAlt).clamp(0.0, size.height);
 
     final hasPenetration = forwardBlocks.any((b) => b.willPenetrate);
+    final slopeColor = hasPenetration ? Colors.redAccent : Colors.greenAccent;
 
-    final slopePaint = Paint()
-      ..color = hasPenetration ? Colors.redAccent : Colors.greenAccent
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
+    _slopePaint.color = slopeColor;
+    canvas.drawLine(Offset(0, startY), Offset(size.width, endY), _slopePaint);
 
-    canvas.drawLine(Offset(0, startY), Offset(size.width, endY), slopePaint);
-
-    // Projected glide slope trajectory dashed or dotted glow
-    final glowPaint = Paint()
-      ..color = (hasPenetration ? Colors.redAccent : Colors.greenAccent)
-          .withValues(alpha: 0.3)
-      ..strokeWidth = 6.0;
-    canvas.drawLine(Offset(0, startY), Offset(size.width, endY), glowPaint);
+    // Projected glide slope trajectory glow
+    _glowPaint.color = slopeColor.withValues(alpha: 0.3);
+    canvas.drawLine(Offset(0, startY), Offset(size.width, endY), _glowPaint);
   }
 
   void _paintAircraft(
@@ -353,16 +360,8 @@ class AirspaceSideCutPainter extends CustomPainter {
         .toDouble();
     const cx = 8.0;
 
-    final dotPaint = Paint()
-      ..color = Colors.cyanAccent
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(cx, cy), 5.0, dotPaint);
-
-    final ringPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawCircle(Offset(cx, cy), 7.0, ringPaint);
+    canvas.drawCircle(Offset(cx, cy), 5.0, _dotPaint);
+    canvas.drawCircle(Offset(cx, cy), 7.0, _ringPaint);
   }
 
   static Color _airspaceColor(String cls) {

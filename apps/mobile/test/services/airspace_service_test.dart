@@ -80,6 +80,53 @@ DP 47:30:00 N 011:10:00 E
       expect(blocks.first.entryDistanceM, greaterThan(0));
     });
 
+    test('Caches forward airspace blocks across minor ticks and invalidates on threshold or reload', () async {
+      await airspaceService.loadDachFixture();
+
+      final initial = airspaceService.getForwardAirspaces(
+        lat: 47.2600,
+        lon: 11.0000,
+        altitudeMsl: 1000.0,
+        headingDeg: 90.0,
+        lookaheadDistanceM: 15000.0,
+        glideRatio: 8.0,
+      );
+
+      // Minor jitter (< 25m position, < 2° heading, < 10m altitude, < 0.5 glide) returns identical cached list
+      final cached = airspaceService.getForwardAirspaces(
+        lat: 47.26005, // ~5.5m
+        lon: 11.00005,
+        altitudeMsl: 1005.0, // +5m
+        headingDeg: 91.0, // +1°
+        lookaheadDistanceM: 15000.0,
+        glideRatio: 8.2, // +0.2
+      );
+      expect(identical(initial, cached), isTrue);
+
+      // Heading change >= 2° recomputes a new list instance
+      final afterHeadingTurn = airspaceService.getForwardAirspaces(
+        lat: 47.26005,
+        lon: 11.00005,
+        altitudeMsl: 1005.0,
+        headingDeg: 95.0, // +5°
+        lookaheadDistanceM: 15000.0,
+        glideRatio: 8.2,
+      );
+      expect(identical(cached, afterHeadingTurn), isFalse);
+
+      // Reloading airspaces invalidates the cache
+      await airspaceService.loadDachFixture();
+      final afterReload = airspaceService.getForwardAirspaces(
+        lat: 47.26005,
+        lon: 11.00005,
+        altitudeMsl: 1005.0,
+        headingDeg: 95.0,
+        lookaheadDistanceM: 15000.0,
+        glideRatio: 8.2,
+      );
+      expect(identical(afterHeadingTurn, afterReload), isFalse);
+    });
+
     test('Reactive proximityStream and alertStream emit on point processing', () async {
       await airspaceService.loadDachFixture();
 
