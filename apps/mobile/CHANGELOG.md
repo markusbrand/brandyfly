@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.2](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.17.1...brandyfly-v0.17.2) (2026-10-23)
+
+
+### Performance Improvements
+
+* **mobile:** optimize telemetry hot-path, airspace side-cut queries, and overlay blur ([#280](https://github.com/markusbrand/brandyfly/issues/280)) ([aebb029](https://github.com/markusbrand/brandyfly/commit/aebb029c6fd8064de8560b14d000542e4d626f3a))
+
 ## [0.17.1](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.17.0...brandyfly-v0.17.1) (2026-10-23)
 
 
