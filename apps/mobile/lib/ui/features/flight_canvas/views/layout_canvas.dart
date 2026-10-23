@@ -11,12 +11,14 @@ import '../../../../domain/models/ui_config.dart';
 import '../../../../services/screen_manager_service.dart';
 import '../../../core/rebuild_probe.dart';
 import '../../../core/theme/cockpit_tokens.dart';
+import '../../../core/widgets/draggable_overlay_container.dart';
 import '../../layout_editor/view_models/edit_mode_view_model.dart';
 import '../../../../services/airspace_service.dart';
 import '../../../../widgets/flight/airspace_warning_banner_hud.dart';
 import '../../layout_editor/views/edit_frame.dart';
 import '../../layout_editor/views/edit_toolbar.dart';
 import '../../layout_editor/views/inspector_panel.dart';
+import '../../layout_editor/views/widget_picker_sheet.dart';
 import '../../map/view_models/map_camera_view_model.dart';
 import '../view_models/flight_canvas_view_model.dart';
 import 'grid_guide_painter.dart';
@@ -68,6 +70,8 @@ class _LayoutStrategyContainerState extends State<LayoutStrategyContainer> {
       ValueNotifier<CockpitTelemetry>(const CockpitTelemetry());
   final MapCameraRegistry _cameraRegistry = MapCameraRegistry();
   final FlightCanvasViewModel _canvasViewModel = FlightCanvasViewModel();
+  Offset? _manualDockOffset;
+  bool _isEditDockMinimized = false;
 
   @override
   void initState() {
@@ -144,6 +148,10 @@ class _LayoutStrategyContainerState extends State<LayoutStrategyContainer> {
 
     final shape = canvasShapeFor(outerWidth, outerHeight);
     final isEditMode = editMode.isEditMode;
+    if (!isEditMode) {
+      _manualDockOffset = null;
+      _isEditDockMinimized = false;
+    }
     final state = _canvasViewModel.resolve(
       screen: editMode.activeScreen,
       shape: shape,
@@ -315,10 +323,8 @@ class _LayoutStrategyContainerState extends State<LayoutStrategyContainer> {
     );
   }
 
-  /// Edit dock (inspector + toolbar) placed away from the selected widget:
-  /// a side panel on wide canvases, otherwise a bottom toolbar with the
-  /// inspector above it, or at the top when the selection is in the lower
-  /// half of the canvas.
+  /// Unified Edit Mode Dock combining [WidgetInspectorPanel] and [EditToolbar]
+  /// with auto-dodge positioning, manual 2D drag override, reset, and minimize pill.
   List<Widget> _buildEditDock({
     required Size outerSize,
     required Offset canvasOffset,
@@ -327,103 +333,32 @@ class _LayoutStrategyContainerState extends State<LayoutStrategyContainer> {
     required CanvasLayoutState state,
     required WidgetPlacementModel? selected,
   }) {
-    final inspector = selected == null
-        ? null
-        : WidgetInspectorPanel(
-            model: selected,
-            screenManager: widget.screenManager,
-          );
-    final toolbar = EditToolbar(
-      screenManager: widget.screenManager,
-      widgets: state.widgets,
-      selectedWidget: selected,
-    );
-    final selectedCenter = selected == null
-        ? null
-        : canvasOffset +
-              Offset(
-                (selected.x + selected.w / 2) * cellWidth,
-                (selected.y + selected.h / 2) * cellHeight,
-              );
-
-    final sideDock =
-        outerSize.width > outerSize.height &&
-        outerSize.width >= kSideDockMinWidth;
-    if (sideDock) {
-      final panelWidth = math.min(
-        kEditChromeMaxWidth,
-        math.max(320.0, outerSize.width * 0.42),
-      );
-      final dockLeft =
-          selectedCenter != null && selectedCenter.dx > outerSize.width / 2;
-      return [
-        Positioned(
-          key: const Key('edit_dock_side'),
-          top: 8,
-          bottom: 8,
-          left: dockLeft ? 8 : null,
-          right: dockLeft ? null : 8,
-          width: panelWidth,
-          child: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (inspector != null) ...[
-                  Flexible(child: SingleChildScrollView(child: inspector)),
-                  const SizedBox(height: 6),
-                ],
-                toolbar,
-              ],
-            ),
-          ),
-        ),
-      ];
-    }
-
-    final inspectorOnTop =
-        selectedCenter != null && selectedCenter.dy > outerSize.height / 2;
-    Widget constrain(Widget child) => Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: outerSize.width > kWideCanvasBreakpoint
-              ? kEditChromeMaxWidth
-              : double.infinity,
-        ),
-        child: child,
-      ),
-    );
-
     return [
-      if (inspector != null && inspectorOnTop)
-        Positioned(
-          key: const Key('edit_dock_top'),
-          left: 8,
-          right: 8,
-          top: 8,
-          child: SafeArea(bottom: false, child: constrain(inspector)),
-        ),
-      Positioned(
-        key: const Key('edit_dock_bottom'),
-        left: 8,
-        right: 8,
-        bottom: 8,
-        child: SafeArea(
-          top: false,
-          child: constrain(
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (inspector != null && !inspectorOnTop) ...[
-                  inspector,
-                  const SizedBox(height: 6),
-                ],
-                toolbar,
-              ],
-            ),
-          ),
-        ),
+      _EditDockOverlay(
+        screenManager: widget.screenManager,
+        outerSize: outerSize,
+        canvasOffset: canvasOffset,
+        cellWidth: cellWidth,
+        cellHeight: cellHeight,
+        state: state,
+        selected: selected,
+        manualOffset: _manualDockOffset,
+        isMinimized: _isEditDockMinimized,
+        onManualOffsetChanged: (offset) {
+          setState(() {
+            _manualDockOffset = offset;
+          });
+        },
+        onResetAutoDodge: () {
+          setState(() {
+            _manualDockOffset = null;
+          });
+        },
+        onToggleMinimized: (minimized) {
+          setState(() {
+            _isEditDockMinimized = minimized;
+          });
+        },
       ),
     ];
   }
@@ -440,6 +375,293 @@ class _LayoutStrategyContainerState extends State<LayoutStrategyContainer> {
     return [...widgets]
       ..removeAt(index)
       ..add(widgets[index]);
+  }
+}
+
+class _EditDockOverlay extends StatelessWidget {
+  const _EditDockOverlay({
+    required this.screenManager,
+    required this.outerSize,
+    required this.canvasOffset,
+    required this.cellWidth,
+    required this.cellHeight,
+    required this.state,
+    required this.selected,
+    required this.manualOffset,
+    required this.isMinimized,
+    required this.onManualOffsetChanged,
+    required this.onResetAutoDodge,
+    required this.onToggleMinimized,
+  });
+
+  final ScreenManagerService screenManager;
+  final Size outerSize;
+  final Offset canvasOffset;
+  final double cellWidth;
+  final double cellHeight;
+  final CanvasLayoutState state;
+  final WidgetPlacementModel? selected;
+  final Offset? manualOffset;
+  final bool isMinimized;
+  final ValueChanged<Offset> onManualOffsetChanged;
+  final VoidCallback onResetAutoDodge;
+  final ValueChanged<bool> onToggleMinimized;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedCenter = selected == null
+        ? null
+        : canvasOffset +
+            Offset(
+              (selected!.x + selected!.w / 2) * cellWidth,
+              (selected!.y + selected!.h / 2) * cellHeight,
+            );
+
+    final isWideSideDock =
+        outerSize.width > outerSize.height &&
+        outerSize.width >= kSideDockMinWidth;
+
+    Alignment initialAlignment;
+    double dockWidth;
+
+    if (isWideSideDock) {
+      final dockLeft =
+          selectedCenter != null && selectedCenter.dx > outerSize.width / 2;
+      initialAlignment =
+          dockLeft ? Alignment.bottomLeft : Alignment.bottomRight;
+      dockWidth = math.min(
+        kEditChromeMaxWidth,
+        math.max(320.0, outerSize.width * 0.42),
+      );
+    } else {
+      final inspectorOnTop =
+          selectedCenter != null && selectedCenter.dy > outerSize.height / 2;
+      initialAlignment =
+          inspectorOnTop ? Alignment.topCenter : Alignment.bottomCenter;
+      dockWidth = outerSize.width > kWideCanvasBreakpoint
+          ? kEditChromeMaxWidth
+          : (outerSize.width - 16);
+    }
+
+    return DraggableOverlayContainer(
+      cardKey: const Key('edit_dock_overlay'),
+      semanticsLabel: 'Move edit mode dock',
+      initialAlignment: initialAlignment,
+      position: manualOffset,
+      margin: const EdgeInsets.all(8),
+      onPositionChanged: onManualOffsetChanged,
+      child: SizedBox(
+        width: isMinimized ? math.min(dockWidth, 340.0) : dockWidth,
+        child: isMinimized
+            ? _buildMinimizedPill(context)
+            : _buildExpandedDock(context, isWideSideDock),
+      ),
+    );
+  }
+
+  Widget _buildMinimizedPill(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: CockpitTokens.nightPanel.withAlpha(240),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: CockpitTokens.bezelEdge, width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black54,
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              key: const Key('edit_dock_drag_handle'),
+              width: 24,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white38,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Editing',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              key: const Key('btn_add_widget'),
+              icon: const Icon(Icons.add, size: 18, color: Colors.blueAccent),
+              tooltip: 'Add Widget',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+                ),
+                builder: (ctx) =>
+                    WidgetPickerSheet(screenManager: screenManager),
+              ),
+            ),
+            if (manualOffset != null)
+              IconButton(
+                key: const Key('btn_edit_dock_auto_dodge'),
+                icon: const Icon(
+                  Icons.auto_awesome,
+                  size: 16,
+                  color: Colors.cyanAccent,
+                ),
+                tooltip: 'Reset to auto-dodge',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: onResetAutoDodge,
+              ),
+            IconButton(
+              key: const Key('btn_edit_dock_expand'),
+              icon: const Icon(
+                Icons.expand_less,
+                size: 20,
+                color: Colors.cyanAccent,
+              ),
+              tooltip: 'Expand dock',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: () => onToggleMinimized(false),
+            ),
+            IconButton(
+              key: const Key('btn_done_editing'),
+              icon: const Icon(Icons.check, size: 18, color: Colors.green),
+              tooltip: 'Done Editing',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: () => screenManager.toggleEditMode(false),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedDock(BuildContext context, bool isWideSideDock) {
+    final inspector = selected == null
+        ? null
+        : WidgetInspectorPanel(
+            model: selected!,
+            screenManager: screenManager,
+          );
+    final toolbar = EditToolbar(
+      screenManager: screenManager,
+      widgets: state.widgets,
+      selectedWidget: selected,
+    );
+
+    final header = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      child: Row(
+        children: [
+          const Text(
+            'EDIT DOCK',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8,
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Container(
+                key: const Key('edit_dock_drag_handle'),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white38,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+          if (manualOffset != null)
+            IconButton(
+              key: const Key('btn_edit_dock_auto_dodge'),
+              icon: const Icon(
+                Icons.auto_awesome,
+                size: 16,
+                color: Colors.cyanAccent,
+              ),
+              tooltip: 'Reset to auto-dodge',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              onPressed: onResetAutoDodge,
+            ),
+          IconButton(
+            key: const Key('btn_edit_dock_minimize'),
+            icon: const Icon(
+              Icons.expand_more,
+              size: 20,
+              color: Colors.white70,
+            ),
+            tooltip: 'Minimize dock',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            onPressed: () => onToggleMinimized(true),
+          ),
+        ],
+      ),
+    );
+
+    final maxInspectorHeight = math.max(120.0, outerSize.height - 120.0);
+    final needScroll = isWideSideDock || outerSize.height < 450;
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        decoration: BoxDecoration(
+          color: CockpitTokens.nightPanel.withAlpha(240),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: CockpitTokens.bezelEdge, width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black54,
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(4, 2, 4, 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            if (inspector != null) ...[
+              if (needScroll)
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxInspectorHeight),
+                  child: SingleChildScrollView(child: inspector),
+                )
+              else
+                inspector,
+              const SizedBox(height: 4),
+            ],
+            toolbar,
+          ],
+        ),
+      ),
+    );
   }
 }
 

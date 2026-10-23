@@ -5,7 +5,7 @@ Provides free-floating drag-and-drop repositioning and boundary clamping for the
 ## Requirements
 
 ### Requirement: Free-Floating Overlay Repositioning
-The simulation overlay SHALL allow the user to drag and drop the controller anywhere across the flight screen by panning on the overlay container.
+The simulation overlay and shared draggable cockpit overlays SHALL allow the user to drag and drop the controller anywhere across the flight screen by panning on the overlay container or drag handle.
 
 #### Scenario: User drags simulation overlay
 - **WHEN** the user pans across the background or non-button areas of the simulation overlay
@@ -15,8 +15,12 @@ The simulation overlay SHALL allow the user to drag and drop the controller anyw
 - **WHEN** periodic telemetry ticks or manual scenario advances trigger screen updates
 - **THEN** the simulation overlay retains its last dragged position on screen without resetting to the default coordinate
 
+#### Scenario: Re-clamping on viewport resize or orientation change
+- **WHEN** the display viewport dimensions or system safe-area insets change after an overlay has been dragged
+- **THEN** the overlay position SHALL automatically re-clamp so the entire overlay card remains within the visible safe area
+
 ### Requirement: Viewport and Safe Area Boundary Clamping
-The simulation overlay SHALL constrain its movement to remain entirely visible within the display viewport and safe area margins, and collapse cleanly without content clipping.
+The simulation overlay and shared draggable cockpit overlays SHALL constrain their movement to remain entirely visible within the display viewport and safe area margins, and collapse cleanly without content clipping.
 
 #### Scenario: Dragging toward screen boundaries
 - **WHEN** the user drags the simulation overlay toward any screen edge

@@ -349,6 +349,100 @@ void main() {
 
       replayService.dispose();
     });
+
+    testWidgets('supports 2D drag repositioning, safe area clamping, and slider scrubbing', (tester) async {
+      final sampleFlight = FlightModel(
+        id: 'drag_replay_test',
+        title: 'Bassano Replay',
+        date: DateTime.utc(2026, 8, 20, 10, 0, 0),
+        points: [
+          FlightPoint(
+            timestamp: DateTime.utc(2026, 8, 20, 10, 0, 0),
+            latitude: 47.0,
+            longitude: 13.0,
+            altitude: 1000.0,
+          ),
+          FlightPoint(
+            timestamp: DateTime.utc(2026, 8, 20, 10, 1, 0),
+            latitude: 47.02,
+            longitude: 13.02,
+            altitude: 1200.0,
+          ),
+        ],
+        statistics: const FlightStatistics(
+          duration: Duration(minutes: 1),
+          maxAltitude: 1200.0,
+          minAltitude: 1000.0,
+          maxClimbRate: 4.0,
+          maxSinkRate: 0.0,
+          totalDistanceKm: 2.5,
+          averageSpeedKmh: 40.0,
+          averageGlideRatio: 9.0,
+        ),
+      );
+
+      final replayService = FlightReplayService(flight: sampleFlight);
+      addTearDown(replayService.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(600, 800),
+              padding: EdgeInsets.only(top: 24, bottom: 20),
+            ),
+            child: Scaffold(
+              body: ReplayControlOverlay(
+                replayService: replayService,
+                onExit: () {},
+                initiallyExpanded: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cardFinder = find.byKey(const Key('replay_control_overlay_card'));
+      expect(cardFinder, findsOneWidget);
+
+      final handleFinder = find.byKey(const Key('replay_bottom_grab_handle'));
+      expect(handleFinder, findsOneWidget);
+
+      final initialTopLeft = tester.getTopLeft(cardFinder);
+
+      // Drag up and right via the grab handle
+      await tester.drag(handleFinder, const Offset(50, -250));
+      await tester.pumpAndSettle();
+
+      final draggedTopLeft = tester.getTopLeft(cardFinder);
+      expect(draggedTopLeft.dy, lessThan(initialTopLeft.dy));
+
+      // Drag beyond the top safe-area boundary
+      await tester.drag(handleFinder, const Offset(0, -700));
+      await tester.pumpAndSettle();
+
+      final clampedTopLeft = tester.getTopLeft(cardFinder);
+      // Safe area top (24) + margin (6) = 30
+      expect(clampedTopLeft.dy, greaterThanOrEqualTo(30.0));
+
+      // Scrub timeline slider while floating
+      final sliderFinder = find.byType(Slider);
+      expect(sliderFinder, findsOneWidget);
+      await tester.tap(sliderFinder);
+      await tester.pumpAndSettle();
+
+      // Collapse and expand while dragged
+      final collapseBtn = find.byKey(const Key('btn_replay_collapse'));
+      await tester.tap(collapseBtn);
+      await tester.pumpAndSettle();
+      expect(find.byType(Slider), findsNothing);
+
+      final expandBtn = find.byKey(const Key('btn_replay_expand'));
+      await tester.tap(expandBtn);
+      await tester.pumpAndSettle();
+      expect(find.byType(Slider), findsOneWidget);
+    });
   });
 
   group('FlightSummarySheet Tests', () {
