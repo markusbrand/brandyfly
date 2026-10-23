@@ -315,6 +315,7 @@ void main() {
 
       expect(find.text('Replay Test Flight'), findsOneWidget);
       expect(find.text('1x'), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
 
       // Play toggle
       await tester.tap(find.byTooltip('Play'));

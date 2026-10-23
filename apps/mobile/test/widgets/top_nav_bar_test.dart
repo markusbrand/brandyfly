@@ -225,5 +225,18 @@ void main() {
       expect(screenManager.isNavBarVisible, isFalse);
       expect(screenManager.isFlightsScreenVisible, isTrue);
     });
+
+    testWidgets('Translucent drawer renders without BackdropFilter GPU blur',
+        (tester) async {
+      final screenManager = ScreenManagerService();
+      screenManager.setNavBarStyle(NavBarStyle.translucentDrawer);
+      screenManager.toggleNavBar(true);
+
+      await tester.pumpWidget(buildTestShell(screenManager: screenManager));
+      await tester.pumpAndSettle();
+
+      expect(find.text('BrandyFly Navigation'), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+    });
   });
 }

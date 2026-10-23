@@ -1,6 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../services/flight_replay_service.dart';
+import '../../ui/core/theme/cockpit_tokens.dart';
 import '../../ui/core/widgets/draggable_overlay_container.dart';
 
 class ReplayControlOverlay extends StatefulWidget {
@@ -71,32 +71,30 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
             curve: Curves.easeInOutCubic,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: Container(
-                    width: cardWidth,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: _isExpanded ? 8 : 4,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Container(
+                  width: cardWidth,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: _isExpanded ? 8 : 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: CockpitTokens.nightPanel.withAlpha(240),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.cyanAccent.withAlpha(80),
+                      width: 1.2,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey.shade900.withAlpha(220),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.cyanAccent.withAlpha(80),
-                        width: 1.2,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black54,
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
                       ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black54,
-                          blurRadius: 12,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
+                    ],
+                  ),
+                  child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Grab handle / Drag indicator
@@ -303,7 +301,6 @@ class _ReplayControlOverlayState extends State<ReplayControlOverlay> {
                 ),
               ),
             ),
-          ),
         );
       },
     );

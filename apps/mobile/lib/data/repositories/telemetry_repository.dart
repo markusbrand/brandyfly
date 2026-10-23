@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/models/cockpit_telemetry.dart';
 import '../../domain/navigation/geodesic_navigation.dart';
 import '../../domain/thermal_assistant/climb_averager.dart';
+import '../../domain/thermal_assistant/glide_averager.dart';
 import '../../domain/thermal_assistant/thermal_assistant_engine.dart';
 import '../../models/flight_model.dart';
 import '../../models/lat_lng.dart';
@@ -29,6 +30,8 @@ class TelemetryRepository {
     this.historyLength = 60,
   }) : _idle = idleTelemetry,
        _telemetry = ValueNotifier<CockpitTelemetry>(idleTelemetry) {
+    _lastKnownTrackingState = _trackingService?.state;
+    _lastKnownTakeoffPoint = _trackingService?.takeoffPoint;
     _replayService.addListener(_onReplayChanged);
     _trackingService?.addListener(_onTrackingChanged);
     _emitIdle();
@@ -49,12 +52,17 @@ class TelemetryRepository {
 
   double? _lastHag;
   int _elevationQuerySeq = 0;
+  FlightState? _lastKnownTrackingState;
+  FlightPoint? _lastKnownTakeoffPoint;
 
   /// On-device thermal assistant (circling, wind drift, thermal core).
   final ThermalAssistantEngine _thermalEngine = ThermalAssistantEngine();
 
   /// Rolling integrated climb rate averager (20s window).
   final ClimbAverager _climbAverager = ClimbAverager();
+
+  /// Rolling integrated glide ratio (L/D) averager (15s window).
+  final GlideAverager _glideAverager = GlideAverager();
 
   /// Replay thermal state: fed in order with checkpoints for cheap seeks.
   final ReplayThermalTracker _replayThermal = ReplayThermalTracker();
@@ -101,6 +109,7 @@ class TelemetryRepository {
     _lastHag = null;
     _elevationQuerySeq++;
     _climbAverager.reset();
+    _glideAverager.reset();
     _thermalEngine.reset();
     _emitLiveOrIdle();
   }
@@ -148,14 +157,20 @@ class TelemetryRepository {
       hag = _lastHag;
     }
 
+    final timestampMs = s.timestamp.millisecondsSinceEpoch;
     _climbAverager.addSample(
-      s.timestamp.millisecondsSinceEpoch,
+      timestampMs,
+      s.vario,
+    );
+    _glideAverager.addSample(
+      timestampMs,
+      s.speed,
       s.vario,
     );
 
     final thermal = _thermalEngine.update(
       ThermalSample(
-        timestampMs: s.timestamp.millisecondsSinceEpoch,
+        timestampMs: timestampMs,
         position: GeoPosition(s.latitude, s.longitude),
         headingDeg: s.heading,
         climbRateMs: s.vario,
@@ -169,6 +184,8 @@ class TelemetryRepository {
     final wind = thermal.wind;
 
     final takeoff = _trackingService?.takeoffPoint;
+    _lastKnownTrackingState = _trackingService?.state;
+    _lastKnownTakeoffPoint = takeoff;
     final DateTime? takeoffTime;
     final Duration? flightDuration;
     final LatLng? takeoffLocation;
@@ -212,7 +229,7 @@ class TelemetryRepository {
     _liveSample = CockpitTelemetry(
       altitude: s.altitude,
       speed: s.speed,
-      glide: _idle.glide,
+      glide: _glideAverager.calculateGlide(fallbackGlide: _idle.glide),
       hag: hag,
       climb: s.vario,
       averageClimb: _climbAverager.calculateAverage(),
@@ -301,8 +318,15 @@ class TelemetryRepository {
 
   void _onTrackingChanged() {
     if (_disposed || _replayActive) return;
+    final currentState = _trackingService?.state;
+    final takeoff = _trackingService?.takeoffPoint;
+    if (currentState == _lastKnownTrackingState &&
+        identical(takeoff, _lastKnownTakeoffPoint)) {
+      return;
+    }
+    _lastKnownTrackingState = currentState;
+    _lastKnownTakeoffPoint = takeoff;
     if (_liveSample != null) {
-      final takeoff = _trackingService?.takeoffPoint;
       if (takeoff != null) {
         final lat = _liveSample!.latitude ?? takeoff.latitude;
         final lon = _liveSample!.longitude ?? takeoff.longitude;

@@ -5,6 +5,7 @@ import 'package:brandyfly/domain/models/cockpit_telemetry.dart';
 import 'package:brandyfly/domain/models/size_tier.dart';
 import 'package:brandyfly/domain/models/ui_config.dart';
 import 'package:brandyfly/services/airspace_service.dart';
+import 'package:brandyfly/ui/core/rebuild_probe.dart';
 import 'package:brandyfly/ui/features/flight_canvas/views/widget_slot.dart';
 import 'package:brandyfly/widgets/flight/airspace_side_cut_widget.dart';
 import 'package:brandyfly/widgets/flight/airspace_warning_banner_hud.dart';
@@ -237,6 +238,77 @@ void main() {
 
       expect(find.byType(AirspaceSideCutWidget), findsOneWidget);
       expect(find.text('SIDE-CUT (120°)'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AirspaceSideCutWidget),
+          matching: find.byType(RepaintBoundary),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('airspaceSideCut slot ignores unrelated telemetry fields and sub-threshold jitter', (tester) async {
+      RebuildProbe.enabled = true;
+      RebuildProbe.reset();
+      addTearDown(() {
+        RebuildProbe.enabled = false;
+        RebuildProbe.reset();
+      });
+
+      final model = WidgetPlacementModel(
+        id: 'slot-airspace-cut',
+        type: WidgetType.airspaceSideCut,
+        x: 0,
+        y: 16,
+        w: 16,
+        h: 8,
+      );
+
+      final telemetry = ValueNotifier<CockpitTelemetry>(
+        const CockpitTelemetry(
+          altitude: 1650.0,
+          speed: 40.0,
+          glide: 8.2,
+          heading: 120.0,
+          latitude: 47.5300,
+          longitude: 13.6800,
+          hag: 300.0,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Provider<AirspaceService?>.value(
+              value: null,
+              child: FlightWidgetContent(
+                model: model,
+                telemetry: telemetry,
+                tier: SizeTier.regular,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      RebuildProbe.reset();
+
+      // Unrelated field change (windSpeed, climb) and sub-threshold altitude jitter (1650.2 rounds to 1650)
+      telemetry.value = telemetry.value.copyWith(
+        climb: 2.5,
+        windSpeed: 22.0,
+        windDir: 270.0,
+        altitude: 1650.2,
+        heading: 120.3,
+      );
+      await tester.pump();
+      expect(RebuildProbe.count('instrument:slot-airspace-cut'), 0);
+
+      // Meaningful heading change (120 -> 135) triggers rebuild
+      telemetry.value = telemetry.value.copyWith(heading: 135.0);
+      await tester.pump();
+      expect(RebuildProbe.count('instrument:slot-airspace-cut'), 1);
+      expect(find.text('SIDE-CUT (135°)'), findsOneWidget);
     });
   });
 }

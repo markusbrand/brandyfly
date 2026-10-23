@@ -1,11 +1,57 @@
+import 'dart:async';
+
 import 'package:brandyfly/data/repositories/telemetry_repository.dart';
 import 'package:brandyfly/domain/navigation/geodesic_navigation.dart';
 import 'package:brandyfly/models/flight_model.dart';
 import 'package:brandyfly/models/flight_settings.dart';
 import 'package:brandyfly/services/flight_replay_service.dart';
 import 'package:brandyfly/services/flight_tracking_service.dart';
+import 'package:brandyfly/services/telemetry/telemetry_source.dart';
 import 'package:brandyfly/services/telemetry/telemetry_types.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _TestTelemetrySource implements ITelemetrySource {
+  final _controller = StreamController<TelemetrySnapshot>.broadcast(sync: true);
+  final _rawController = StreamController<dynamic>.broadcast(sync: true);
+
+  @override
+  Stream<TelemetrySnapshot> get telemetryStream => _controller.stream;
+
+  @override
+  Stream<dynamic> get rawSensorStream => _rawController.stream;
+
+  @override
+  TelemetrySourceType get sourceType => TelemetrySourceType.mock;
+
+  @override
+  String get name => 'TestSource';
+
+  @override
+  bool get isRunning => true;
+
+  @override
+  bool get isPaused => false;
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> start() async {}
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> stop() async {}
+
+  void emit(TelemetrySnapshot snapshot) => _controller.add(snapshot);
+
+  @override
+  void dispose() {
+    _controller.close();
+    _rawController.close();
+  }
+}
 
 void main() {
   group('GeodesicNavigation', () {
@@ -311,6 +357,97 @@ void main() {
       expect(step2.flightDuration, const Duration(seconds: 60));
       expect(step2.rtlAltitudeMarginMeters, closeTo(300.0, 1.0));
       expect(step2.rtlRequiredGlide, isNotNull);
+    });
+
+    test('emits exactly 1 telemetry notification per sensor tick when flying', () {
+      final source = _TestTelemetrySource();
+      addTearDown(source.dispose);
+
+      // Attach source in the same order as main.dart: trackingService first, then repository
+      trackingService.attachTelemetrySource(source);
+      repository.attachSource(source);
+
+      final baseTime = DateTime.utc(2026, 8, 20, 10, 0, 0);
+      // Buffer one point and start manual recording so trackingService is in FlightState.flying
+      source.emit(
+        TelemetrySnapshot(
+          timestamp: baseTime,
+          altitude: 1500.0,
+          vario: 0.0,
+          speed: 5.0,
+          heading: 90.0,
+          latitude: 47.5250,
+          longitude: 13.6930,
+        ),
+      );
+      trackingService.startManualRecording();
+      expect(trackingService.state, FlightState.flying);
+
+      var emissions = 0;
+      repository.telemetry.addListener(() => emissions++);
+
+      // Emit 20 ticks across 4 seconds (5 Hz) while flying
+      for (var i = 1; i <= 20; i++) {
+        source.emit(
+          TelemetrySnapshot(
+            timestamp: baseTime.add(Duration(milliseconds: i * 200)),
+            altitude: 1500.0 + i,
+            vario: 1.2,
+            speed: 36.0,
+            heading: 90.0,
+            latitude: 47.5250 + i * 0.0001,
+            longitude: 13.6930 + i * 0.0001,
+          ),
+        );
+      }
+
+      expect(
+        emissions,
+        20,
+        reason: 'Each sensor tick while flying must emit exactly 1 CockpitTelemetry notification',
+      );
+    });
+
+    test('computes rolling glide ratio (L/D) from live telemetry and resets on detachSource', () {
+      final baseTime = DateTime.utc(2026, 8, 20, 10, 0, 0);
+
+      // Feed 15 seconds of steady descending glide: 36 km/h (10 m/s) at -1.25 m/s -> L/D 8.0
+      for (var i = 0; i <= 15; i++) {
+        repository.onSnapshot(
+          TelemetrySnapshot(
+            timestamp: baseTime.add(Duration(seconds: i)),
+            altitude: 1500.0 - i * 1.25,
+            vario: -1.25,
+            speed: 36.0,
+            heading: 180.0,
+            latitude: 47.5250 - i * 0.0001,
+            longitude: 13.6930,
+          ),
+        );
+      }
+
+      expect(repository.telemetry.value.glide, closeTo(8.0, 0.05));
+
+      // Sustained climb (+2.0 m/s for 15s) -> meanVario is positive -> retains last valid descending glide ratio
+      for (var i = 16; i <= 31; i++) {
+        repository.onSnapshot(
+          TelemetrySnapshot(
+            timestamp: baseTime.add(Duration(seconds: i)),
+            altitude: 1480.0 + (i - 15) * 2.0,
+            vario: 2.0,
+            speed: 32.0,
+            heading: 180.0,
+            latitude: 47.5230,
+            longitude: 13.6930,
+          ),
+        );
+      }
+      expect(repository.telemetry.value.glide, greaterThanOrEqualTo(8.0));
+      expect(repository.telemetry.value.glide, lessThanOrEqualTo(50.0));
+
+      // Detach source -> resets glide averager back to idle default (8.4)
+      repository.detachSource();
+      expect(repository.telemetry.value.glide, closeTo(8.4, 0.01));
     });
   });
 }
