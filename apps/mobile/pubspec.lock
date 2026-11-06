@@ -306,10 +306,10 @@ packages:
     dependency: "direct dev"
     description:
       name: maplibre_platform_interface
-      sha256: "484af630e4d6845711dc694e7a2e0cd44bf8eadd73928a374a36a7d86e091e6f"
+      sha256: "5afeb447af772df6ed971e4057254830608339ba04f38bbff2db7979f88247c5"
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.6"
+    version: "0.3.7+1"
   maplibre_web:
     dependency: transitive
     description:
