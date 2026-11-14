@@ -88,7 +88,8 @@ def generate_region_vector_tiles(region: dict, osm_pbf_path: str, output_pmtiles
         "--maxzoom=14",
         "--download",
         "--noderefs=sparse",
-        "--storage=ram",
+        "--storage=mmap",
+        "--force",
     ]
 
     print(f"Executing: {' '.join(cmd)}")

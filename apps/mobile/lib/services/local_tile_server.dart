@@ -88,6 +88,8 @@ class LocalTileServer {
   bool get isRunning => _isRunning;
   bool get isOnlinePreviewActive => onlinePreviewNotifier.value;
   int get port => _server?.port ?? 0;
+  int? get primaryMaxZoom => _primaryReader?.header.maxZoom;
+  int? get terrainMaxZoom => _terrainReader?.header.maxZoom;
   String get baseUrl => 'http://127.0.0.1:$port';
   String get tilesUrlTemplate => '$baseUrl/tiles/{z}/{x}/{y}.pbf';
   String get terrainUrlTemplate => '$baseUrl/terrain/{z}/{x}/{y}.png';

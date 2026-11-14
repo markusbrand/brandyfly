@@ -155,6 +155,27 @@ regions:
             self.assertIn("terrain", reg["files"])
             self.assertEqual(reg["files"]["map"]["sha256"], compute_sha256(map_file))
 
+            # Verify flat GitHub Release asset URLs when cdn_base_url uses /releases/download/
+            gh_catalog = generate_catalog(
+                config_path,
+                os.path.join(tmpdir, "output"),
+                catalog_path,
+                cdn_url_override="https://github.com/markusbrand/brandyfly/releases/download/maps-v1",
+            )
+            gh_reg = gh_catalog["regions"][0]
+            self.assertEqual(
+                gh_reg["files"]["map"]["url"],
+                "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-east-map.pmtiles",
+            )
+            self.assertEqual(
+                gh_reg["files"]["terrain"]["url"],
+                "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-east-terrain.pmtiles",
+            )
+            self.assertEqual(
+                gh_catalog["fallback"]["overview"]["url"],
+                "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/overview.pmtiles",
+            )
+
     def test_catalog_schema_error_detection(self):
         # Missing attribution
         bad_catalog = {

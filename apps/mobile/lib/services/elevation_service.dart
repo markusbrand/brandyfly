@@ -484,10 +484,14 @@ class ElevationService {
 
   /// Returns cached ground elevation immediately if the corresponding tile is in memory.
   double? getCachedElevation(double lat, double lon) {
-    final coord = WebMercator.latLonToTilePixel(lat, lon, zoom: demZoom);
     for (final source in _sources.values) {
       if (!source.containsLocation(lat, lon)) continue;
-      final cacheKey = '${source.regionId}:$demZoom:${coord.tileX}:${coord.tileY}';
+      final z = demZoom.clamp(
+        source.reader.header.minZoom,
+        source.reader.header.maxZoom,
+      );
+      final coord = WebMercator.latLonToTilePixel(lat, lon, zoom: z);
+      final cacheKey = '${source.regionId}:$z:${coord.tileX}:${coord.tileY}';
       final tile = _tileCache.get(cacheKey);
       if (tile != null) {
         return TerrainRgb.interpolateElevation(
@@ -505,11 +509,14 @@ class ElevationService {
     final cached = getCachedElevation(lat, lon);
     if (cached != null) return cached;
 
-    final coord = WebMercator.latLonToTilePixel(lat, lon, zoom: demZoom);
-
     for (final source in _sources.values) {
       if (!source.containsLocation(lat, lon)) continue;
-      final cacheKey = '${source.regionId}:$demZoom:${coord.tileX}:${coord.tileY}';
+      final z = demZoom.clamp(
+        source.reader.header.minZoom,
+        source.reader.header.maxZoom,
+      );
+      final coord = WebMercator.latLonToTilePixel(lat, lon, zoom: z);
+      final cacheKey = '${source.regionId}:$z:${coord.tileX}:${coord.tileY}';
 
       final cachedTile = _tileCache.get(cacheKey);
       if (cachedTile != null) {
@@ -521,7 +528,7 @@ class ElevationService {
       }
 
       final rawBytes = await source.reader.getTile(
-        demZoom,
+        z,
         coord.tileX,
         coord.tileY,
       );

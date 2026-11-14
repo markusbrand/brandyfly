@@ -225,11 +225,11 @@ class MapLibreMapService extends ChangeNotifier {
     }
   }
 
-  /// Checks whether a downloaded region archive exists on disk.
+  /// Checks whether a valid downloaded region archive exists on disk.
   Future<bool> regionExists(String regionId) async {
     final basePath = await getRegionsBasePath();
     final mapFile = File('$basePath/$regionId/map.pmtiles');
-    return mapFile.existsSync() && mapFile.lengthSync() > 0;
+    return RegionManagerService.hasValidPmtilesHeader(mapFile);
   }
 
   /// Resolves local path to the bundled global overview PMTiles archive.
@@ -320,10 +320,23 @@ class MapLibreMapService extends ChangeNotifier {
         if (baseDir.existsSync()) {
           final entries = baseDir.listSync().whereType<Directory>();
           for (final entry in entries) {
+            final dirName = entry.path.split(Platform.pathSeparator).last;
+            if (dirName.startsWith('.') ||
+                dirName.endsWith('.downloading') ||
+                dirName.endsWith('.old')) {
+              continue;
+            }
             final testFile = File('${entry.path}/map.pmtiles');
-            if (testFile.existsSync() && testFile.lengthSync() > 0) {
-              effectiveRegionId = entry.path.split(Platform.pathSeparator).last;
+            if (!testFile.existsSync()) {
+              continue;
+            }
+            if (RegionManagerService.hasValidPmtilesHeader(testFile)) {
+              effectiveRegionId = dirName;
               break;
+            } else {
+              try {
+                entry.deleteSync(recursive: true);
+              } catch (_) {}
             }
           }
         }
@@ -335,15 +348,20 @@ class MapLibreMapService extends ChangeNotifier {
       final mapFile = File('$regionDir/map.pmtiles');
       final terrainFile = File('$regionDir/terrain.pmtiles');
 
-      if (mapFile.existsSync() && mapFile.lengthSync() > 0) {
+      if (RegionManagerService.hasValidPmtilesHeader(mapFile)) {
         useRegion = true;
         await _tileServer.setPrimaryArchive(mapFile.path);
-        if (terrainFile.existsSync() && terrainFile.lengthSync() > 0) {
+        if (RegionManagerService.hasValidPmtilesHeader(terrainFile)) {
           await _tileServer.setTerrainArchive(terrainFile.path);
         } else {
           await _tileServer.setTerrainArchive(null);
         }
       } else {
+        if (mapFile.existsSync()) {
+          try {
+            Directory(regionDir).deleteSync(recursive: true);
+          } catch (_) {}
+        }
         await _tileServer.setPrimaryArchive(null);
         await _tileServer.setTerrainArchive(null);
       }
@@ -374,20 +392,24 @@ class MapLibreMapService extends ChangeNotifier {
 
     // Configure vector source to point directly to loopback tile server
     final vectorTileUrl = '${_tileServer.baseUrl}/tiles/{z}/{x}/{y}.pbf';
+    final vectorMaxZoom = _tileServer.primaryMaxZoom ?? 14;
     if (sources.containsKey('openmaptiles')) {
       final om = sources['openmaptiles'] as Map<String, dynamic>;
       om.remove('url');
       om['type'] = 'vector';
       om['tiles'] = [vectorTileUrl];
+      om['maxzoom'] = vectorMaxZoom;
     } else {
       sources['openmaptiles'] = {
         'type': 'vector',
         'tiles': [vectorTileUrl],
+        'maxzoom': vectorMaxZoom,
       };
     }
 
     // Configure terrain raster-dem source pointing directly to loopback tile server
     final terrainTileUrl = '${_tileServer.baseUrl}/terrain/{z}/{x}/{y}.png';
+    final terrainMaxZoom = _tileServer.terrainMaxZoom ?? 12;
     if (sources.containsKey('terrain')) {
       final t = sources['terrain'] as Map<String, dynamic>;
       t.remove('url');
@@ -395,12 +417,14 @@ class MapLibreMapService extends ChangeNotifier {
       t['tiles'] = [terrainTileUrl];
       t['tileSize'] = 256;
       t['encoding'] = 'terrarium';
+      t['maxzoom'] = terrainMaxZoom;
     } else {
       sources['terrain'] = {
         'type': 'raster-dem',
         'tiles': [terrainTileUrl],
         'tileSize': 256,
         'encoding': 'terrarium',
+        'maxzoom': terrainMaxZoom,
       };
     }
     styleMap['terrain'] = {'source': 'terrain', 'exaggeration': 1.0};

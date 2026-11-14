@@ -123,7 +123,12 @@ void main() {
           },
         }));
         final pyreneesMap = File('${pyreneesDir.path}/map.pmtiles');
-        await pyreneesMap.writeAsBytes(List<int>.filled(180, 1));
+        final validBytes = List<int>.filled(4096, 1);
+        const magic = <int>[0x50, 0x4d, 0x54, 0x69, 0x6c, 0x65, 0x73, 0x03];
+        for (var i = 0; i < magic.length; i++) {
+          validBytes[i] = magic[i];
+        }
+        await pyreneesMap.writeAsBytes(validBytes);
       });
 
       await tester.pumpWidget(

@@ -11,6 +11,15 @@ import 'package:brandyfly/services/region_manager_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  List<int> buildValidPmtilesBytes(int size, {int seed = 1}) {
+    final bytes = List<int>.generate(size, (i) => (i + seed) % 256);
+    const magic = <int>[0x50, 0x4d, 0x54, 0x69, 0x6c, 0x65, 0x73, 0x03];
+    for (var i = 0; i < magic.length; i++) {
+      bytes[i] = magic[i];
+    }
+    return bytes;
+  }
+
   group('RegionManagerService', () {
     late Directory tempDir;
     late String customBasePath;
@@ -149,10 +158,10 @@ void main() {
     });
 
     test('downloadRegion performs resumable HTTP download, checksums, and atomic swap', () async {
-      final mapBytes = List<int>.generate(200, (i) => i % 256);
+      final mapBytes = buildValidPmtilesBytes(5000, seed: 1);
       final mapHash = sha256.convert(mapBytes).toString();
 
-      final terrainBytes = List<int>.generate(150, (i) => (i * 2) % 256);
+      final terrainBytes = buildValidPmtilesBytes(4500, seed: 7);
       final terrainHash = sha256.convert(terrainBytes).toString();
 
       final dynamicCatalogJson = {
@@ -174,12 +183,12 @@ void main() {
             'files': {
               'map': {
                 'url': 'https://cdn.example/regions/alps-east/map.pmtiles',
-                'sizeBytes': 200,
+                'sizeBytes': 5000,
                 'sha256': mapHash,
               },
               'terrain': {
                 'url': 'https://cdn.example/regions/alps-east/terrain.pmtiles',
-                'sizeBytes': 150,
+                'sizeBytes': 4500,
                 'sha256': terrainHash,
               },
             },
@@ -221,11 +230,11 @@ void main() {
 
       await service.fetchCatalog();
 
-      // Pre-seed 50 bytes of map.pmtiles to test resume logic
+      // Pre-seed 500 bytes of map.pmtiles to test resume logic
       final tempDownloadDir = Directory('$customBasePath/regions/alps-east.downloading');
       await tempDownloadDir.create(recursive: true);
       final partialMapFile = File('${tempDownloadDir.path}/map.pmtiles');
-      await partialMapFile.writeAsBytes(mapBytes.sublist(0, 50));
+      await partialMapFile.writeAsBytes(mapBytes.sublist(0, 500));
 
       final progressEvents = <RegionDownloadProgress>[];
       final stream = service.downloadRegion('alps-east');
@@ -234,7 +243,7 @@ void main() {
       }
 
       expect(progressEvents.last.status, DownloadStatus.completed);
-      expect(progressEvents.last.bytesDownloaded, 350);
+      expect(progressEvents.last.bytesDownloaded, 9500);
 
       // Verify files in final directory
       final finalRegionDir = Directory('$customBasePath/regions/alps-east');
@@ -245,9 +254,9 @@ void main() {
       final downloadedMeta = File('${finalRegionDir.path}/meta.json');
 
       expect(await downloadedMap.exists(), isTrue);
-      expect(await downloadedMap.length(), 200);
+      expect(await downloadedMap.length(), 5000);
       expect(await downloadedTerrain.exists(), isTrue);
-      expect(await downloadedTerrain.length(), 150);
+      expect(await downloadedTerrain.length(), 4500);
       expect(await downloadedMeta.exists(), isTrue);
 
       // Verify temp downloading dir is cleaned up
@@ -258,12 +267,82 @@ void main() {
       expect(downloadedList.length, 1);
       expect(downloadedList.first.id, 'alps-east');
       expect(downloadedList.first.version, '2026-08');
-      expect(downloadedList.first.sizeBytes, 350 + (await downloadedMeta.length()));
+      expect(downloadedList.first.sizeBytes, 9500 + (await downloadedMeta.length()));
 
       // Test storage usage
       final usage = await service.getStorageUsage();
       expect(usage.totalBytes, downloadedList.first.sizeBytes);
       expect(usage.bytesForRegion('alps-east'), downloadedList.first.sizeBytes);
+    });
+
+    test('downloadRegion emits DownloadStatus.failed on network/DNS error without writing bundled stub', () async {
+      final failingDownloadClient = MockClient((request) async {
+        if (request.url.toString().endsWith('catalog.json')) {
+          return http.Response(jsonEncode(dummyCatalogJson), 200);
+        }
+        throw const SocketException('Failed host lookup: cdn.example');
+      });
+
+      final service = RegionManagerService(
+        customAppSupportDir: customBasePath,
+        catalogUrl: 'https://cdn.example/catalog.json',
+        httpClient: failingDownloadClient,
+      );
+
+      await service.fetchCatalog();
+
+      final events = await service.downloadRegion('alps-east').toList();
+      expect(events.last.status, DownloadStatus.failed);
+      expect(events.last.errorMessage, contains('Failed host lookup'));
+
+      final activeDir = Directory('$customBasePath/regions/alps-east');
+      expect(await activeDir.exists(), isFalse);
+    });
+
+    test('downloadRegion rejects 499-byte stub or non-PMTiles payload', () async {
+      final stubCatalogJson = {
+        'catalogVersion': 1,
+        'generatedAt': '2026-08-01T00:00:00.000Z',
+        'regions': [
+          {
+            'id': 'stub-region',
+            'name': 'Stub',
+            'description': 'Stub payload test',
+            'bounds': {'north': 48.0, 'south': 46.0, 'west': 12.0, 'east': 14.0},
+            'version': '2026-08',
+            'generatedAt': '2026-08-01T00:00:00.000Z',
+            'files': {
+              'map': {
+                'url': 'https://cdn.example/stub/map.pmtiles',
+                'sizeBytes': 499,
+                'sha256': '',
+              },
+            },
+          },
+        ],
+      };
+
+      final mockClient = MockClient((request) async {
+        if (request.url.toString().endsWith('catalog.json')) {
+          return http.Response(jsonEncode(stubCatalogJson), 200);
+        }
+        return http.Response.bytes(buildValidPmtilesBytes(499), 200);
+      });
+
+      final service = RegionManagerService(
+        customAppSupportDir: customBasePath,
+        catalogUrl: 'https://cdn.example/catalog.json',
+        httpClient: mockClient,
+      );
+
+      await service.fetchCatalog();
+
+      final events = await service.downloadRegion('stub-region').toList();
+      expect(events.last.status, DownloadStatus.failed);
+      expect(events.last.errorMessage, contains('Invalid PMTiles archive'));
+
+      final activeDir = Directory('$customBasePath/regions/stub-region');
+      expect(await activeDir.exists(), isFalse);
     });
 
     test('downloadRegion throws and cleans up when SHA-256 does not match', () async {
@@ -281,7 +360,7 @@ void main() {
             'files': {
               'map': {
                 'url': 'https://cdn.example/corrupt/map.pmtiles',
-                'sizeBytes': 150,
+                'sizeBytes': 4096,
                 'sha256': '0000000000000000000000000000000000000000000000000000000000000000',
               },
             },
@@ -293,7 +372,7 @@ void main() {
         if (request.url.toString().endsWith('catalog.json')) {
           return http.Response(jsonEncode(catalogJson), 200);
         }
-        return http.Response.bytes(List<int>.filled(150, 42), 200);
+        return http.Response.bytes(buildValidPmtilesBytes(4096, seed: 42), 200);
       });
 
       final service = RegionManagerService(
@@ -313,11 +392,34 @@ void main() {
       expect(await activeDir.exists(), isFalse);
     });
 
+    test('getDownloadedRegions self-heals and deletes 499-byte stub directory', () async {
+      final stubDir = Directory('$customBasePath/regions/alps-east');
+      await stubDir.create(recursive: true);
+      await File('${stubDir.path}/map.pmtiles').writeAsBytes(buildValidPmtilesBytes(499));
+      await File('${stubDir.path}/terrain.pmtiles').writeAsBytes(buildValidPmtilesBytes(499));
+      await File('${stubDir.path}/meta.json').writeAsString(jsonEncode({
+        'id': 'alps-east',
+        'version': '2026-08',
+        'downloadedAt': '2026-08-01T00:00:00.000Z',
+        'directoryPath': stubDir.path,
+        'mapPath': '${stubDir.path}/map.pmtiles',
+        'sizeBytes': 167772160,
+      }));
+
+      final service = RegionManagerService(
+        customAppSupportDir: customBasePath,
+      );
+
+      final downloaded = await service.getDownloadedRegions();
+      expect(downloaded, isEmpty);
+      expect(await stubDir.exists(), isFalse);
+    });
+
     test('deleteRegion removes files and reclaims storage', () async {
       final regionDir = Directory('$customBasePath/regions/alps-east');
       await regionDir.create(recursive: true);
       final mapFile = File('${regionDir.path}/map.pmtiles');
-      await mapFile.writeAsBytes(List<int>.filled(200, 1));
+      await mapFile.writeAsBytes(buildValidPmtilesBytes(4096));
 
       final service = RegionManagerService(
         customAppSupportDir: customBasePath,
@@ -385,7 +487,7 @@ void main() {
         },
       }));
       final mapFile = File('${regionDir.path}/map.pmtiles');
-      await mapFile.writeAsBytes(List<int>.filled(200, 1));
+      await mapFile.writeAsBytes(buildValidPmtilesBytes(4096));
 
       // Now location (47.0, 13.0) is covered
       expect(await service.isLocationCovered(47.0, 13.0), isTrue);

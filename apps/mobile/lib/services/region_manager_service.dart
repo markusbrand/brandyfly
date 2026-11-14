@@ -95,7 +95,49 @@ class RegionManagerService extends ChangeNotifier {
   }) : _httpClient = httpClient ?? http.Client();
 
   static const String defaultCatalogUrl =
-      'https://cdn.brandyfly.org/regions/catalog.json';
+      'https://github.com/markusbrand/brandyfly/releases/download/maps-v1/catalog.json';
+
+  /// Minimum byte size for a valid regional PMTiles archive (rejects 499-byte overview stubs).
+  static const int minValidRegionArchiveBytes = 4096;
+
+  /// 8-byte magic header for PMTiles v3 (`"PMTiles\x03"`).
+  static const List<int> pmtilesMagicHeader = <int>[
+    0x50,
+    0x4d,
+    0x54,
+    0x69,
+    0x6c,
+    0x65,
+    0x73,
+    0x03,
+  ];
+
+  /// Returns true if [file] exists, is at least [minValidRegionArchiveBytes] bytes,
+  /// and begins with the 8-byte `"PMTiles\x03"` magic header.
+  static bool hasValidPmtilesHeader(File file) {
+    try {
+      if (!file.existsSync() || file.lengthSync() < minValidRegionArchiveBytes) {
+        return false;
+      }
+      final raf = file.openSync(mode: FileMode.read);
+      try {
+        final header = raf.readSync(pmtilesMagicHeader.length);
+        if (header.length < pmtilesMagicHeader.length) {
+          return false;
+        }
+        for (var i = 0; i < pmtilesMagicHeader.length; i++) {
+          if (header[i] != pmtilesMagicHeader[i]) {
+            return false;
+          }
+        }
+        return true;
+      } finally {
+        raf.closeSync();
+      }
+    } catch (_) {
+      return false;
+    }
+  }
 
   final String? customAppSupportDir;
   final String catalogUrl;
@@ -234,7 +276,17 @@ class RegionManagerService extends ChangeNotifier {
       final mapFile = File('${entry.path}/map.pmtiles');
       final terrainFile = File('${entry.path}/terrain.pmtiles');
 
-      if (!mapFile.existsSync() || mapFile.lengthSync() < 127) {
+      if (!mapFile.existsSync()) {
+        continue;
+      }
+
+      if (!hasValidPmtilesHeader(mapFile)) {
+        debugPrint(
+          '[RegionManagerService] Removing invalid or stub region directory ${entry.path} (${mapFile.lengthSync()} bytes)',
+        );
+        try {
+          entry.deleteSync(recursive: true);
+        } catch (_) {}
         continue;
       }
 
@@ -395,6 +447,7 @@ class RegionManagerService extends ChangeNotifier {
       );
 
       final verifiedChecksums = <String, String>{};
+      var verifiedTotalBytes = 0;
 
       try {
         for (final fileEntry in entry.files.entries) {
@@ -406,42 +459,21 @@ class RegionManagerService extends ChangeNotifier {
               await targetFile.exists() ? await targetFile.length() : 0;
 
           // If partial file is larger than expected, start fresh
-          if (currentExistingBytes > regionFile.sizeBytes) {
+          if (regionFile.sizeBytes > 0 &&
+              currentExistingBytes > regionFile.sizeBytes) {
             await targetFile.delete();
             totalDownloadedSoFar -= currentExistingBytes;
             currentExistingBytes = 0;
           }
 
-          if (currentExistingBytes < regionFile.sizeBytes) {
+          if (currentExistingBytes < regionFile.sizeBytes ||
+              !await targetFile.exists()) {
             final request = http.Request('GET', Uri.parse(regionFile.url));
             if (currentExistingBytes > 0) {
               request.headers['Range'] = 'bytes=$currentExistingBytes-';
             }
 
-            http.StreamedResponse? response;
-            try {
-              response = await _httpClient.send(request);
-            } catch (netErr) {
-              final isHostErr = netErr is SocketException ||
-                  netErr is http.ClientException ||
-                  netErr.toString().contains('Failed host lookup') ||
-                  netErr.toString().contains('SocketException') ||
-                  netErr.toString().contains('ClientException');
-              if (isHostErr) {
-                // Remote CDN host is unreachable; fall back to bundled demo PMTiles archive
-                await _fallbackDownloadFromBundle(
-                  targetFile: targetFile,
-                  fileKey: fileKey,
-                  emit: emit,
-                  regionId: regionId,
-                  totalExpectedBytes: totalExpectedBytes,
-                  totalDownloadedSoFar: totalDownloadedSoFar,
-                );
-                verifiedChecksums[fileKey] = await _computeSha256(targetFile);
-                continue;
-              }
-              rethrow;
-            }
+            final response = await _httpClient.send(request);
 
             IOSink sink;
             if (response.statusCode == 206) {
@@ -478,7 +510,7 @@ class RegionManagerService extends ChangeNotifier {
             }
           }
 
-          // Checksum verification
+          // Checksum, size, and PMTiles v3 header verification
           emit(
             RegionDownloadProgress(
               regionId: regionId,
@@ -488,6 +520,25 @@ class RegionManagerService extends ChangeNotifier {
               currentFile: fileKey,
             ),
           );
+
+          final actualLength =
+              await targetFile.exists() ? await targetFile.length() : 0;
+          if (!hasValidPmtilesHeader(targetFile)) {
+            if (await targetFile.exists()) {
+              await targetFile.delete();
+            }
+            throw StateError(
+              'Invalid PMTiles archive for $regionId/$fileKey (size: $actualLength bytes, expected valid PMTiles v3 >= $minValidRegionArchiveBytes bytes)',
+            );
+          }
+
+          if (regionFile.sizeBytes > 0 &&
+              actualLength != regionFile.sizeBytes) {
+            await targetFile.delete();
+            throw StateError(
+              'Size verification failed for $regionId/$fileKey: expected ${regionFile.sizeBytes} bytes, got $actualLength',
+            );
+          }
 
           final actualSha256 = await _computeSha256(targetFile);
           if (regionFile.sha256.isNotEmpty &&
@@ -499,9 +550,10 @@ class RegionManagerService extends ChangeNotifier {
           }
 
           verifiedChecksums[fileKey] = actualSha256;
+          verifiedTotalBytes += actualLength;
         }
 
-        // Save metadata
+        // Save metadata with verified disk byte count
         final meta = DownloadedRegion(
           id: entry.id,
           version: entry.version,
@@ -512,7 +564,7 @@ class RegionManagerService extends ChangeNotifier {
               ? '$basePath/$regionId/terrain.pmtiles'
               : null,
           checksums: verifiedChecksums,
-          sizeBytes: totalExpectedBytes,
+          sizeBytes: verifiedTotalBytes,
           bounds: entry.bounds,
         );
 
@@ -524,8 +576,8 @@ class RegionManagerService extends ChangeNotifier {
 
         final completedProgress = RegionDownloadProgress(
           regionId: regionId,
-          bytesDownloaded: totalExpectedBytes,
-          totalBytes: totalExpectedBytes,
+          bytesDownloaded: verifiedTotalBytes,
+          totalBytes: verifiedTotalBytes,
           status: DownloadStatus.completed,
         );
         emit(completedProgress);
@@ -685,40 +737,6 @@ class RegionManagerService extends ChangeNotifier {
   static Future<String> _computeSha256(File file) async {
     final digest = await sha256.bind(file.openRead()).first;
     return digest.toString();
-  }
-
-  static Future<void> _fallbackDownloadFromBundle({
-    required File targetFile,
-    required String fileKey,
-    required void Function(RegionDownloadProgress) emit,
-    required String regionId,
-    required int totalExpectedBytes,
-    required int totalDownloadedSoFar,
-  }) async {
-    final byteData =
-        await rootBundle.load('assets/map_data/global_overview.pmtiles');
-    final bytes = byteData.buffer.asUint8List(
-      byteData.offsetInBytes,
-      byteData.lengthInBytes,
-    );
-    const chunkSize = 100;
-    for (int offset = 0; offset < bytes.length; offset += chunkSize) {
-      final end = (offset + chunkSize < bytes.length)
-          ? offset + chunkSize
-          : bytes.length;
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      emit(
-        RegionDownloadProgress(
-          regionId: regionId,
-          bytesDownloaded: totalDownloadedSoFar + end,
-          totalBytes:
-              totalExpectedBytes > 0 ? totalExpectedBytes : bytes.length,
-          status: DownloadStatus.downloading,
-          currentFile: fileKey,
-        ),
-      );
-    }
-    await targetFile.writeAsBytes(bytes, flush: true);
   }
 
   static Future<void> _atomicSwap(

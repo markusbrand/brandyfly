@@ -1,9 +1,9 @@
 {
   "catalogVersion": 1,
-  "generatedAt": "2026-10-08T20:00:00.000Z",
+  "generatedAt": "2026-11-14T16:35:26.739465+00:00",
   "attribution": {
-    "osm": "© OpenStreetMap contributors, licensed under ODbL 1.0 (https://www.openstreetmap.org/copyright)",
-    "copernicus": "Contains modified Copernicus DEM data © ESA/Copernicus (2021) distributed under CC BY 4.0 (https://spacedata.copernicus.eu)",
+    "osm": "\u00a9 OpenStreetMap contributors, licensed under ODbL 1.0 (https://www.openstreetmap.org/copyright)",
+    "copernicus": "Contains modified Copernicus DEM data \u00a9 ESA/Copernicus (2021) distributed under CC BY 4.0 (https://spacedata.copernicus.eu)",
     "naturalEarth": "Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com (public domain)"
   },
   "regions": [
@@ -17,18 +17,18 @@
         "west": 12.5,
         "east": 16.6
       },
-      "version": "2026-10",
-      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "version": "2026-11",
+      "generatedAt": "2026-11-14T16:35:26.739465+00:00",
       "files": {
         "map": {
-          "url": "https://cdn.brandyfly.org/maps/regions/alps-east/map.pmtiles",
-          "sizeBytes": 104857600,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-east-map.pmtiles",
+          "sizeBytes": 44613835,
+          "sha256": "a0a2957004ec4b6681dc8ffd518f3074eaf74a061e0a209989f0de32e593548d"
         },
         "terrain": {
-          "url": "https://cdn.brandyfly.org/maps/regions/alps-east/terrain.pmtiles",
-          "sizeBytes": 62914560,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-east-terrain.pmtiles",
+          "sizeBytes": 25234177,
+          "sha256": "55a4b0aac43ebd4419ebf184247c8c0f6bcd30498b44ee75a846c04068f53092"
         }
       }
     },
@@ -42,18 +42,18 @@
         "west": 9.5,
         "east": 12.8
       },
-      "version": "2026-10",
-      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "version": "2026-11",
+      "generatedAt": "2026-11-14T16:35:26.739465+00:00",
       "files": {
         "map": {
-          "url": "https://cdn.brandyfly.org/maps/regions/alps-central/map.pmtiles",
-          "sizeBytes": 83886080,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-central-map.pmtiles",
+          "sizeBytes": 17836152,
+          "sha256": "22f8b9a5f697bb0e0ecf969dee6b6841d9811b627cbe51c4d5e5fb48d209714f"
         },
         "terrain": {
-          "url": "https://cdn.brandyfly.org/maps/regions/alps-central/terrain.pmtiles",
-          "sizeBytes": 52428800,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-central-terrain.pmtiles",
+          "sizeBytes": 17338009,
+          "sha256": "7075e62279032c21a65487a7c5f3c0c959a3ea5c973d2652cd727e88f6e34f10"
         }
       }
     },
@@ -67,18 +67,18 @@
         "west": 5.7,
         "east": 8.0
       },
-      "version": "2026-10",
-      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "version": "2026-11",
+      "generatedAt": "2026-11-14T16:35:26.739465+00:00",
       "files": {
         "map": {
-          "url": "https://cdn.brandyfly.org/maps/regions/alps-west/map.pmtiles",
-          "sizeBytes": 115343360,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-west-map.pmtiles",
+          "sizeBytes": 12619979,
+          "sha256": "7c660d4d26e37494a971a804e8df562656934141d0cca7acf27cf5cddf74995d"
         },
         "terrain": {
-          "url": "https://cdn.brandyfly.org/maps/regions/alps-west/terrain.pmtiles",
-          "sizeBytes": 73400320,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-west-terrain.pmtiles",
+          "sizeBytes": 11986899,
+          "sha256": "50acac54bf2c8bed54107472981f0598b97094ee9c7aff13ef991c0ee17a6a19"
         }
       }
     },
@@ -87,125 +87,132 @@
       "name": "Alps - Southern",
       "description": "South Tyrol, Trentino, Dolomites, Lombardy lakes (Bassano, Garda, Feltre)",
       "bounds": {
-        "north": 46.7,
+        "north": 46.8,
         "south": 45.4,
-        "west": 9.8,
+        "west": 10.2,
         "east": 12.6
       },
-      "version": "2026-10",
-      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "version": "2026-11",
+      "generatedAt": "2026-11-14T16:35:26.739465+00:00",
       "files": {
         "map": {
-          "url": "https://cdn.brandyfly.org/maps/regions/alps-south/map.pmtiles",
-          "sizeBytes": 83886080,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-south-map.pmtiles",
+          "sizeBytes": 10961405,
+          "sha256": "41c85b2c7b66fb97277070a47825cbfff588aceb388695df898abf0fa44ea6cc"
         },
         "terrain": {
-          "url": "https://cdn.brandyfly.org/maps/regions/alps-south/terrain.pmtiles",
-          "sizeBytes": 52428800,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/alps-south-terrain.pmtiles",
+          "sizeBytes": 9463026,
+          "sha256": "f2ad256a0df8ff7f0061508f0288c1f6a7340a92718310354e356ea946ed245f"
         }
       }
     },
     {
       "id": "pyrenees",
       "name": "Pyrenees",
-      "description": "French and Spanish Pyrenees, Andorra (Ager, Castejon, Organya)",
+      "description": "FR/ES/AD Pyrenees chain (Ager, Castejon de Sos, Font-Romeu)",
       "bounds": {
-        "north": 43.3,
+        "north": 43.5,
         "south": 41.8,
         "west": -2.0,
         "east": 3.2
       },
-      "version": "2026-10",
-      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "version": "2026-11",
+      "generatedAt": "2026-11-14T16:35:26.739465+00:00",
       "files": {
         "map": {
-          "url": "https://cdn.brandyfly.org/maps/regions/pyrenees/map.pmtiles",
-          "sizeBytes": 73400320,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/pyrenees-map.pmtiles",
+          "sizeBytes": 20861851,
+          "sha256": "21c4821068a6659dfb707695a3a46b718e1db7c82a793eae9dd4b8ab04fb7634"
         },
         "terrain": {
-          "url": "https://cdn.brandyfly.org/maps/regions/pyrenees/terrain.pmtiles",
-          "sizeBytes": 52428800,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/pyrenees-terrain.pmtiles",
+          "sizeBytes": 22903144,
+          "sha256": "a317dc0e45a26e49dda4f2dc9c19a126e9551315b4227a619ea01252fe26b92b"
         }
       }
     },
     {
       "id": "balkans-west",
       "name": "Balkans - Western",
-      "description": "Croatia coast, Montenegro, Albania, North Macedonia, Pindus",
+      "description": "Croatia coast, Montenegro, Albania, North Macedonia (Krushevo, Kotor)",
       "bounds": {
-        "north": 45.2,
-        "south": 39.5,
+        "north": 45.5,
+        "south": 40.8,
         "west": 14.5,
-        "east": 22.0
+        "east": 21.8
       },
-      "version": "2026-10",
-      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "version": "2026-11",
+      "generatedAt": "2026-11-14T16:35:26.739465+00:00",
       "files": {
         "map": {
-          "url": "https://cdn.brandyfly.org/maps/regions/balkans-west/map.pmtiles",
-          "sizeBytes": 83886080,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/balkans-west-map.pmtiles",
+          "sizeBytes": 46545180,
+          "sha256": "fbeb8f715f63a4ad9b6dae2278b0e09e982b6be64de2c4e41f0349362db4ef2b"
         },
         "terrain": {
-          "url": "https://cdn.brandyfly.org/maps/regions/balkans-west/terrain.pmtiles",
-          "sizeBytes": 52428800,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/balkans-west-terrain.pmtiles",
+          "sizeBytes": 67307088,
+          "sha256": "b5cf9c22821f454c5c54b591ea5af69b580d1dd377b3692154bff76b492d2343"
         }
       }
     },
     {
       "id": "turkey-aegean",
-      "name": "Turkey - Aegean & Turquoise Coast",
-      "description": "Babadag / Oludeniz, Kas, Antalya, Mugla",
+      "name": "Turkey - Aegean & Mediterranean",
+      "description": "SW Turkey coast and mountains (Oludeniz, Kas, Babadag, Pamukkale)",
       "bounds": {
-        "north": 37.5,
-        "south": 35.8,
-        "west": 27.5,
-        "east": 31.5
+        "north": 38.5,
+        "south": 36.0,
+        "west": 27.0,
+        "east": 31.0
       },
-      "version": "2026-10",
-      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "version": "2026-11",
+      "generatedAt": "2026-11-14T16:35:26.739465+00:00",
       "files": {
         "map": {
-          "url": "https://cdn.brandyfly.org/maps/regions/turkey-aegean/map.pmtiles",
-          "sizeBytes": 62914560,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/turkey-aegean-map.pmtiles",
+          "sizeBytes": 9496894,
+          "sha256": "07da02dc309bd7a4069afcf8d755c95368ad6f3aed5cecfa39458a119fb27593"
         },
         "terrain": {
-          "url": "https://cdn.brandyfly.org/maps/regions/turkey-aegean/terrain.pmtiles",
-          "sizeBytes": 41943040,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/turkey-aegean-terrain.pmtiles",
+          "sizeBytes": 25911724,
+          "sha256": "2761d246d9b681a2a3a0920aac53d172298c921fe3402667ef3214f5bace3d63"
         }
       }
     },
     {
       "id": "carpathians",
       "name": "Carpathians",
-      "description": "Tatra mountains, Romanian Carpathians (Brasov, Sinaia, Low/High Tatras)",
+      "description": "Romania, Slovakia, southern Poland (High Tatras, Brasov, Parang)",
       "bounds": {
         "north": 49.8,
         "south": 45.2,
-        "west": 18.5,
+        "west": 19.0,
         "east": 26.5
       },
-      "version": "2026-10",
-      "generatedAt": "2026-10-08T20:00:00.000Z",
+      "version": "2026-11",
+      "generatedAt": "2026-11-14T16:35:26.739465+00:00",
       "files": {
         "map": {
-          "url": "https://cdn.brandyfly.org/maps/regions/carpathians/map.pmtiles",
-          "sizeBytes": 83886080,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/carpathians-map.pmtiles",
+          "sizeBytes": 61146669,
+          "sha256": "c1cf907bd5d89ad2545e45cc31793ff2ac1116f0600543ebfad07b458ae13164"
         },
         "terrain": {
-          "url": "https://cdn.brandyfly.org/maps/regions/carpathians/terrain.pmtiles",
-          "sizeBytes": 62914560,
-          "sha256": ""
+          "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/carpathians-terrain.pmtiles",
+          "sizeBytes": 70194428,
+          "sha256": "a570e477dc88304aaf8fa4a9876aa5234890995a09aa24d83a6eb2757d3a9848"
         }
       }
     }
-  ]
+  ],
+  "fallback": {
+    "overview": {
+      "url": "https://github.com/markusbrand/brandyfly/releases/download/maps-v1/overview.pmtiles",
+      "sizeBytes": 518,
+      "sha256": "c12200301320bcf1bd459bafa346351550f332d1db1089fa49f0e31c6fa6db03"
+    }
+  }
 }
