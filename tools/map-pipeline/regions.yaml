@@ -4,7 +4,7 @@
 
 version: 1
 catalog_version: 1
-cdn_base_url: "https://cdn.brandyfly.org/maps"
+cdn_base_url: "https://github.com/markusbrand/brandyfly/releases/download/maps-v1"
 
 attribution:
   osm: "© OpenStreetMap contributors, licensed under ODbL 1.0 (https://www.openstreetmap.org/copyright)"

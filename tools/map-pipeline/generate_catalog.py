@@ -14,11 +14,32 @@ from yaml_loader import load_yaml
 from checksums import compute_file_info
 
 
-def generate_catalog(config_path: str, output_base_dir: str, catalog_output_path: str, cdn_url_override: str | None = None, region_filter: list[str] | None = None) -> dict:
+def _build_asset_url(cdn_base: str, region_id: str | None, asset_type: str, flat_urls: bool) -> str:
+    if flat_urls:
+        if asset_type == "overview":
+            return f"{cdn_base}/overview.pmtiles"
+        return f"{cdn_base}/{region_id}-{asset_type}.pmtiles"
+    if asset_type == "overview":
+        return f"{cdn_base}/fallback/overview.pmtiles"
+    return f"{cdn_base}/regions/{region_id}/{asset_type}.pmtiles"
+
+
+def generate_catalog(
+    config_path: str,
+    output_base_dir: str,
+    catalog_output_path: str,
+    cdn_url_override: str | None = None,
+    region_filter: list[str] | None = None,
+    flat_urls: bool | None = None,
+) -> dict:
     with open(config_path, "r", encoding="utf-8") as f:
         config = load_yaml(f)
 
-    cdn_base = cdn_url_override or config.get("cdn_base_url", "https://cdn.brandyfly.org/maps").rstrip("/")
+    cdn_base = (
+        cdn_url_override
+        or config.get("cdn_base_url", "https://github.com/markusbrand/brandyfly/releases/download/maps-v1")
+    ).rstrip("/")
+    use_flat_urls = flat_urls if flat_urls is not None else ("/releases/download/" in cdn_base)
     now = datetime.now(timezone.utc)
     current_version = now.strftime("%Y-%m")
     iso_now = now.isoformat()
@@ -45,19 +66,21 @@ def generate_catalog(config_path: str, output_base_dir: str, catalog_output_path
         region_path = os.path.join(regions_dir, region_id)
         map_file = os.path.join(region_path, "map.pmtiles")
         terrain_file = os.path.join(region_path, "terrain.pmtiles")
+        map_url = _build_asset_url(cdn_base, region_id, "map", use_flat_urls)
+        terrain_url = _build_asset_url(cdn_base, region_id, "terrain", use_flat_urls)
 
         files_meta = {}
         if os.path.exists(map_file):
             map_info = compute_file_info(map_file)
             files_meta["map"] = {
-                "url": f"{cdn_base}/regions/{region_id}/map.pmtiles",
+                "url": map_url,
                 "sizeBytes": map_info["sizeBytes"],
                 "sha256": map_info["sha256"]
             }
         else:
             print(f"Notice: {map_file} does not exist yet (placeholder metadata used)")
             files_meta["map"] = {
-                "url": f"{cdn_base}/regions/{region_id}/map.pmtiles",
+                "url": map_url,
                 "sizeBytes": 0,
                 "sha256": "0" * 64
             }
@@ -65,14 +88,14 @@ def generate_catalog(config_path: str, output_base_dir: str, catalog_output_path
         if os.path.exists(terrain_file):
             terrain_info = compute_file_info(terrain_file)
             files_meta["terrain"] = {
-                "url": f"{cdn_base}/regions/{region_id}/terrain.pmtiles",
+                "url": terrain_url,
                 "sizeBytes": terrain_info["sizeBytes"],
                 "sha256": terrain_info["sha256"]
             }
         else:
             print(f"Notice: {terrain_file} does not exist yet (placeholder metadata used)")
             files_meta["terrain"] = {
-                "url": f"{cdn_base}/regions/{region_id}/terrain.pmtiles",
+                "url": terrain_url,
                 "sizeBytes": 0,
                 "sha256": "0" * 64
             }
@@ -94,11 +117,12 @@ def generate_catalog(config_path: str, output_base_dir: str, catalog_output_path
 
     # Process fallback
     fallback_file = os.path.join(output_base_dir, "fallback", "overview.pmtiles")
+    overview_url = _build_asset_url(cdn_base, None, "overview", use_flat_urls)
     if os.path.exists(fallback_file):
         fb_info = compute_file_info(fallback_file)
         catalog["fallback"] = {
             "overview": {
-                "url": f"{cdn_base}/fallback/overview.pmtiles",
+                "url": overview_url,
                 "sizeBytes": fb_info["sizeBytes"],
                 "sha256": fb_info["sha256"]
             }
@@ -106,7 +130,7 @@ def generate_catalog(config_path: str, output_base_dir: str, catalog_output_path
     else:
         catalog["fallback"] = {
             "overview": {
-                "url": f"{cdn_base}/fallback/overview.pmtiles",
+                "url": overview_url,
                 "sizeBytes": 0,
                 "sha256": "0" * 64
             }

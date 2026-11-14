@@ -7,11 +7,15 @@ Provides local-first, offline vector map rendering and terrain hillshade visuali
 ## Requirements
 
 ### Requirement: Local PMTiles vector tile rendering
-The application SHALL render OpenStreetMap vector tiles from locally stored PMTiles archives using the native MapLibre GL engine on target mobile platforms (Android and iOS) without network requests during flight. When regional data is absent, an embedded loopback HTTP tile service SHALL proxy and disk-cache online vector tiles with active status indication. The loopback tile server SHALL NOT include permissive wildcard CORS headers (`Access-Control-Allow-Origin: *`) on responses.
+The application SHALL render OpenStreetMap vector tiles from valid locally stored PMTiles v3 archives (>= 4,096 bytes) using the native MapLibre GL engine on Android and iOS without network requests during flight. When regional data is absent, an embedded loopback HTTP tile server without wildcard CORS headers SHALL serve overview or disk-cached online fallback tiles.
 
 #### Scenario: Offline map display from local PMTiles
-- **WHEN** a PMTiles archive is present in the local region storage for the pilot's current location
+- **WHEN** a valid regional PMTiles archive (>= 4,096 bytes with a valid PMTiles v3 header) is present in the local region storage for the pilot's current location
 - **THEN** the map renders vector tiles from the local archive with the configured style, without making any network requests
+
+#### Scenario: Rejecting stub or truncated regional PMTiles archives
+- **WHEN** a regional directory contains a `map.pmtiles` file smaller than 4,096 bytes or with an invalid PMTiles v3 header
+- **THEN** the map service ignores the invalid regional archive, leaves the primary archive unset, and falls back to the overview archive and online tile proxy rather than claiming offline regional PMTiles coverage
 
 #### Scenario: Loopback HTTP tile server compatibility
 - **WHEN** the MapLibre Native engine loads local PMTiles vector tiles on Android or iOS
@@ -42,8 +46,12 @@ The application SHALL render OpenStreetMap vector tiles from locally stored PMTi
 - **THEN** the renderer uses the available data seamlessly without visual artifacts at region boundaries
 
 #### Scenario: Native mobile execution target
-- **WHEN** the application is run in development, testing, or flight operations
-- **THEN** the map is rendered through the native MapLibre GL mobile engine on Android (including x86_64 AVD emulator) or iOS (including iOS Simulator), without parallel non-native desktop canvas fallback painters
+- **WHEN** the application is run in development, testing, or release flight operations
+- **THEN** the map is rendered through the native MapLibre GL mobile engine on Android (including x86_64 AVD emulator and arm64-v8a physical devices in release builds with R8 code shrinking enabled) or iOS (including iOS Simulator), without `PlatformException` or `NullPointerException` during platform view creation
+
+#### Scenario: Android release build R8 code shrinking compatibility
+- **WHEN** the Android application is compiled in release mode (`flutter build apk --release`) with R8 minification and shrinking active
+- **THEN** ProGuard/R8 keep rules preserve all JNI-bridged Flutter platform view interfaces (`io.flutter.plugin.platform.**`, `io.flutter.embedding.engine.plugins.**`, `io.flutter.plugin.common.**`) and MapLibre native bridge classes (`com.github.josxha.maplibre.**`, `org.maplibre.**`), allowing the MapLibre platform view to mount and render vector and terrain tiles without throwing `NullPointerException` or `ClassNotFoundException`
 
 ### Requirement: Hillshade terrain relief rendering
 The application SHALL render hillshade terrain relief from Copernicus GLO-30 terrain-RGB raster DEM tiles stored in local PMTiles archives or cached loopback DEM proxy storage.

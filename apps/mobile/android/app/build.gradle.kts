@@ -55,6 +55,10 @@ android {
                 // Fallback to debug keys if key.properties is absent
                 signingConfig = signingConfigs.getByName("debug")
             }
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

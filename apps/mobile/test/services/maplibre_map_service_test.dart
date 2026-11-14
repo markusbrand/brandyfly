@@ -8,6 +8,15 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  List<int> buildValidPmtilesBytes(int size) {
+    final bytes = List<int>.filled(size, 0);
+    const magic = <int>[0x50, 0x4d, 0x54, 0x69, 0x6c, 0x65, 0x73, 0x03];
+    for (var i = 0; i < magic.length; i++) {
+      bytes[i] = magic[i];
+    }
+    return bytes;
+  }
+
   group('MapLibreMapService', () {
     late Directory tempDir;
     late MapLibreMapService service;
@@ -30,14 +39,30 @@ void main() {
       expect(exists, isFalse);
     });
 
-    test('regionExists returns true when region files are present', () async {
+    test('regionExists returns false for 499-byte stub and true for valid PMTiles v3 archive', () async {
       final regionDir = Directory('${tempDir.path}/regions/austria_dachstein');
       await regionDir.create(recursive: true);
       final mapFile = File('${regionDir.path}/map.pmtiles');
-      await mapFile.writeAsBytes([1, 2, 3, 4]);
+      await mapFile.writeAsBytes(buildValidPmtilesBytes(499));
 
+      expect(await service.regionExists('austria_dachstein'), isFalse);
+
+      await mapFile.writeAsBytes(buildValidPmtilesBytes(4096));
       final exists = await service.regionExists('austria_dachstein');
       expect(exists, isTrue);
+    });
+
+    test('buildStyleJson self-heals 499-byte stub region directory and falls back', () async {
+      final stubDir = Directory('${tempDir.path}/regions/alps-east');
+      await stubDir.create(recursive: true);
+      final mapFile = File('${stubDir.path}/map.pmtiles');
+      await mapFile.writeAsBytes(buildValidPmtilesBytes(499));
+
+      final styleJson = await service.buildStyleJson(regionId: 'alps-east');
+      expect(service.isFallbackActive, isTrue);
+      expect(service.activeRegionId, isNull);
+      expect(await stubDir.exists(), isFalse);
+      expect(styleJson, isNotEmpty);
     });
 
     test('buildStyleJson returns fallback style when region does not exist', () async {
@@ -62,9 +87,9 @@ void main() {
       final regionDir = Directory('${tempDir.path}/regions/salzkammergut');
       await regionDir.create(recursive: true);
       final mapFile = File('${regionDir.path}/map.pmtiles');
-      await mapFile.writeAsBytes(List.filled(127, 0));
+      await mapFile.writeAsBytes(buildValidPmtilesBytes(4096));
       final terrainFile = File('${regionDir.path}/terrain.pmtiles');
-      await terrainFile.writeAsBytes(List.filled(127, 0));
+      await terrainFile.writeAsBytes(buildValidPmtilesBytes(4096));
 
       final styleJson = await service.buildStyleJson(regionId: 'salzkammergut');
       expect(service.isFallbackActive, isFalse);
