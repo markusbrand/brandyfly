@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/markusbrand/brandyfly/compare/brandyfly_native-v0.5.0...brandyfly_native-v0.5.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **mobile,map-pipeline:** fix Android release R8 MapLibre crash and offline region PMTiles downloads ([#285](https://github.com/markusbrand/brandyfly/issues/285)) ([0cec0c6](https://github.com/markusbrand/brandyfly/commit/0cec0c61873b36f84a53c2586de539447629e9c2))
+
 ## [0.5.0](https://github.com/markusbrand/brandyfly/compare/brandyfly_native-v0.4.0...brandyfly_native-v0.5.0) (2026-10-09)
 
 
