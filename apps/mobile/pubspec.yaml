@@ -12,7 +12,7 @@ dependencies:
   shared_preferences: ^2.5.6
   brandyfly_native:
     path: ../../plugins/brandyfly_native
-  maplibre: 0.3.6
+  maplibre: 0.3.7+1
   http: ^1.6.0
   path_provider: ^2.1.6
   crypto: ^3.0.8
