@@ -137,7 +137,7 @@ internal class BrandyflyNativePluginTest {
         val manager = SkyDrop1TransportManager()
         manager.startTransport(true, null)
 
-        val samplePayload = "$LK8EX1,101325,1200,100,20,95*01\r\n".toByteArray()
+        val samplePayload = "\$LK8EX1,101325,1200,100,20,95*01\r\n".toByteArray()
 
         // Push more than capacity (1200 items > 1000 MAX_BUFFER_CAPACITY)
         for (i in 1..1200) {
@@ -186,6 +186,43 @@ internal class BrandyflyNativePluginTest {
         val stopResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
         plugin.onMethodCall(stopCall, stopResult)
         Mockito.verify(stopResult).success(true)
+    }
+
+    @Test
+    fun onMethodCall_getSensorCapabilities_returnsUnknownWithoutContextAndForwardsProvider() {
+        val unattached = BrandyflyNativePlugin()
+        val unattachedResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        unattached.onMethodCall(MethodCall("getSensorCapabilities", null), unattachedResult)
+
+        Mockito.verify(unattachedResult).success(Mockito.argThat { map ->
+            (map is Map<*, *>) &&
+                (map["hasBarometer"] == false) &&
+                (map["hasGps"] == false) &&
+                (map["isCapabilityKnown"] == false)
+        })
+
+        val custom = BrandyflyNativePlugin {
+            mapOf(
+                "hasBarometer" to false,
+                "hasGps" to true,
+                "locationEnabled" to true,
+                "locationPermissionGranted" to true,
+                "bluetoothAvailable" to true,
+                "isCapabilityKnown" to true
+            )
+        }
+        val customResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
+        custom.onMethodCall(MethodCall("getSensorCapabilities", null), customResult)
+
+        Mockito.verify(customResult).success(Mockito.argThat { map ->
+            (map is Map<*, *>) &&
+                (map["hasBarometer"] == false) &&
+                (map["hasGps"] == true) &&
+                (map["locationEnabled"] == true) &&
+                (map["locationPermissionGranted"] == true) &&
+                (map["bluetoothAvailable"] == true) &&
+                (map["isCapabilityKnown"] == true)
+        })
     }
 }
 

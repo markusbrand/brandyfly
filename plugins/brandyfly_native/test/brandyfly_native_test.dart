@@ -91,6 +91,17 @@ class MockBrandyflyNativePlatform
 
   @override
   Future<bool> audioVarioSetMuted(bool isMuted) => Future.value(true);
+
+  @override
+  Future<NativeSensorCapabilities> getSensorCapabilities() => Future.value(
+        const NativeSensorCapabilities(
+          hasBarometer: false,
+          hasGps: true,
+          locationEnabled: true,
+          locationPermissionGranted: true,
+          bluetoothAvailable: true,
+        ),
+      );
 }
 
 void main() {
@@ -223,5 +234,19 @@ void main() {
     expect(await brandyflyNativePlugin.audioVarioSetVolume(0.5), true);
     expect(await brandyflyNativePlugin.audioVarioSetMuted(true), true);
     expect(await brandyflyNativePlugin.audioVarioStop(), true);
+  });
+
+  test('getSensorCapabilities returns typed sensor capabilities', () async {
+    final brandyflyNativePlugin = BrandyflyNative();
+    final fakePlatform = MockBrandyflyNativePlatform();
+    BrandyflyNativePlatform.instance = fakePlatform;
+
+    final caps = await brandyflyNativePlugin.getSensorCapabilities();
+    expect(caps.hasBarometer, isFalse);
+    expect(caps.hasGps, isTrue);
+    expect(caps.locationEnabled, isTrue);
+    expect(caps.locationPermissionGranted, isTrue);
+    expect(caps.bluetoothAvailable, isTrue);
+    expect(caps.isCapabilityKnown, isTrue);
   });
 }

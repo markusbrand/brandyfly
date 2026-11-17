@@ -2,10 +2,12 @@ import 'airspace_models.dart';
 import 'audio_vario_models.dart';
 import 'brandyfly_native_platform_interface.dart';
 import 'mock_flight_mode.dart';
+import 'sensor_capability_models.dart';
 
 export 'airspace_models.dart';
 export 'audio_vario_models.dart';
 export 'mock_flight_mode.dart';
+export 'sensor_capability_models.dart';
 export 'skydrop1_models.dart';
 
 class BrandyflyNative {
@@ -93,5 +95,9 @@ class BrandyflyNative {
 
   Future<bool> audioVarioSetMuted(bool isMuted) {
     return BrandyflyNativePlatform.instance.audioVarioSetMuted(isMuted);
+  }
+
+  Future<NativeSensorCapabilities> getSensorCapabilities() {
+    return BrandyflyNativePlatform.instance.getSensorCapabilities();
   }
 }

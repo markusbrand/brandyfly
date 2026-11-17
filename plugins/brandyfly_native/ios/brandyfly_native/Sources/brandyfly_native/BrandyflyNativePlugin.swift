@@ -1,9 +1,8 @@
 import Flutter
 import UIKit
-
-import Flutter
-import UIKit
 import AVFoundation
+import CoreMotion
+import CoreLocation
 
 final class IosAudioVarioSynthesizer {
   private var audioEngine: AVAudioEngine?
@@ -216,9 +215,28 @@ public class BrandyflyNativePlugin: NSObject, FlutterPlugin {
       }
       audioSynthesizer.setMuted(muted)
       result(true)
+    case "getSensorCapabilities":
+      result(getSensorCapabilities())
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  private func getSensorCapabilities() -> [String: Any] {
+    let hasBarometer = CMAltimeter.isRelativeAltitudeAvailable()
+    let locationEnabled = CLLocationManager.locationServicesEnabled()
+    let authStatus = CLLocationManager().authorizationStatus
+    let locationPermissionGranted =
+      authStatus == .authorizedAlways || authStatus == .authorizedWhenInUse
+
+    return [
+      "hasBarometer": hasBarometer,
+      "hasGps": true,
+      "locationEnabled": locationEnabled,
+      "locationPermissionGranted": locationPermissionGranted,
+      "bluetoothAvailable": true,
+      "isCapabilityKnown": true
+    ]
   }
 
   private func runIosSensorBenchmark() -> [String: Any] {

@@ -198,4 +198,38 @@ void main() {
     final stopped = await platform.audioVarioStop();
     expect(stopped, true);
   });
+
+  test('getSensorCapabilities decodes map and handles MissingPluginException', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'getSensorCapabilities') {
+            return {
+              'hasBarometer': true,
+              'hasGps': true,
+              'locationEnabled': false,
+              'locationPermissionGranted': true,
+              'bluetoothAvailable': true,
+              'isCapabilityKnown': true,
+            };
+          }
+          return null;
+        });
+
+    final caps = await platform.getSensorCapabilities();
+    expect(caps.hasBarometer, isTrue);
+    expect(caps.hasGps, isTrue);
+    expect(caps.locationEnabled, isFalse);
+    expect(caps.locationPermissionGranted, isTrue);
+    expect(caps.bluetoothAvailable, isTrue);
+    expect(caps.isCapabilityKnown, isTrue);
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          throw MissingPluginException('missing');
+        });
+
+    final fallback = await platform.getSensorCapabilities();
+    expect(fallback, NativeSensorCapabilities.unknown);
+    expect(fallback.isCapabilityKnown, isFalse);
+  });
 }

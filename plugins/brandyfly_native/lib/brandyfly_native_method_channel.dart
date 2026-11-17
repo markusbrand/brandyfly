@@ -5,6 +5,7 @@ import 'airspace_models.dart';
 import 'audio_vario_models.dart';
 import 'brandyfly_native_platform_interface.dart';
 import 'mock_flight_mode.dart';
+import 'sensor_capability_models.dart';
 
 /// An implementation of [BrandyflyNativePlatform] that uses method channels.
 class MethodChannelBrandyflyNative extends BrandyflyNativePlatform {
@@ -265,6 +266,21 @@ class MethodChannelBrandyflyNative extends BrandyflyNativePlatform {
       return res ?? true;
     } on MissingPluginException {
       return true;
+    }
+  }
+
+  @override
+  Future<NativeSensorCapabilities> getSensorCapabilities() async {
+    try {
+      final res = await methodChannel.invokeMapMethod<String, Object?>(
+        'getSensorCapabilities',
+      );
+      if (res != null) {
+        return NativeSensorCapabilities.fromMap(res);
+      }
+      return NativeSensorCapabilities.unknown;
+    } on MissingPluginException {
+      return NativeSensorCapabilities.unknown;
     }
   }
 }

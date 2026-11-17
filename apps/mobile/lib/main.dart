@@ -22,6 +22,7 @@ import 'services/maplibre_map_service.dart';
 import 'services/region_manager_service.dart';
 import 'services/screen_auto_switch_controller.dart';
 import 'services/screen_manager_service.dart';
+import 'services/sensor_readiness_service.dart';
 import 'services/telemetry/synthetic_telemetry_source.dart';
 import 'services/ui_persistence_service.dart';
 import 'services/thermal_prefetch_service.dart';
@@ -33,6 +34,7 @@ import 'widgets/flight/flight_summary_sheet.dart';
 import 'widgets/flight/flights_screen.dart';
 import 'widgets/flight/recording_status_overlay.dart';
 import 'widgets/flight/replay_control_overlay.dart';
+import 'widgets/flight/sensor_alert_liner.dart';
 import 'widgets/flight/synthetic_flight_controls.dart';
 import 'widgets/layout/layout_strategy_container.dart';
 import 'widgets/navigation/top_nav_bar.dart';
@@ -66,6 +68,8 @@ class BrandyFlyApp extends StatefulWidget {
     this.thermalPrefetchService,
     this.audioVarioService,
     this.airspaceService,
+    this.sensorCapabilityProbe,
+    this.sensorReadinessService,
   });
 
   final MockFlightModeConfig config;
@@ -79,6 +83,8 @@ class BrandyFlyApp extends StatefulWidget {
   final ElevationService? elevationService;
   final RegionManagerService? regionManagerService;
   final AirspaceService? airspaceService;
+  final SensorCapabilityProbe? sensorCapabilityProbe;
+  final SensorReadinessService? sensorReadinessService;
 
   /// KK7 thermal prefetch; created automatically on mobile/desktop when null
   /// (not in `flutter test` and not on the web).
@@ -124,11 +130,13 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   late AirspaceService _airspaceService;
   StreamSubscription<AirspaceAlertLevel>? _airspaceAlertSub;
   late TelemetryRepository _telemetryRepository;
+  late SensorReadinessService _sensorReadinessService;
   late ScreenAutoSwitchController _autoSwitch;
   LayoutRepository? _ownedLayoutRepository;
   ThermalPrefetchService? _thermalPrefetch;
   bool _ownsThermalPrefetch = false;
   AppLifecycleListener? _lifecycleListener;
+  AppLifecycleListener? _sensorLifecycleListener;
 
   StreamSubscription<FlightModel>? _flightCompletedSub;
 
@@ -169,6 +177,18 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
       idleTelemetry: widget.config.enabled
           ? const CockpitTelemetry()
           : _liveIdleTelemetry,
+    );
+    _sensorReadinessService = widget.sensorReadinessService ??
+        SensorReadinessService(
+          telemetryRepository: _telemetryRepository,
+          probeCapabilities: widget.sensorCapabilityProbe,
+          native: widget.native,
+          isMockFlightMode: widget.config.enabled,
+        );
+    _sensorLifecycleListener = AppLifecycleListener(
+      onResume: () {
+        unawaited(_sensorReadinessService.refreshCapabilities());
+      },
     );
     _screenManager.addListener(_syncReplayTelemetry);
     _autoSwitch = ScreenAutoSwitchController(
@@ -254,6 +274,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
       }
 
       if (widget.config.enabled || kIsWeb) {
+        _sensorReadinessService.setMockFlightMode(true);
         unawaited(_airspaceService.loadDachFixture().catchError((Object e) {
           debugPrint('[BrandyFlyApp] Failed to load DACH airspace fixture: $e');
           return 0;
@@ -272,6 +293,8 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
           (_) => _advanceMockFrame(),
         );
       }
+
+      unawaited(_sensorReadinessService.refreshCapabilities());
     } on PlatformException catch (error) {
       _startupError = error.message ?? error.code;
     } catch (error) {
@@ -398,6 +421,7 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
   void dispose() {
     _timer?.cancel();
     _lifecycleListener?.dispose();
+    _sensorLifecycleListener?.dispose();
     _airspaceAlertSub?.cancel();
     _airspaceService.dispose();
     _audioVarioService.dispose();
@@ -408,6 +432,9 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
     _screenManager.dispose();
     _ownedLayoutRepository?.dispose();
     _autoSwitch.dispose();
+    if (widget.sensorReadinessService == null) {
+      _sensorReadinessService.dispose();
+    }
     _telemetryRepository.dispose();
     _mockFrameTick.dispose();
     _trackingService.dispose();
@@ -459,6 +486,9 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
         ChangeNotifierProvider<AirspaceService>.value(
           value: _airspaceService,
         ),
+        ChangeNotifierProvider<SensorReadinessService>.value(
+          value: _sensorReadinessService,
+        ),
       ],
       child: _buildApp(context),
     );
@@ -487,73 +517,104 @@ class _BrandyFlyAppState extends State<BrandyFlyApp> {
           if (_loading) {
             return const _LoadingView();
           }
-          if (_screenManager.isFlightsScreenVisible) {
-            return FlightsScreen(
-              storageService: _storageService,
-              uploadService: _uploadService,
-              onStartReplay: _startReplay,
-              onClose: () => _screenManager.toggleFlightsScreen(false),
-            );
-          }
-          return Stack(
-            children: [
-              TopNavBarOverlay(
-                screenManager: _screenManager,
-                audioVarioService: _audioVarioService,
-                child: _screenManager.isSettingsVisible
-                    ? UISettingsPanel(
-                        screenManager: _screenManager,
-                        trackingService: _trackingService,
-                        uploadService: _uploadService,
-                        thermalPrefetchService: _thermalPrefetch,
-                        regionManagerService: _regionManagerService,
-                        audioVarioService: _audioVarioService,
-                      )
-                    : widget.config.enabled
-                    ? _MockFlightView(
-                        screenManager: _screenManager,
-                        telemetry: _telemetryRepository.telemetry,
-                      )
-                    : _LiveFlightView(
-                        platformVersion: _platformVersion ?? 'Unknown',
-                        screenManager: _screenManager,
-                        telemetry: _telemetryRepository.telemetry,
-                        trackingService: _trackingService,
-                      ),
-              ),
 
-              // Floating Replay HUD when Replay Mode is active
-              if (_screenManager.isReplayActive)
-                ReplayControlOverlay(
-                  replayService: _replayService,
-                  onExit: _exitReplay,
-                ),
-
-              // Floating Mock Flight Session & Mode Controller Overlay
-              // Kept mounted (so its minimized state and dragged position
-              // survive) but hidden while the nav bar, settings or edit mode
-              // are shown, so it never covers the edit dock.
-              if (widget.config.enabled)
-                Visibility(
-                  visible:
-                      !_screenManager.isSettingsVisible &&
-                      !_screenManager.isNavBarVisible &&
-                      !_screenManager.isEditMode,
-                  maintainState: true,
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: _mockFrameTick,
-                    builder: (context, _, _) => _SimulationControlOverlay(
-                      config: widget.config,
-                      replay: _mockReplay!,
+          final Widget activeBody = _screenManager.isFlightsScreenVisible
+              ? FlightsScreen(
+                  storageService: _storageService,
+                  uploadService: _uploadService,
+                  onStartReplay: _startReplay,
+                  onClose: () => _screenManager.toggleFlightsScreen(false),
+                )
+              : Stack(
+                  children: [
+                    TopNavBarOverlay(
                       screenManager: _screenManager,
-                      replayService: _replayService,
-                      onNext: _advanceMockFrame,
-                      onReset: _resetMockFrame,
-                      synthetic: _syntheticTelemetry,
+                      audioVarioService: _audioVarioService,
+                      child: _screenManager.isSettingsVisible
+                          ? UISettingsPanel(
+                              screenManager: _screenManager,
+                              trackingService: _trackingService,
+                              uploadService: _uploadService,
+                              thermalPrefetchService: _thermalPrefetch,
+                              regionManagerService: _regionManagerService,
+                              audioVarioService: _audioVarioService,
+                            )
+                          : widget.config.enabled
+                          ? _MockFlightView(
+                              screenManager: _screenManager,
+                              telemetry: _telemetryRepository.telemetry,
+                            )
+                          : _LiveFlightView(
+                              platformVersion: _platformVersion ?? 'Unknown',
+                              screenManager: _screenManager,
+                              telemetry: _telemetryRepository.telemetry,
+                              trackingService: _trackingService,
+                            ),
+                    ),
+
+                    // Floating Replay HUD when Replay Mode is active
+                    if (_screenManager.isReplayActive)
+                      ReplayControlOverlay(
+                        replayService: _replayService,
+                        onExit: _exitReplay,
+                      ),
+
+                    // Floating Mock Flight Session & Mode Controller Overlay
+                    // Kept mounted (so its minimized state and dragged position
+                    // survive) but hidden while the nav bar, settings or edit mode
+                    // are shown, so it never covers the edit dock.
+                    if (widget.config.enabled)
+                      Visibility(
+                        visible:
+                            !_screenManager.isSettingsVisible &&
+                            !_screenManager.isNavBarVisible &&
+                            !_screenManager.isEditMode,
+                        maintainState: true,
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: _mockFrameTick,
+                          builder: (context, _, _) => _SimulationControlOverlay(
+                            config: widget.config,
+                            replay: _mockReplay!,
+                            screenManager: _screenManager,
+                            replayService: _replayService,
+                            onNext: _advanceMockFrame,
+                            onReset: _resetMockFrame,
+                            synthetic: _syntheticTelemetry,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+
+          return AnimatedBuilder(
+            animation: _sensorReadinessService,
+            child: activeBody,
+            builder: (context, child) {
+              final readiness = _sensorReadinessService.state;
+              final showLiner = readiness.shouldShowBanner;
+              return Column(
+                children: [
+                  if (showLiner)
+                    SensorAlertLiner(
+                      state: readiness,
+                      onOpenSettings: _screenManager.isSettingsVisible
+                          ? null
+                          : () {
+                              _screenManager.toggleFlightsScreen(false);
+                              _screenManager.toggleNavBar(false);
+                              _screenManager.toggleSettingsPanel(true);
+                            },
+                    ),
+                  Expanded(
+                    child: MediaQuery.removePadding(
+                      context: context,
+                      removeTop: showLiner,
+                      child: child!,
                     ),
                   ),
-                ),
-            ],
+                ],
+              );
+            },
           );
         },
       ),

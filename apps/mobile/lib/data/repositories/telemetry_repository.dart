@@ -75,16 +75,29 @@ class TelemetryRepository {
   /// 10-50 Hz source does not allocate a new history list on every tick.
   static const Duration historyInterval = Duration(seconds: 1);
   bool _replayActive = false;
+  final ValueNotifier<bool> _replayActiveNotifier = ValueNotifier<bool>(false);
+  TelemetrySourceType? _attachedSourceType;
+  double? _latestPressureHpa;
+  bool _latestSnapshotValid = true;
   bool _disposed = false;
 
   ValueListenable<CockpitTelemetry> get telemetry => _telemetry;
 
+  ValueListenable<bool> get replayActive => _replayActiveNotifier;
+
   bool get isReplayActive => _replayActive;
+
+  TelemetrySourceType? get attachedSourceType => _attachedSourceType;
+
+  double? get latestPressureHpa => _latestPressureHpa;
+
+  bool get latestSnapshotValid => _latestSnapshotValid;
 
   /// Switches between replay telemetry and live/idle telemetry.
   void setReplayActive(bool active) {
     if (_replayActive == active) return;
     _replayActive = active;
+    _replayActiveNotifier.value = active;
     if (active) {
       _onReplayChanged();
     } else {
@@ -95,6 +108,15 @@ class TelemetryRepository {
   /// Uses [source] (synthetic, BLE, internal sensors) for live telemetry.
   void attachSource(ITelemetrySource source) {
     _sourceSub?.cancel();
+    TelemetrySourceType? sourceType;
+    try {
+      sourceType = source.sourceType;
+    } on NoSuchMethodError {
+      sourceType = null;
+    }
+    _attachedSourceType = sourceType;
+    _latestPressureHpa = null;
+    _latestSnapshotValid = true;
     _thermalEngine.reset();
     _sourceSub = source.telemetryStream.listen(onSnapshot);
   }
@@ -102,6 +124,9 @@ class TelemetryRepository {
   void detachSource() {
     _sourceSub?.cancel();
     _sourceSub = null;
+    _attachedSourceType = null;
+    _latestPressureHpa = null;
+    _latestSnapshotValid = true;
     _liveSample = null;
     _liveHistory.clear();
     _liveHistorySnapshot = const [];
@@ -118,6 +143,8 @@ class TelemetryRepository {
   @visibleForTesting
   void onSnapshot(TelemetrySnapshot s) {
     if (_disposed) return;
+    _latestPressureHpa = s.pressureHpa;
+    _latestSnapshotValid = s.isValid;
     final last = _lastHistorySample;
     if (last == null || s.timestamp.difference(last) >= historyInterval) {
       _lastHistorySample = s.timestamp;
@@ -388,6 +415,7 @@ class TelemetryRepository {
     _sourceSub?.cancel();
     _replayService.removeListener(_onReplayChanged);
     _trackingService?.removeListener(_onTrackingChanged);
+    _replayActiveNotifier.dispose();
     _telemetry.dispose();
   }
 }
