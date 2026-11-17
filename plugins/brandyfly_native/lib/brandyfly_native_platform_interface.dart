@@ -4,6 +4,7 @@ import 'airspace_models.dart';
 import 'audio_vario_models.dart';
 import 'brandyfly_native_method_channel.dart';
 import 'mock_flight_mode.dart';
+import 'sensor_capability_models.dart';
 
 abstract class BrandyflyNativePlatform extends PlatformInterface {
   /// Constructs a BrandyflyNativePlatform.
@@ -117,5 +118,11 @@ abstract class BrandyflyNativePlatform extends PlatformInterface {
 
   Future<bool> audioVarioSetMuted(bool isMuted) {
     throw UnimplementedError('audioVarioSetMuted() has not been implemented.');
+  }
+
+  Future<NativeSensorCapabilities> getSensorCapabilities() {
+    throw UnimplementedError(
+      'getSensorCapabilities() has not been implemented.',
+    );
   }
 }

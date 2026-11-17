@@ -348,19 +348,24 @@ class _TopNavBarOverlayState extends State<TopNavBarOverlay>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            const Icon(Icons.flight_takeoff, color: Colors.lightBlueAccent),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+        Expanded(
+          child: Row(
+            children: [
+              const Icon(Icons.flight_takeoff, color: Colors.lightBlueAccent),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         IconButton(
           icon: const Icon(Icons.close, color: Colors.white70),
