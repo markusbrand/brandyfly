@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.17.3...brandyfly-v0.18.0) (2026-11-17)
+
+
+### Features
+
+* **mobile,native:** persistent insufficient-sensor alert liner ([#287](https://github.com/markusbrand/brandyfly/issues/287)) ([5b2c2ab](https://github.com/markusbrand/brandyfly/commit/5b2c2ab0856c4ebd3708ada0eafeb423645024b4))
+
 ## [0.17.3](https://github.com/markusbrand/brandyfly/compare/brandyfly-v0.17.2...brandyfly-v0.17.3) (2026-11-14)
 
 
